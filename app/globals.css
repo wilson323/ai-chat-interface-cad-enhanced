@@ -1,0 +1,281 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 221.2 83.2% 53.3%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 224.3 76.3% 48%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Animation keyframes */
+@keyframes float {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0);
+  }
+  33% {
+    transform: translateY(-10px) translateX(10px) rotate(5deg);
+  }
+  66% {
+    transform: translateY(5px) translateX(-5px) rotate(-5deg);
+  }
+  100% {
+    transform: translateY(0) translateX(0) rotate(0);
+  }
+}
+
+.animate-float {
+  animation: float 15s ease-in-out infinite;
+}
+
+/* Add more custom animations as needed */
+@keyframes pulse-soft {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulse-soft 3s ease-in-out infinite;
+}
+
+/* Ensure framer-motion works properly with Tailwind */
+.framer-motion-div {
+  display: inline-block;
+  position: relative;
+}
+
+/* 消息气泡动画 */
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation-duration: 0.3s;
+  animation-timing-function: ease-out;
+  animation-fill-mode: both;
+}
+
+.fade-in-0 {
+  animation-name: fadeIn;
+}
+
+.slide-in-from-bottom-3 {
+  animation-name: slideInFromBottom;
+}
+
+.duration-300 {
+  animation-duration: 0.3s;
+}
+
+/* 打字指示器动画 */
+@keyframes bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.animate-bounce {
+  animation: bounce 1s infinite;
+}
+
+/* 毛玻璃效果 */
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.backdrop-blur-md {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(108, 179, 63, 0.2);
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(108, 179, 63, 0.15);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 179, 63, 0.3);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(108, 179, 63, 0.25);
+}
+
+/* 粒子效果 */
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  background-color: rgba(108, 179, 63, 0.6);
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* 脉冲效果 */
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.animate-pulse-ring {
+  animation: pulse 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+/* 3D变换效果 */
+.perspective-500 {
+  perspective: 500px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+/* 渐变文字 */
+.text-gradient {
+  background: linear-gradient(90deg, #6cb33f 0%, #8ed658 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+/* 动态边框 */
+@keyframes borderAnimation {
+  0% {
+    border-color: rgba(108, 179, 63, 0.3);
+  }
+  50% {
+    border-color: rgba(108, 179, 63, 0.7);
+  }
+  100% {
+    border-color: rgba(108, 179, 63, 0.3);
+  }
+}
+
+.animate-border {
+  animation: borderAnimation 2s infinite;
+}
+
+/* 自定义阴影 */
+.shadow-brand {
+  box-shadow: 0 4px 14px rgba(108, 179, 63, 0.15);
+}
+
+.dark .shadow-brand {
+  box-shadow: 0 4px 14px rgba(108, 179, 63, 0.1);
+}
+
+/* 响应式设计辅助类 */
+@media (max-width: 640px) {
+  .mobile-full-height {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* 触觉反馈模拟 */
+@keyframes tactileFeedback {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.98);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.tactile-feedback:active {
+  animation: tactileFeedback 0.2s ease-in-out;
+}

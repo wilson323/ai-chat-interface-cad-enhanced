@@ -1,0 +1,309 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+以下是将新增内容整合后的增强版全栈开发规范指南：
+
+---
+
+### 全栈开发规范与技术整合指南（增强版）
+
+---
+
+### 核心架构原则
+1. **分层架构**：Presentation/Application/Data 三层解耦
+2. **组件化开发**：原子设计模式 + 智能/展示组件分离
+3. **类型安全**：全链路TypeScript类型校验（Vue优先接口，React优先类型别名）
+4. **响应式优先**：移动优先 + 渐进增强策略
+
+---
+
+### 统一代码规范
+**代码风格：**
+```typescript
+// Vue接口示例
+interface Pagination {
+  current: number
+  pageSize: number
+  total?: number
+}
+
+// React类型示例
+type FetchState<T> = {
+  data: T | null
+  error: Error | null
+  isLoading: boolean
+}
+```
+
+**模块组织：**
+```
+src/
+├─ components/
+│  ├─ auth/
+│  │  ├─ AuthWizard.vue       # Vue组件
+│  │  ├─ useAuthState.ts      # 组合式函数
+│  ├─ data-grid/
+│  │  ├─ DataGrid.tsx         # React组件
+├─ stores/                    # Pinia存储
+│  ├─ user.store.ts
+├─ utils/
+│  ├─ api/                    # API客户端
+│  │  ├─ http-client.ts
+```
+
+---
+
+### 前端框架规范
+**Vue技术栈增强：**
+```vue
+<!-- 组合式API + script setup -->
+<script setup lang="ts">
+import { useUserStore } from '@/stores/user'
+import { useDebounceFn } from '@vueuse/core'
+
+const store = useUserStore()
+const searchQuery = ref('')
+
+// 使用VueUse优化性能
+const debouncedSearch = useDebounceFn(() => {
+  store.fetchUsers(searchQuery.value)
+}, 300)
+</script>
+
+<template>
+  <ElInput 
+    v-model="searchQuery"
+    @input="debouncedSearch"
+    placeholder="Search users..."
+  />
+  
+  <Suspense>
+    <AsyncUserList />
+    <template #fallback>
+      <ElSkeleton :rows="5" animated />
+    </template>
+  </Suspense>
+</template>
+```
+
+**Vite优化配置：**
+```ts
+// vite.config.ts
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          element: ['element-plus'],
+          charts: ['echarts'],
+          vendor: ['vue', 'pinia']
+        }
+      }
+    }
+  }
+})
+```
+
+---
+
+### 状态管理策略
+**Pinia模式：**
+```typescript
+// stores/user.store.ts
+export const useUserStore = defineStore('user', {
+  state: () => ({
+    users: [] as User[],
+    isLoading: false
+  }),
+  actions: {
+    async fetchUsers(query?: string) {
+      this.isLoading = true
+      try {
+        const { data } = await http.get<User[]>('/api/users', { params: { q: query } })
+        this.users = data
+      } finally {
+        this.isLoading = false
+      }
+    }
+  }
+})
+```
+
+**跨框架状态模式对比：**
+| 特性          | Vue (Pinia)            | React (Context + Reducer) | HTMX               |
+|---------------|------------------------|---------------------------|--------------------|
+| 异步处理      | 内置async/await支持    | 需中间件                 | 服务端直接处理     |
+| 响应式更新    | 自动追踪依赖          | 需手动触发更新          | 全页面局部更新    |
+| 类型支持      | 完整类型推断          | 需要类型标注            | 无类型系统        |
+
+---
+
+### 性能优化矩阵（增强版）
+| 策略                | Vue/Vite              | React/Next             | HTMX                 |
+|---------------------|-----------------------|------------------------|----------------------|
+| 代码分割           | 动态导入 + Vite分块  | dynamic()             | hx-boost="true"     |
+| 请求优化           | useAsyncQuery        | React Query           | hx-indicator        |
+| 渲染优化           | keep-alive + Suspense| React Suspense        | hx-trigger="revealed"|
+| 缓存策略           | useNuxtData          | revalidateTag         | Cache-Control头     |
+| 构建优化           | Vite分块策略         | Next.js analyzer      | 模板预编译         |
+
+---
+
+### UI组件规范（多框架）
+**Vue (Element Plus)：**
+```vue
+<template>
+  <ElTable :data="tableData" height="400">
+    <ElTableColumn prop="name" label="Name" />
+    <ElTableColumn prop="age" label="Age" />
+    <ElTableColumn label="Operations">
+      <template #default="{ row }">
+        <ElButton 
+          type="danger" 
+          @click="handleDelete(row.id)"
+          :loading="isDeleting"
+        >
+          Delete
+        </ElButton>
+      </template>
+    </ElTableColumn>
+  </ElTable>
+</template>
+```
+
+**React (Headless UI + Tailwind)：**
+```tsx
+import { Combobox } from '@headlessui/react'
+
+function SearchSelect() {
+  return (
+    <Combobox>
+      <Combobox.Input 
+        className="tw-rounded-lg tw-p-3 tw-border tw-w-full"
+        placeholder="Select item..."
+      />
+      <Combobox.Options className="tw-mt-1 tw-max-h-60 tw-overflow-auto">
+        {/* Options */}
+      </Combobox.Options>
+    </Combobox>
+  )
+}
+```
+
+---
+
+### 调试与优化工具链
+```mermaid
+graph TD
+  A[开发阶段] --> B[ESLint + TypeScript]
+  A --> C[Vite HMR]
+  A --> D[Vue DevTools]
+  
+  B --> E[类型检查]
+  C --> F[快速热更新]
+  D --> G[状态调试]
+  
+  H[构建阶段] --> I[Vite Rollup]
+  I --> J[代码分割]
+  I --> K[Tree Shaking]
+  
+  L[部署阶段] --> M[Lighthouse]
+  L --> N[WebPageTest]
+  M --> O[性能评分]
+  N --> P[瀑布图分析]
+```
+
+---
+
+### 部署优化清单（增强）
+1. **图片优化流水线**：
+   ```bash
+   # 使用Vite插件实现
+   npm install vite-plugin-image-optimizer --save-dev
+   ```
+   ```ts
+   // vite.config.ts
+   import imageOptimizer from 'vite-plugin-image-optimizer'
+   
+   export default defineConfig({
+     plugins: [
+       imageOptimizer({
+         webp: { quality: 80 }
+       })
+     ]
+   })
+   ```
+
+2. **关键资源预加载**：
+   ```html
+   <!-- 在入口文件添加 -->
+   <link rel="preload" href="/src/assets/fonts/Inter.woff2" as="font" type="font/woff2" crossorigin>
+   ```
+
+3. **性能监控集成**：
+   ```ts
+   // 主应用文件
+   import { useWebVitals } from '@vueuse/core'
+   
+   useWebVitals((metrics) => {
+     analytics.send('web-vitals', metrics)
+   })
+   ```
+
+---
+
+### 错误处理统一模式
+**跨框架错误边界：**
+```vue
+<!-- Vue错误边界组件 -->
+<template>
+  <slot v-if="hasError" name="fallback" />
+  <slot v-else />
+</template>
+
+<script setup lang="ts">
+import { onErrorCaptured, ref } from 'vue'
+
+const hasError = ref(false)
+
+onErrorCaptured((err) => {
+  hasError.value = true
+  logError(err)
+  return false // 阻止错误冒泡
+})
+</script>
+```
+
+**HTMX错误处理增强：**
+```html
+<div hx-get="/api/data"
+     hx-trigger="load"
+     hx-target="#content"
+     hx-swap="innerHTML"
+     hx-indicator="#loader">
+     
+  <div id="content">
+    <!-- 动态内容 -->
+  </div>
+  
+  <div id="error-toast" 
+       class="hidden fixed bottom-4 right-4 p-4 bg-red-100 text-red-700 rounded-lg"
+       _="on htmx:responseError from document 
+          show me then wait 5s then hide me">
+    Operation Failed!
+  </div>
+</div>
+```
+
+---
+
+通过这种深度整合，可以实现：
+1. 跨技术栈的一致开发体验
+2. 共享最佳实践和优化策略
+3. 模块化架构的灵活组合
+4. 统一的可观测性和监控体系
+
+
+各技术栈可根据项目需求灵活组合，同时保持核心工程实践的一致性。实际实施时应根据团队技术栈偏好选择具体实现方案，但需遵守统一的架构原则和代码质量标准。
