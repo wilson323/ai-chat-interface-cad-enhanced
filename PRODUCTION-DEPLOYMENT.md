@@ -46,7 +46,7 @@ docker save ai-chat-interface:latest | gzip > ai-chat-interface-latest.tar.gz
 scp ai-chat-interface-latest.tar.gz docker-compose.prod.yml .env.production healthcheck.js root@171.43.138.237:/opt/ai-chat-interface/
 
 # 4. 在服务器上启动
-ssh root@171.43.138.237 "cd /opt/ai-chat-interface && docker load < ai-chat-interface-latest.tar.gz && docker-compose -f docker-compose.prod.yml up -d"
+ssh root@171.43.138.237 "cd /mnt/data/ai-chat-interface && docker load < ai-chat-interface-latest.tar.gz && docker-compose -f docker-compose.prod.yml up -d"
 ```
 
 ## 🔧 生产环境配置详情
@@ -122,19 +122,19 @@ ssh root@171.43.138.237 "cd /opt/ai-chat-interface && docker-compose ps"
 ### 服务管理
 ```bash
 # 查看服务状态
-docker-compose ps
+cd /mnt/data/ai-chat-interface && docker-compose ps
 
 # 查看日志
-docker-compose logs -f ai-chat-interface
+cd /mnt/data/ai-chat-interface && docker-compose logs -f ai-chat-interface
 
 # 重启服务
-docker-compose restart
+cd /mnt/data/ai-chat-interface && docker-compose restart
 
 # 停止服务
-docker-compose down
+cd /mnt/data/ai-chat-interface && docker-compose down
 
 # 更新服务
-docker-compose pull && docker-compose up -d
+cd /mnt/data/ai-chat-interface && docker-compose pull && docker-compose up -d
 ```
 
 ### 性能监控

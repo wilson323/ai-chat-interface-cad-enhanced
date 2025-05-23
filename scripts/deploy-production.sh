@@ -20,7 +20,7 @@ PRODUCTION_PORT="8005"
 PRODUCTION_USER="root"
 SERVER_PASSWORD="Zkteco@135"
 PROJECT_NAME="ai-chat-interface"
-DEPLOY_PATH="/opt/ai-chat-interface"
+DEPLOY_PATH="/mnt/data/ai-chat-interface"
 
 # 日志函数
 log_info() {
@@ -160,6 +160,19 @@ deploy_to_server() {
     # 在服务器上创建目录
     log_info "准备服务器环境..."
     ssh_exec "
+        # 检查存储盘挂载状态
+        if [ ! -d '/mnt/data' ]; then
+            echo '错误: 存储盘 /mnt/data 不存在，请检查挂载状态'
+            exit 1
+        fi
+        
+        # 检查存储盘可用空间 (至少需要2GB)
+        AVAILABLE_SPACE=\$(df /mnt/data | awk 'NR==2 {print \$4}')
+        REQUIRED_SPACE=2097152  # 2GB in KB
+        if [ \$AVAILABLE_SPACE -lt \$REQUIRED_SPACE ]; then
+            echo \"警告: 存储盘可用空间不足 (\${AVAILABLE_SPACE}KB < \${REQUIRED_SPACE}KB)\"
+        fi
+        
         mkdir -p ${DEPLOY_PATH}
         cd ${DEPLOY_PATH}
         docker-compose down 2>/dev/null || true
@@ -179,8 +192,12 @@ deploy_to_server() {
         
         # 解压项目文件
         echo '解压项目文件...'
-        tar -xzf project.tar.gz -C project/
+        tar -xzf project.tar.gz
         cd project/
+        
+        # 检查文件是否正确解压
+        echo '检查文件结构...'
+        ls -la
         
         # 直接使用Docker构建（服务器上网络正常）
         echo '构建Docker镜像...'
