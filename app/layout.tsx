@@ -284,14 +284,14 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <ClientLayout>
               {children}
             </ClientLayout>
+            <Toaster 
+              position="top-right" 
+              toastOptions={{
+                duration: 4000,
+                className: 'font-sans',
+              }}
+            />
           </FastGPTProvider>
-          <Toaster 
-            position="top-right" 
-            toastOptions={{
-              duration: 4000,
-              className: 'font-sans',
-            }}
-          />
         </ThemeProvider>
         
         {/* Service Worker 注册 */}
