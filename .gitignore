@@ -47,3 +47,7 @@ next-env.d.ts
 /temp
 /tmp
 *.tmp
+
+# deployment scripts with sensitive information
+*-push.sh
+quick-push.sh
