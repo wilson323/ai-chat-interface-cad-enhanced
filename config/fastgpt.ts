@@ -32,17 +32,19 @@ export const FastGPTConfig = {
 
 // Local storage key names
 export const STORAGE_KEYS = {
-  API_CONFIG: "ai_chat_api_config",
+  API_CONFIG: "fastgpt_api_config",
+  AGENTS: "fastgpt_agents",
+  CHAT_SESSIONS: "fastgpt_chat_sessions",
   API_URL: "ai_chat_api_url",
   API_KEY: "ai_chat_api_key",
   USE_PROXY: "ai_chat_use_proxy",
-  CURRENT_USER: "currentUser",
+  CURRENT_USER: "fastgpt_current_user",
   CHAT_HISTORY: "ai_chat_history",
   SETTINGS: "ai_chat_settings",
   THEME: "ai_chat_theme",
   LANGUAGE: "ai_chat_language",
   DEFAULT_AGENT_INITIALIZED: "default_agent_initialized",
-}
+} as const;
 
 // Proxy configuration
 export const PROXY_CONFIG = {
@@ -135,3 +137,14 @@ export const fastGPTConfig = {
     }
   },
 }
+
+export const getFastGPTConfig = () => ({
+  apiKey: process.env.FASTGPT_API_KEY,
+  endpoint: process.env.FASTGPT_ENDPOINT,
+  timeout: parseInt(process.env.FASTGPT_TIMEOUT || '30000'),
+  retries: parseInt(process.env.FASTGPT_RETRIES || '3'),
+  circuitBreaker: {
+    threshold: 0.5,
+    interval: 60000
+  }
+});

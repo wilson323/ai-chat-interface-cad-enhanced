@@ -26,6 +26,22 @@ export default function ChatInterface() {
     router.push("/")
   }
 
+  // 性能优化配置 - 针对不同设备环境优化
+  const streamConfig = {
+    bufferSize: isMobile ? 4096 : 8192, // 移动端使用较小缓冲区
+    chunkDelay: isMobile ? 32 : 16, // 移动端降低帧率
+    typewriterSpeed: isMobile ? 80 : 120, // 移动端较慢打字速度
+    batchSize: isMobile ? 5 : 10, // 移动端小批处理
+  }
+
+  const performanceConfig = {
+    virtualScrollEnabled: true,
+    itemHeight: isMobile ? 100 : 80, // 移动端增大触摸区域
+    overscan: isMobile ? 3 : 5, // 移动端减少预渲染
+    typewriterSpeed: streamConfig.typewriterSpeed,
+    showPerformanceMetrics: process.env.NODE_ENV === 'development' && !isMobile, // 开发环境且非移动端显示
+  }
+
   return (
     <div className="flex flex-col h-full w-full">
       {suggestedQuestions.length > 0 && !selectedQuestion && (
@@ -42,6 +58,9 @@ export default function ChatInterface() {
         agentName={defaultAgent.name}
         agentAvatar={defaultAgent.avatar || "/images/zkteco-mascot.png"}
         onBackClick={handleBackClick}
+        // 传递性能优化配置
+        streamConfig={streamConfig}
+        performanceConfig={performanceConfig}
       />
     </div>
   )

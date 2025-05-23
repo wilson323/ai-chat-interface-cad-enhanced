@@ -1,12 +1,12 @@
 "use client"
 
-import type React from "react"
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode, type FC } from "react"
 import type { FastGPTApp, ChatSession, User, ApiConfig } from "@/types/fastgpt"
 import { useToast } from "@/hooks/use-toast"
 import { STORAGE_KEYS, ERROR_MESSAGES } from "@/config/fastgpt"
 import { DEFAULT_AGENT } from "@/config/default-agent"
-import fastGPTClient from "@/lib/api/fastgpt-client"
+import FastGPTClient from "@/lib/api/fastgpt-client"
+import React from "react"
 
 // FastGPTContextType interface with pagination methods
 interface FastGPTContextType {
@@ -27,6 +27,8 @@ interface FastGPTContextType {
   initializeDefaultAgent: () => Promise<void>
   hasMoreSessions: boolean
   currentPage: number
+  apiKey?: string
+  setApiKey: (key: string) => void
 }
 
 const FastGPTContext = createContext<FastGPTContextType | undefined>(undefined)
@@ -156,7 +158,7 @@ const localStorageDB = {
 }
 
 // FastGPTProvider component with pagination state
-export const FastGPTProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const [isConfigured, setIsConfigured] = useState<boolean>(false)
   const [isLoading, setIsLoading] = useState<boolean>(true)
   const [currentUser, setCurrentUser] = useState<User | null>(null)
@@ -166,6 +168,7 @@ export const FastGPTProvider: React.FC<{ children: ReactNode }> = ({ children })
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null)
   const [hasMoreSessions, setHasMoreSessions] = useState<boolean>(true)
   const [currentPage, setCurrentPage] = useState<number>(1)
+  const [apiKey, setApiKey] = useState<string>()
   const { toast } = useToast()
 
   // Initialize
@@ -185,7 +188,7 @@ export const FastGPTProvider: React.FC<{ children: ReactNode }> = ({ children })
           console.log(`Setting API config with proxy mode: ${useProxy}`)
 
           // Update FastGPT client configuration
-          fastGPTClient.setConfig(apiConfig.apiKey, apiConfig.baseUrl, useProxy)
+          FastGPTClient.setConfig(apiConfig.apiKey, apiConfig.baseUrl, useProxy)
           setIsConfigured(true)
         }
 
@@ -327,7 +330,7 @@ export const FastGPTProvider: React.FC<{ children: ReactNode }> = ({ children })
       }
 
       // Set API configuration in client
-      fastGPTClient.setConfig(apiKey, baseUrl, useProxy === undefined ? true : useProxy)
+      FastGPTClient.setConfig(apiKey, baseUrl, useProxy === undefined ? true : useProxy)
 
       // Save to local storage
       const config = { baseUrl, apiKey, useProxy: useProxy === undefined ? true : useProxy }
@@ -335,7 +338,7 @@ export const FastGPTProvider: React.FC<{ children: ReactNode }> = ({ children })
 
       // Test connection
       try {
-        const result = await fastGPTClient.testConnection()
+        const result = await FastGPTClient.testConnection()
 
         if (result.success) {
           toast({
@@ -635,10 +638,14 @@ export const FastGPTProvider: React.FC<{ children: ReactNode }> = ({ children })
     initializeDefaultAgent,
     hasMoreSessions,
     currentPage,
+    apiKey,
+    setApiKey,
   }
 
   return <FastGPTContext.Provider value={value}>{children}</FastGPTContext.Provider>
 }
+
+export { FastGPTProvider }
 
 export const useFastGPT = () => {
   const context = useContext(FastGPTContext)

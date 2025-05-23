@@ -92,6 +92,7 @@ export interface VoiceModel {
 export interface ApiConfig {
   baseUrl: string
   apiKey: string
+  useProxy?: boolean
 }
 
 // 用户类型

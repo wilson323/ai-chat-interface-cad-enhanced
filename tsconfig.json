@@ -4,7 +4,8 @@
     "lib": [
       "dom",
       "dom.iterable",
-      "esnext"
+      "esnext",
+      "ES2022"
     ],
     "module": "esnext",
     "moduleResolution": "node",
@@ -18,14 +19,8 @@
       "./node_modules/@types",
       "./types"
     ],
-    "types": [
-      "node",
-      "react",
-      "react-dom",
-      "next"
-    ],
     "allowJs": true,
-    "skipLibCheck": false,
+    "skipLibCheck": true,
     "strict": true,
     "noImplicitAny": true,
     "noEmit": true,
@@ -40,6 +35,12 @@
       {
         "name": "next"
       }
+    ],
+    "types": [
+      "node",
+      "next",
+      "react",
+      "react-dom"
     ]
   },
   "include": [

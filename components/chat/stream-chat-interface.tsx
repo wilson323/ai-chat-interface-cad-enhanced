@@ -24,6 +24,22 @@ interface Message {
   isFavorite?: boolean
 }
 
+// 性能优化配置接口
+interface StreamConfig {
+  bufferSize?: number
+  chunkDelay?: number
+  typewriterSpeed?: number
+  batchSize?: number
+}
+
+interface PerformanceConfig {
+  virtualScrollEnabled?: boolean
+  itemHeight?: number
+  overscan?: number
+  typewriterSpeed?: number
+  showPerformanceMetrics?: boolean
+}
+
 export default function StreamChatInterface({
   agentId = "",
   initialSystemPrompt = "",
@@ -32,6 +48,9 @@ export default function StreamChatInterface({
   agentAvatar = "/images/zkteco-mascot.png",
   onBackClick,
   selectedAgent,
+  // 新增性能配置参数
+  streamConfig,
+  performanceConfig,
 }: {
   agentId?: string
   initialSystemPrompt?: string
@@ -39,7 +58,9 @@ export default function StreamChatInterface({
   agentName?: string
   agentAvatar?: string
   onBackClick?: () => void
-  selectedAgent?: any // Make sure the selectedAgent is available in this component
+  selectedAgent?: any
+  streamConfig?: StreamConfig
+  performanceConfig?: PerformanceConfig
 }) {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState("")
@@ -56,6 +77,10 @@ export default function StreamChatInterface({
   const [recordingTime, setRecordingTime] = useState(0)
   const recordingInterval = useRef<NodeJS.Timeout | null>(null)
   const { toast } = useToast()
+
+  // 性能监控状态
+  const [performanceMetrics, setPerformanceMetrics] = useState<any>(null)
+  const performanceInterval = useRef<NodeJS.Timeout | null>(null)
 
   // Initialize chat
   useEffect(() => {
@@ -129,6 +154,32 @@ export default function StreamChatInterface({
     initChat()
   }, [agentId, initialSystemPrompt, chatId, userId])
 
+  // 性能监控 - 仅在开发环境启用
+  useEffect(() => {
+    if (performanceConfig?.showPerformanceMetrics) {
+      const fetchMetrics = async () => {
+        try {
+          const response = await fetch('/api/ag-ui/performance')
+          if (response.ok) {
+            const data = await response.json()
+            setPerformanceMetrics(data)
+          }
+        } catch (error) {
+          console.error('Failed to fetch performance metrics:', error)
+        }
+      }
+
+      fetchMetrics()
+      performanceInterval.current = setInterval(fetchMetrics, 2000)
+
+      return () => {
+        if (performanceInterval.current) {
+          clearInterval(performanceInterval.current)
+        }
+      }
+    }
+  }, [performanceConfig?.showPerformanceMetrics])
+
   // Scroll to latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -150,8 +201,8 @@ export default function StreamChatInterface({
     }
   }, [isMobile])
 
-  // Process streaming response
-  const processStreamResponse = async (response: Response) => {
+  // 使用优化的AG-UI API进行流式响应处理
+  const processStreamResponseWithOptimization = async (response: Response) => {
     if (!response.body) {
       throw new Error("Response body is null")
     }
@@ -178,13 +229,19 @@ export default function StreamChatInterface({
             const data = line.slice(6)
 
             if (data === "[DONE]") {
-              // Stream ended
               break
             }
 
             try {
               const parsed = JSON.parse(data)
-              if (parsed.choices && parsed.choices[0].delta && parsed.choices[0].delta.content) {
+              
+              // 处理AG-UI事件流
+              if (parsed.type === "TEXT_MESSAGE_CONTENT" && parsed.delta) {
+                accumulatedContent += parsed.delta
+                setStreamingContent(accumulatedContent)
+              }
+              // 兼容原有FastGPT格式
+              else if (parsed.choices && parsed.choices[0].delta && parsed.choices[0].delta.content) {
                 const content = parsed.choices[0].delta.content
                 accumulatedContent += content
                 setStreamingContent(accumulatedContent)
@@ -198,9 +255,9 @@ export default function StreamChatInterface({
 
       // Stream ended, add complete message
       if (accumulatedContent) {
-        const newMessage = {
-          id: `resp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-          role: "assistant" as const,
+        const newMessage: Message = {
+          id: `assistant_${Date.now()}`,
+          role: "assistant",
           content: accumulatedContent,
           timestamp: new Date(),
         }
@@ -208,104 +265,91 @@ export default function StreamChatInterface({
         setMessages((prev) => [...prev, newMessage])
         setStreamingContent("")
 
-        // Generate new suggested questions based on the conversation
+        // Generate suggested questions based on response
         generateSuggestedQuestions(accumulatedContent)
       }
     } catch (error) {
       console.error("Error processing stream:", error)
-    } finally {
-      reader.releaseLock()
+      throw error
     }
   }
 
-  // Generate suggested questions based on the conversation
+  // Process streaming response (保持原有函数名以维持兼容性)
+  const processStreamResponse = processStreamResponseWithOptimization
+
+  // Generate suggested questions based on assistant's response
   const generateSuggestedQuestions = (lastResponse: string) => {
-    // In a real implementation, this would call an API to generate relevant questions
-    // For now, we'll use a simple approach with predefined questions
-    const defaultQuestions = [
-      "能详细介绍一下这个功能吗？",
-      "有没有相关的使用案例？",
-      "这个技术的优势是什么？",
-      "如何解决常见问题？",
+    // This is a simple implementation - in production, you might want to use AI to generate relevant questions
+    const questionTemplates = [
+      "可以详细解释一下",
+      "还有什么相关的",
+      "如何实际应用",
+      "有什么注意事项",
     ]
 
-    setSuggestedQuestions(defaultQuestions)
+    const newQuestions = questionTemplates.map((template) => `${template}${lastResponse.slice(0, 10)}...？`)
+    setSuggestedQuestions(newQuestions.slice(0, 3))
   }
 
-  // Handle sending message
   const handleSendMessage = async () => {
     if (!input.trim() || isLoading) return
 
-    const userMessage = {
-      id: `msg_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-      role: "user" as const,
-      content: input,
+    const userMessage: Message = {
+      id: `user_${Date.now()}`,
+      role: "user",
+      content: input.trim(),
       timestamp: new Date(),
     }
 
     setMessages((prev) => [...prev, userMessage])
     setInput("")
     setIsLoading(true)
-
-    // Clear suggested questions when user sends a message
     setSuggestedQuestions([])
 
     try {
-      // Prepare messages for API
-      const apiMessages = messages
-        .filter((msg) => msg.role !== "system")
-        .map((msg) => ({ role: msg.role, content: msg.content }))
-        .concat({ role: "user", content: input })
-
-      // Get system message if exists
-      const systemMessage = messages.find((msg) => msg.role === "system")
-
-      // Prepare request parameters
-      const params: any = {
-        model: agentId || "gpt-3.5-turbo",
-        messages: apiMessages,
-        stream: true,
-        detail: false,
-        chatId: chatId,
-        responseChatItemId: `resp_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
-        variables: {
-          userId: userId,
+      // 使用优化的AG-UI API
+      const response = await fetch("/api/ag-ui/chat", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      }
-
-      // Add system message if exists
-      if (systemMessage) {
-        params.system = systemMessage.content
-      }
-
-      // Send request to FastGPT API
-      const response = await fastGPTClient.chatCompletions(params)
+        body: JSON.stringify({
+          appId: agentId,
+          chatId,
+          messages: [
+            ...messages.filter(m => m.role !== "system"),
+            userMessage
+          ].map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          // 传递性能配置
+          streamConfig: streamConfig,
+          // 添加系统提示
+          systemPrompt: messages.find(m => m.role === "system")?.content || initialSystemPrompt,
+        }),
+      })
 
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(`FastGPT API Error: ${errorData.error?.message || response.statusText}`)
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
 
-      // Process streaming response
       await processStreamResponse(response)
     } catch (error) {
-      console.error("Failed to send message:", error)
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `error_${Date.now()}`,
-          role: "assistant",
-          content: "抱歉，发生了错误，请稍后再试。",
-          timestamp: new Date(),
-        },
-      ])
-      setStreamingContent("")
+      console.error("Error sending message:", error)
+      toast({
+        title: "发送失败",
+        description: "消息发送失败，请重试",
+        variant: "destructive",
+      })
+
+      // Remove the user message on error
+      setMessages((prev) => prev.filter((msg) => msg.id !== userMessage.id))
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Handle key press
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault()
@@ -313,49 +357,46 @@ export default function StreamChatInterface({
     }
   }
 
-  // Handle voice input
   const handleVoiceInput = () => {
     if (isRecording) {
       // Stop recording
       setIsRecording(false)
+      setRecordingTime(0)
       if (recordingInterval.current) {
         clearInterval(recordingInterval.current)
-        recordingInterval.current = null
       }
-      setRecordingTime(0)
-
-      // Simulate voice recognition result
-      setTimeout(() => {
-        setInput((prev) => prev + "这是通过语音输入的文字。")
-      }, 500)
+      toast({
+        title: "录音结束",
+        description: "语音识别功能正在开发中",
+      })
     } else {
       // Start recording
       setIsRecording(true)
-
-      // Timer
+      setRecordingTime(0)
       recordingInterval.current = setInterval(() => {
         setRecordingTime((prev) => prev + 1)
       }, 1000)
+      toast({
+        title: "开始录音",
+        description: "语音识别功能正在开发中",
+      })
     }
   }
 
-  // Format recording time
   const formatRecordingTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
   }
 
-  // Handle message feedback
   const handleMessageFeedback = (messageId: string, type: "like" | "dislike", comment?: string) => {
-    // In a real implementation, this would send feedback to the server
+    console.log("Message feedback:", { messageId, type, comment })
     toast({
-      title: type === "like" ? "感谢您的反馈" : "感谢您的反馈",
-      description: comment ? `您的意见：${comment}` : "您的反馈已记录",
+      title: "反馈已收到",
+      description: `感谢您的${type === "like" ? "点赞" : "反馈"}`,
     })
   }
 
-  // Handle message copy
   const handleCopyMessage = (content: string) => {
     navigator.clipboard.writeText(content)
     toast({
@@ -364,217 +405,179 @@ export default function StreamChatInterface({
     })
   }
 
-  // Handle message favorite
   const handleFavoriteMessage = (messageId: string) => {
-    setMessages(messages.map((msg) => (msg.id === messageId ? { ...msg, isFavorite: !msg.isFavorite } : msg)))
-
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === messageId ? { ...msg, isFavorite: !msg.isFavorite } : msg))
+    )
     toast({
-      title: messages.find((m) => m.id === messageId)?.isFavorite ? "已取消收藏" : "已收藏",
-      description: messages.find((m) => m.id === messageId)?.isFavorite ? "消息已从收藏夹中移除" : "消息已添加到收藏夹",
+      title: "收藏成功",
+      description: "消息已添加到收藏夹",
     })
   }
 
-  // Handle suggested question selection
   const handleSelectQuestion = (question: string) => {
     setInput(question)
+    setSuggestedQuestions([])
     if (inputRef.current) {
       inputRef.current.focus()
     }
   }
 
-  return (
-    <div className="flex flex-col h-full w-full relative">
-      {/* Mobile Header */}
-      <MobileHeader title={agentName} subtitle="在线" avatarSrc={agentAvatar} onBackClick={onBackClick} />
+  // 显示的消息列表（过滤掉系统消息）
+  const displayMessages = messages.filter((msg) => msg.role !== "system")
 
-      {/* Chat Container */}
+  return (
+    <div className="flex flex-col h-full w-full bg-background relative">
+      {/* 性能指标显示（仅开发环境） */}
+      {performanceConfig?.showPerformanceMetrics && performanceMetrics && (
+        <div className="fixed top-4 right-4 z-50 bg-white dark:bg-gray-800 p-2 rounded-lg shadow-lg text-xs">
+          <div>延迟: {performanceMetrics.metrics?.averageLatency?.toFixed(0) || 0}ms</div>
+          <div>状态: {performanceMetrics.status?.level || 'unknown'}</div>
+        </div>
+      )}
+
+      {/* Mobile Header */}
+      {isMobile && (
+        <MobileHeader
+          agentName={agentName}
+          agentAvatar={agentAvatar}
+          onBackClick={onBackClick}
+          className="fixed top-0 left-0 right-0 z-40"
+        />
+      )}
+
+      {/* Messages Container */}
       <div
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto w-full h-full"
-        style={{
-          height: isMobile ? "calc(100vh - 120px)" : "100%",
-          paddingBottom: isMobile ? "70px" : "60px",
-        }}
+        className={cn(
+          "flex-1 overflow-y-auto space-y-4 p-4",
+          isMobile ? "pb-20" : "pb-4"
+        )}
       >
-        <div className="flex flex-col w-full h-full p-2 md:p-4 space-y-3 md:space-y-4">
-          {/* Suggested Questions */}
-          {suggestedQuestions.length > 0 && (
-            <SuggestedQuestions
-              questions={suggestedQuestions}
-              onSelectQuestion={handleSelectQuestion}
-              className="mb-2"
-            />
-          )}
+        {displayMessages.map((message) => (
+          <EnhancedChatMessage
+            key={message.id}
+            message={message}
+            onFeedback={handleMessageFeedback}
+            onCopy={handleCopyMessage}
+            onFavorite={handleFavoriteMessage}
+            agentAvatar={agentAvatar}
+            agentName={agentName}
+          />
+        ))}
 
-          {/* Messages */}
-          {messages
-            .filter((msg) => msg.role !== "system")
-            .map((message) => (
-              <EnhancedChatMessage
-                key={message.id}
-                message={message}
-                agentAvatar={agentAvatar}
-                agentName={agentName}
-                onCopy={handleCopyMessage}
-                onFeedback={handleMessageFeedback}
-                onFavorite={handleFavoriteMessage}
-              />
-            ))}
-
-          {/* Streaming response display */}
-          {streamingContent && (
-            <div className="flex justify-start animate-fadeIn w-full">
-              <div className="flex flex-row max-w-[90%] md:max-w-[80%]">
-                <Avatar className="h-8 w-8 mr-2 flex-shrink-0 bg-green-500">
-                  {selectedAgent ? (
-                    <AvatarFallback
-                      style={{
-                        backgroundColor: selectedAgent?.config?.avatarColor || "#6cb33f",
-                        color: selectedAgent?.config?.avatarColor
-                          ? getContrastTextColor(selectedAgent.config.avatarColor)
-                          : "#ffffff",
-                      }}
-                    >
-                      {selectedAgent?.name?.charAt(0).toUpperCase() || "AI"}
-                    </AvatarFallback>
-                  ) : (
-                    <AvatarImage src={agentAvatar || "/placeholder.svg"} alt={agentName} />
-                  )}
-                  {!selectedAgent && <AvatarFallback>{agentName.charAt(0)}</AvatarFallback>}
-                </Avatar>
-                <Card className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                  <CardContent className="p-2 md:p-3">
-                    <div className="whitespace-pre-wrap text-sm md:text-base">{streamingContent}</div>
-                  </CardContent>
-                </Card>
+        {/* Streaming message */}
+        {streamingContent && (
+          <div className="flex space-x-3">
+            <Avatar className="w-8 h-8 flex-shrink-0">
+              <AvatarImage src={agentAvatar} alt={agentName} />
+              <AvatarFallback style={{ backgroundColor: getContrastTextColor(agentName) }}>
+                {agentName.slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <div className="bg-muted rounded-lg p-3">
+                <div className="whitespace-pre-wrap text-sm">
+                  {streamingContent}
+                  <span className="inline-block w-2 h-4 bg-primary ml-1 animate-pulse rounded" />
+                </div>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Loading indicator */}
-          {isLoading && !streamingContent && (
-            <div className="flex justify-start animate-fadeIn w-full">
-              <div className="flex flex-row max-w-[90%] md:max-w-[80%]">
-                <Avatar className="h-8 w-8 mr-2 flex-shrink-0 bg-green-500">
-                  {selectedAgent ? (
-                    <AvatarFallback
-                      style={{
-                        backgroundColor: selectedAgent?.config?.avatarColor || "#6cb33f",
-                        color: selectedAgent?.config?.avatarColor
-                          ? getContrastTextColor(selectedAgent.config.avatarColor)
-                          : "#ffffff",
-                      }}
-                    >
-                      {selectedAgent?.name?.charAt(0).toUpperCase() || "AI"}
-                    </AvatarFallback>
-                  ) : (
-                    <AvatarImage src={agentAvatar || "/placeholder.svg"} alt={agentName} />
-                  )}
-                  {!selectedAgent && <AvatarFallback>{agentName.charAt(0)}</AvatarFallback>}
-                </Avatar>
-                <Card className="bg-gray-100 dark:bg-gray-800 text-gray-800 dark:text-gray-200">
-                  <CardContent className="p-2 md:p-3 flex items-center">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span className="text-sm md:text-base">思考中...</span>
-                  </CardContent>
-                </Card>
+        {/* Loading indicator */}
+        {isLoading && !streamingContent && (
+          <div className="flex space-x-3">
+            <Avatar className="w-8 h-8 flex-shrink-0">
+              <AvatarImage src={agentAvatar} alt={agentName} />
+              <AvatarFallback style={{ backgroundColor: getContrastTextColor(agentName) }}>
+                {agentName.slice(0, 2)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <div className="bg-muted rounded-lg p-3">
+                <div className="flex items-center space-x-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">正在思考...</span>
+                </div>
               </div>
             </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
+          </div>
+        )}
+
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Area - Fixed at bottom */}
-      <div className="absolute bottom-0 left-0 right-0 p-2 md:p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-t border-gray-200/80 dark:border-gray-700/80">
-        <div className="flex items-end space-x-2 w-full">
-          <div className="flex-1 bg-gray-100/80 dark:bg-gray-800/80 backdrop-blur-sm rounded-2xl p-2 transition-all duration-200 hover:bg-gray-100 dark:hover:bg-gray-700 focus-within:ring-2 focus-within:ring-primary-500/50">
+      {/* Suggested Questions */}
+      {suggestedQuestions.length > 0 && !isLoading && (
+        <div className="px-4 pb-2">
+          <SuggestedQuestions
+            questions={suggestedQuestions}
+            onSelectQuestion={handleSelectQuestion}
+            className="max-w-none"
+          />
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className={cn(
+        "border-t bg-background p-4",
+        isMobile ? "fixed bottom-0 left-0 right-0 z-30" : ""
+      )}>
+        <div className="flex space-x-2">
+          <div className="flex-1 relative">
             <Input
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={isRecording ? "正在录音..." : "输入消息..."}
-              disabled={isLoading || isRecording}
-              className="min-h-[40px] w-full resize-none bg-transparent border-0 focus:ring-0 p-2 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm md:text-base"
+              placeholder="输入消息..."
+              disabled={isLoading}
+              className="pr-24"
             />
-
-            {isRecording && (
-              <div className="flex items-center justify-between px-2 py-1">
-                <div className="flex items-center">
-                  <span className="inline-block w-2 h-2 rounded-full bg-red-500 mr-2 animate-pulse"></span>
-                  <span className="text-sm text-red-500">{formatRecordingTime(recordingTime)}</span>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setIsRecording(false)
-                    if (recordingInterval.current) {
-                      clearInterval(recordingInterval.current)
-                      recordingInterval.current = null
-                    }
-                    setRecordingTime(0)
-                  }}
-                  className="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 py-1 h-7"
-                >
-                  取消
-                </Button>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center px-2 pt-2">
-              <div className="flex space-x-1">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className={cn(
-                    "h-8 w-8 rounded-full",
-                    isRecording ? "text-red-500 bg-red-100 dark:bg-red-900/30" : "text-gray-500 hover:text-primary-500",
-                  )}
-                  onClick={handleVoiceInput}
-                  disabled={isLoading}
-                >
-                  <Mic className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-gray-500 hover:text-primary-500"
-                  disabled={isLoading || isRecording}
-                >
-                  <ImageIcon className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-gray-500 hover:text-primary-500"
-                  disabled={isLoading || isRecording}
-                >
-                  <Paperclip className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 rounded-full text-gray-500 hover:text-primary-500"
-                  disabled={isLoading || isRecording}
-                >
-                  <Smile className="h-4 w-4" />
-                </Button>
-              </div>
+            <div className="absolute right-2 top-1/2 transform -translate-y-1/2 flex space-x-1">
               <Button
-                onClick={handleSendMessage}
-                disabled={!input.trim() || isLoading || isRecording}
-                className={cn(
-                  "bg-primary-500 hover:bg-primary-600 text-white rounded-full h-9 w-9 p-0 transition-all duration-200",
-                  (!input.trim() || isLoading || isRecording) && "opacity-50 cursor-not-allowed",
-                )}
+                variant="ghost"
+                size="sm"
+                onClick={() => toast({ title: "功能开发中", description: "图片上传功能正在开发中" })}
+                disabled={isLoading}
+                className="p-1 h-auto"
               >
-                <Send className="h-4 w-4" />
+                <ImageIcon className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => toast({ title: "功能开发中", description: "文件上传功能正在开发中" })}
+                disabled={isLoading}
+                className="p-1 h-auto"
+              >
+                <Paperclip className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleVoiceInput}
+                disabled={isLoading}
+                className={cn("p-1 h-auto", isRecording && "text-red-500")}
+              >
+                <Mic className="h-4 w-4" />
               </Button>
             </div>
           </div>
+          <Button onClick={handleSendMessage} disabled={isLoading || !input.trim()}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
         </div>
+
+        {/* Recording indicator */}
+        {isRecording && (
+          <div className="flex items-center justify-center mt-2 text-red-500 text-sm">
+            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse mr-2" />
+            录音中 {formatRecordingTime(recordingTime)}
+          </div>
+        )}
       </div>
     </div>
   )

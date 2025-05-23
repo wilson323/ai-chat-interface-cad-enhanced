@@ -15,16 +15,11 @@ type WelcomeScreenProps = {
 export function WelcomeScreen({ onGetStarted, isDarkMode, toggleTheme }: WelcomeScreenProps) {
   const [animationStep, setAnimationStep] = useState(0)
   const [hoverButton, setHoverButton] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
-    // Create audio element for welcome sound
-    audioRef.current = new Audio("/sounds/welcome.mp3")
-
     // Animation sequence
     const timer1 = setTimeout(() => {
       setAnimationStep(1)
-      audioRef.current?.play().catch(() => {})
     }, 300)
 
     const timer2 = setTimeout(() => {
@@ -41,11 +36,6 @@ export function WelcomeScreen({ onGetStarted, isDarkMode, toggleTheme }: Welcome
       clearTimeout(timer3)
     }
   }, [])
-
-  const playSound = (path: string) => {
-    const audio = new Audio(path)
-    audio.play().catch(() => {})
-  }
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center overflow-hidden">
@@ -80,10 +70,7 @@ export function WelcomeScreen({ onGetStarted, isDarkMode, toggleTheme }: Welcome
           variant="outline"
           size="icon"
           className="rounded-full bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 shadow-md hover:shadow-lg transition-all"
-          onClick={() => {
-            toggleTheme()
-            playSound(isDarkMode ? "/sounds/light-mode.mp3" : "/sounds/dark-mode.mp3")
-          }}
+          onClick={toggleTheme}
           aria-label={isDarkMode ? "切换到浅色模式" : "切换到深色模式"}
         >
           <AnimatePresence mode="wait">
@@ -248,30 +235,28 @@ export function WelcomeScreen({ onGetStarted, isDarkMode, toggleTheme }: Welcome
           </div>
 
           <motion.div
+            className="mt-6"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: 1.7, duration: 0.5 }}
             whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
             onHoverStart={() => setHoverButton(true)}
             onHoverEnd={() => setHoverButton(false)}
           >
             <Button
-              onClick={() => {
-                playSound("/sounds/new-conversation.mp3")
-                onGetStarted()
-              }}
-              className="w-full bg-gradient-to-r from-[#6cb33f] to-green-500 hover:from-green-600 hover:to-green-700 text-white py-6 rounded-xl text-lg shadow-lg transition-all duration-300 relative overflow-hidden group"
+              onClick={onGetStarted}
+              size="lg"
+              className="bg-[#6cb33f] hover:bg-[#5da32f] text-white w-full rounded-xl py-6 px-6 font-medium text-base shadow-lg hover:shadow-xl transition-all"
             >
-              <span className="relative z-10 flex items-center justify-center">
-                开始对话
-                <motion.div animate={{ x: hoverButton ? 5 : 0 }} transition={{ duration: 0.2 }}>
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </motion.div>
-              </span>
+              <span className="flex-1">开始使用</span>
               <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-green-600 to-green-700 z-0"
-                initial={{ x: "-100%" }}
-                animate={{ x: hoverButton ? "0%" : "-100%" }}
+                animate={{
+                  x: hoverButton ? 5 : 0,
+                }}
                 transition={{ duration: 0.3 }}
-              />
+              >
+                <ArrowRight className="h-5 w-5 ml-2" />
+              </motion.div>
             </Button>
           </motion.div>
         </motion.div>

@@ -1,0 +1,50 @@
+# 构建阶段
+FROM node:18-alpine AS builder
+
+# 安装系统依赖（包含构建工具）
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++ \
+    && corepack enable && corepack prepare pnpm@8.15.5 --activate
+
+WORKDIR /app
+COPY . .
+RUN pnpm install --frozen-lockfile && \
+    pnpm build && \
+    pnpm prune --production
+
+# 清理构建工具
+RUN apk del .build-deps
+
+# 生产阶段
+FROM node:18-alpine
+
+# 安装运行时依赖
+RUN apk add --no-cache \
+    # 图形渲染基础库
+    cairo \
+    pango \
+    giflib-dev \
+    librsvg \
+    # 字体支持
+    ttf-freefont \
+    # 兼容层
+    libc6-compat \
+    # 图形工具
+    mesa-gl
+
+# 安装pnpm
+RUN corepack enable && corepack prepare pnpm@8.15.5 --activate
+
+WORKDIR /app
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package.json .
+COPY --from=builder /app/node_modules ./node_modules
+
+# 验证字体配置
+RUN fc-cache -fv
+
+EXPOSE 3000
+CMD ["pnpm", "start"] 

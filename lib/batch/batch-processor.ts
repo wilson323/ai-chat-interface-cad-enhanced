@@ -4,386 +4,663 @@
  */
 import { getFastGPTOptimizer, RequestPriority } from "../api/fastgpt-optimizer"
 import { getCacheManager } from "../cache/cache-manager"
+import { BehaviorSubject, Observable, Subject } from 'rxjs';
+import { v4 as uuidv4 } from 'uuid';
 
-// 批处理配置
+// 批处理任务状态
+export type BatchTaskStatus = 
+  | 'pending'   // 等待中
+  | 'running'   // 运行中
+  | 'completed' // 已完成
+  | 'failed'    // 失败
+  | 'canceled'  // 已取消
+  | 'paused';   // 已暂停
+
+// 单个批处理任务
+export interface BatchTask<T = any, R = any> {
+  id: string;
+  type: string;
+  data: T;
+  result?: R;
+  error?: string;
+  status: BatchTaskStatus;
+  progress: number;
+  priority: number;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  attempts: number;
+  maxAttempts: number;
+  retryDelay: number;
+  metadata?: Record<string, any>;
+}
+
+// 批处理作业
+export interface BatchJob<T = any, R = any> {
+  id: string;
+  name: string;
+  description?: string;
+  tasks: BatchTask<T, R>[];
+  status: BatchTaskStatus;
+  progress: number;
+  createdAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  concurrency: number;
+  metadata?: Record<string, any>;
+}
+
+// 批处理器配置
 export interface BatchProcessorConfig {
-  enabled: boolean
-  maxBatchSize: number
-  maxWaitTime: number
-  similarityThreshold: number
-  debug: boolean
-  logLevel: "error" | "warn" | "info" | "debug"
-}
-
-// 批处理项
-interface BatchItem<T> {
-  id: string
-  payload: any
-  resolve: (value: T) => void
-  reject: (reason: any) => void
-  timestamp: number
-  priority: RequestPriority
-  timeout?: NodeJS.Timeout
-  maxWaitTime: number
-}
-
-// 批处理组
-interface BatchGroup<T> {
-  id: string
-  items: BatchItem<T>[]
-  processor: (items: BatchItem<T>[]) => Promise<T[]>
-  timestamp: number
-  processing: boolean
+  maxConcurrentJobs: number;
+  maxConcurrentTasksPerJob: number;
+  defaultPriority: number;
+  defaultMaxAttempts: number;
+  defaultRetryDelay: number;
 }
 
 // 默认配置
 const DEFAULT_CONFIG: BatchProcessorConfig = {
-  enabled: true,
-  maxBatchSize: 5,
-  maxWaitTime: 50, // 50毫秒
-  similarityThreshold: 0.8,
-  debug: false,
-  logLevel: "error",
-}
+  maxConcurrentJobs: 3,
+  maxConcurrentTasksPerJob: 5,
+  defaultPriority: 1,
+  defaultMaxAttempts: 3,
+  defaultRetryDelay: 5000, // 5秒
+};
+
+// 处理器函数
+export type BatchTaskProcessor<T = any, R = any> = (
+  task: BatchTask<T, R>,
+  updateProgress: (progress: number) => void
+) => Promise<R>;
+
+// 批处理事件
+export type BatchEvent = 
+  | { type: 'job:created', jobId: string }
+  | { type: 'job:started', jobId: string }
+  | { type: 'job:completed', jobId: string }
+  | { type: 'job:failed', jobId: string, error: string }
+  | { type: 'job:canceled', jobId: string }
+  | { type: 'job:paused', jobId: string }
+  | { type: 'job:resumed', jobId: string }
+  | { type: 'task:started', jobId: string, taskId: string }
+  | { type: 'task:completed', jobId: string, taskId: string, result: any }
+  | { type: 'task:failed', jobId: string, taskId: string, error: string }
+  | { type: 'task:retrying', jobId: string, taskId: string, attempt: number }
+  | { type: 'task:progress', jobId: string, taskId: string, progress: number };
 
 export class BatchProcessor {
-  private config: BatchProcessorConfig
-  private groups: Map<string, BatchGroup<any>> = new Map()
-  private optimizer = getFastGPTOptimizer()
-  private cacheManager = getCacheManager()
-  private processingCount = 0
-  private batchedCount = 0
-  private savedRequestsCount = 0
-  private processingTimer: NodeJS.Timeout | null = null
-
-  constructor(config: Partial<BatchProcessorConfig> = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...config }
-
-    this.log("info", "BatchProcessor initialized with config:", this.config)
-
-    // 启动处理定时器
-    this.startProcessingTimer()
+  private static instance: BatchProcessor;
+  private config: BatchProcessorConfig;
+  private jobs: Record<string, BatchJob> = {};
+  private processors: Record<string, BatchTaskProcessor> = {};
+  private runningJobs: Set<string> = new Set();
+  private runningTasks: Map<string, Set<string>> = new Map();
+  private jobsSubject = new BehaviorSubject<Record<string, BatchJob>>({});
+  private eventsSubject = new Subject<BatchEvent>();
+  private stopped = false;
+  
+  private constructor(config: Partial<BatchProcessorConfig> = {}) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
   }
-
-  /**
-   * 添加批处理项
-   * @param groupId 组ID
-   * @param item 批处理项
-   * @param processor 处理器函数
-   * @returns 处理结果Promise
-   */
-  public add<T>(
-    groupId: string,
-    item: {
-      id: string
-      payload: any
-      priority?: RequestPriority
-      maxWaitTime?: number
-    },
-    processor: (items: BatchItem<T>[]) => Promise<T[]>,
-  ): Promise<T> {
-    if (!this.config.enabled) {
-      // 如果批处理被禁用，直接处理单个项
-      return this.processSingleItem(item, processor)
+  
+  public static getInstance(config?: Partial<BatchProcessorConfig>): BatchProcessor {
+    if (!BatchProcessor.instance) {
+      BatchProcessor.instance = new BatchProcessor(config);
+    } else if (config) {
+      // 更新配置
+      BatchProcessor.instance.updateConfig(config);
     }
-
-    return new Promise<T>((resolve, reject) => {
-      const priority = item.priority || RequestPriority.NORMAL
-      const maxWaitTime = item.maxWaitTime || this.config.maxWaitTime
-
-      // 创建批处理项
-      const batchItem: BatchItem<T> = {
-        id: item.id,
-        payload: item.payload,
-        resolve,
-        reject,
-        timestamp: Date.now(),
-        priority,
-        maxWaitTime,
-      }
-
-      // 设置超时处理
-      batchItem.timeout = setTimeout(() => {
-        this.processItemTimeout(groupId, batchItem)
-      }, maxWaitTime)
-
-      // 获取或创建批处理组
-      let group = this.groups.get(groupId) as BatchGroup<T>
-      if (!group) {
-        group = {
-          id: groupId,
-          items: [],
-          processor,
-          timestamp: Date.now(),
-          processing: false,
-        }
-        this.groups.set(groupId, group)
-      }
-
-      // 添加项到组
-      group.items.push(batchItem)
-      this.log("debug", `Added item to batch group ${groupId}, current size: ${group.items.length}`)
-
-      // 如果达到最大批处理大小，立即处理
-      if (group.items.length >= this.config.maxBatchSize) {
-        this.processGroup(groupId)
-      }
-    })
+    return BatchProcessor.instance;
   }
-
-  /**
-   * 获取统计信息
-   */
-  public getStats(): {
-    groupCount: number
-    processingCount: number
-    batchedCount: number
-    savedRequestsCount: number
-    efficiency: number
+  
+  // 更新配置
+  public updateConfig(config: Partial<BatchProcessorConfig>): void {
+    this.config = { ...this.config, ...config };
+  }
+  
+  // 注册任务处理器
+  public registerProcessor<T = any, R = any>(
+    taskType: string,
+    processor: BatchTaskProcessor<T, R>
+  ): void {
+    this.processors[taskType] = processor as BatchTaskProcessor;
+  }
+  
+  // 创建批处理作业
+  public createJob<T = any, R = any>(
+    name: string,
+    tasks: Array<{ type: string; data: T; priority?: number; metadata?: Record<string, any> }>,
+    options: {
+      description?: string;
+      concurrency?: number;
+      metadata?: Record<string, any>;
+    } = {}
+  ): string {
+    const jobId = uuidv4();
+    const now = Date.now();
+    
+    // 创建批处理任务
+    const batchTasks: BatchTask<T, R>[] = tasks.map(task => ({
+      id: uuidv4(),
+      type: task.type,
+      data: task.data,
+      status: 'pending',
+      progress: 0,
+      priority: task.priority || this.config.defaultPriority,
+      createdAt: now,
+      attempts: 0,
+      maxAttempts: this.config.defaultMaxAttempts,
+      retryDelay: this.config.defaultRetryDelay,
+      metadata: task.metadata
+    }));
+    
+    // 创建批处理作业
+    const job: BatchJob<T, R> = {
+      id: jobId,
+      name,
+      description: options.description,
+      tasks: batchTasks,
+      status: 'pending',
+      progress: 0,
+      createdAt: now,
+      concurrency: options.concurrency || this.config.maxConcurrentTasksPerJob,
+      metadata: options.metadata
+    };
+    
+    // 保存作业
+    this.jobs[jobId] = job;
+    this.runningTasks.set(jobId, new Set());
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    // 触发事件
+    this.eventsSubject.next({
+      type: 'job:created',
+      jobId
+    });
+    
+    // 如果处理器未停止，自动启动作业
+    if (!this.stopped && this.runningJobs.size < this.config.maxConcurrentJobs) {
+      this.startJob(jobId);
+    }
+    
+    return jobId;
+  }
+  
+  // 启动作业
+  public startJob(jobId: string): boolean {
+    const job = this.jobs[jobId];
+    if (!job || job.status !== 'pending' && job.status !== 'paused') {
+      return false;
+    }
+    
+    // 如果已经达到最大并发作业数，不启动
+    if (this.runningJobs.size >= this.config.maxConcurrentJobs) {
+      return false;
+    }
+    
+    // 更新作业状态
+    job.status = 'running';
+    job.startedAt = Date.now();
+    this.runningJobs.add(jobId);
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    // 触发事件
+    this.eventsSubject.next({
+      type: 'job:started',
+      jobId
+    });
+    
+    // 开始处理任务
+    this.processTasks(jobId);
+    
+    return true;
+  }
+  
+  // 暂停作业
+  public pauseJob(jobId: string): boolean {
+    const job = this.jobs[jobId];
+    if (!job || job.status !== 'running') {
+      return false;
+    }
+    
+    // 更新作业状态
+    job.status = 'paused';
+    this.runningJobs.delete(jobId);
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    // 触发事件
+    this.eventsSubject.next({
+      type: 'job:paused',
+      jobId
+    });
+    
+    return true;
+  }
+  
+  // 恢复作业
+  public resumeJob(jobId: string): boolean {
+    const job = this.jobs[jobId];
+    if (!job || job.status !== 'paused') {
+      return false;
+    }
+    
+    // 如果已经达到最大并发作业数，不恢复
+    if (this.runningJobs.size >= this.config.maxConcurrentJobs) {
+      return false;
+    }
+    
+    // 更新作业状态
+    job.status = 'running';
+    this.runningJobs.add(jobId);
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    // 触发事件
+    this.eventsSubject.next({
+      type: 'job:resumed',
+      jobId
+    });
+    
+    // 继续处理任务
+    this.processTasks(jobId);
+    
+    return true;
+  }
+  
+  // 取消作业
+  public cancelJob(jobId: string): boolean {
+    const job = this.jobs[jobId];
+    if (!job || job.status === 'completed' || job.status === 'canceled') {
+      return false;
+    }
+    
+    // 更新作业状态
+    job.status = 'canceled';
+    this.runningJobs.delete(jobId);
+    
+    // 更新所有未完成任务的状态
+    job.tasks.forEach(task => {
+      if (task.status === 'pending' || task.status === 'running') {
+        task.status = 'canceled';
+      }
+    });
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    // 触发事件
+    this.eventsSubject.next({
+      type: 'job:canceled',
+      jobId
+    });
+    
+    // 检查是否有等待的作业可以启动
+    this.checkPendingJobs();
+    
+    return true;
+  }
+  
+  // 删除作业
+  public deleteJob(jobId: string): boolean {
+    const job = this.jobs[jobId];
+    if (!job || job.status === 'running') {
+      return false;
+    }
+    
+    // 删除作业
+    delete this.jobs[jobId];
+    this.runningTasks.delete(jobId);
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    return true;
+  }
+  
+  // 获取作业
+  public getJob<T = any, R = any>(jobId: string): BatchJob<T, R> | null {
+    return this.jobs[jobId] as BatchJob<T, R> || null;
+  }
+  
+  // 获取所有作业
+  public getJobs(): Record<string, BatchJob> {
+    return { ...this.jobs };
+  }
+  
+  // 获取作业流
+  public getJobsStream(): Observable<Record<string, BatchJob>> {
+    return this.jobsSubject.asObservable();
+  }
+  
+  // 获取事件流
+  public getEventsStream(): Observable<BatchEvent> {
+    return this.eventsSubject.asObservable();
+  }
+  
+  // 停止批处理器
+  public stop(): void {
+    this.stopped = true;
+  }
+  
+  // 启动批处理器
+  public start(): void {
+    this.stopped = false;
+    this.checkPendingJobs();
+  }
+  
+  // 获取作业进度汇总
+  public getJobSummary(jobId: string): {
+    totalTasks: number;
+    completedTasks: number;
+    failedTasks: number;
+    pendingTasks: number;
+    runningTasks: number;
+    progress: number;
   } {
+    const job = this.jobs[jobId];
+    if (!job) {
+      return {
+        totalTasks: 0,
+        completedTasks: 0,
+        failedTasks: 0,
+        pendingTasks: 0,
+        runningTasks: 0,
+        progress: 0
+      };
+    }
+    
+    const totalTasks = job.tasks.length;
+    const completedTasks = job.tasks.filter(t => t.status === 'completed').length;
+    const failedTasks = job.tasks.filter(t => t.status === 'failed').length;
+    const pendingTasks = job.tasks.filter(t => t.status === 'pending').length;
+    const runningTasks = job.tasks.filter(t => t.status === 'running').length;
+    const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+    
     return {
-      groupCount: this.groups.size,
-      processingCount: this.processingCount,
-      batchedCount: this.batchedCount,
-      savedRequestsCount: this.savedRequestsCount,
-      efficiency: this.batchedCount > 0 ? this.savedRequestsCount / this.batchedCount : 0,
-    }
+      totalTasks,
+      completedTasks,
+      failedTasks,
+      pendingTasks,
+      runningTasks,
+      progress
+    };
   }
-
-  /**
-   * 清除所有批处理组
-   */
-  public clear(): void {
-    // 取消所有超时
-    for (const group of this.groups.values()) {
-      for (const item of group.items) {
-        if (item.timeout) {
-          clearTimeout(item.timeout)
-        }
+  
+  // 处理任务
+  private async processTasks(jobId: string): Promise<void> {
+    const job = this.jobs[jobId];
+    if (!job || job.status !== 'running') {
+      return;
+    }
+    
+    // 获取当前正在运行的任务集合
+    const runningTasksSet = this.runningTasks.get(jobId) || new Set<string>();
+    
+    // 检查是否可以启动更多任务
+    const canStartMoreTasks = runningTasksSet.size < job.concurrency;
+    
+    if (canStartMoreTasks) {
+      // 获取待处理的任务
+      const pendingTasks = job.tasks
+        .filter(task => task.status === 'pending')
+        .sort((a, b) => b.priority - a.priority); // 按优先级排序
+      
+      // 确定要启动的任务数量
+      const tasksToStart = Math.min(
+        job.concurrency - runningTasksSet.size,
+        pendingTasks.length
+      );
+      
+      // 启动任务
+      for (let i = 0; i < tasksToStart; i++) {
+        const task = pendingTasks[i];
+        this.startTask(jobId, task.id);
       }
     }
-
-    // 清除所有组
-    this.groups.clear()
-    this.log("info", "All batch groups cleared")
+    
+    // 检查作业是否完成
+    this.checkJobCompletion(jobId);
   }
-
-  /**
-   * 处理单个项
-   * @param item 项
-   * @param processor 处理器函数
-   * @returns 处理结果Promise
-   */
-  private async processSingleItem<T>(
-    item: {
-      id: string
-      payload: any
-      priority?: RequestPriority
-      maxWaitTime?: number
-    },
-    processor: (items: BatchItem<T>[]) => Promise<T[]>,
-  ): Promise<T> {
-    const batchItem: BatchItem<T> = {
-      id: item.id,
-      payload: item.payload,
-      resolve: () => {},
-      reject: () => {},
-      timestamp: Date.now(),
-      priority: item.priority || RequestPriority.NORMAL,
-      maxWaitTime: item.maxWaitTime || this.config.maxWaitTime,
+  
+  // 启动任务
+  private async startTask(jobId: string, taskId: string): Promise<void> {
+    const job = this.jobs[jobId];
+    if (!job) return;
+    
+    const taskIndex = job.tasks.findIndex(t => t.id === taskId);
+    if (taskIndex === -1) return;
+    
+    const task = job.tasks[taskIndex];
+    if (task.status !== 'pending') return;
+    
+    // 获取处理器
+    const processor = this.processors[task.type];
+    if (!processor) {
+      // 处理器不存在，标记任务失败
+      task.status = 'failed';
+      task.error = `No processor registered for task type: ${task.type}`;
+      
+      // 触发事件
+      this.eventsSubject.next({
+        type: 'task:failed',
+        jobId,
+        taskId,
+        error: task.error
+      });
+      
+      // 检查作业完成
+      this.checkJobCompletion(jobId);
+      return;
     }
-
+    
+    // 更新任务状态
+    task.status = 'running';
+    task.startedAt = Date.now();
+    task.attempts++;
+    
+    // 添加到运行中的任务集合
+    const runningTasksSet = this.runningTasks.get(jobId) || new Set<string>();
+    runningTasksSet.add(taskId);
+    this.runningTasks.set(jobId, runningTasksSet);
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    // 触发事件
+    this.eventsSubject.next({
+      type: 'task:started',
+      jobId,
+      taskId
+    });
+    
+    // 创建进度更新函数
+    const updateProgress = (progress: number) => {
+      // 确保进度在0-100之间
+      const safeProgress = Math.max(0, Math.min(100, progress));
+      
+      // 更新任务进度
+      task.progress = safeProgress;
+      
+      // 计算作业总进度
+      this.updateJobProgress(jobId);
+      
+      // 触发进度事件
+      this.eventsSubject.next({
+        type: 'task:progress',
+        jobId,
+        taskId,
+        progress: safeProgress
+      });
+      
+      // 通知订阅者
+      this.jobsSubject.next({ ...this.jobs });
+    };
+    
     try {
-      const results = await processor([batchItem])
-      return results[0]
+      // 执行处理器
+      const result = await processor(task, updateProgress);
+      
+      // 更新任务状态
+      task.status = 'completed';
+      task.result = result;
+      task.completedAt = Date.now();
+      task.progress = 100;
+      
+      // 从运行中的任务集合中移除
+      runningTasksSet.delete(taskId);
+      
+      // 触发事件
+      this.eventsSubject.next({
+        type: 'task:completed',
+        jobId,
+        taskId,
+        result
+      });
     } catch (error) {
-      this.log("error", "Error processing single item:", error)
-      throw error
-    }
-  }
-
-  /**
-   * 处理项超时
-   * @param groupId 组ID
-   * @param item 批处理项
-   */
-  private processItemTimeout<T>(groupId: string, item: BatchItem<T>): void {
-    const group = this.groups.get(groupId) as BatchGroup<T>
-    if (!group) return
-
-    // 如果组正在处理中，不做任何操作
-    if (group.processing) return
-
-    // 查找项在组中的索引
-    const index = group.items.findIndex((i) => i.id === item.id)
-    if (index === -1) return
-
-    // 从组中移除项
-    const [removedItem] = group.items.splice(index, 1)
-
-    // 清除超时
-    if (removedItem.timeout) {
-      clearTimeout(removedItem.timeout)
-    }
-
-    // 单独处理该项
-    this.processSingleItem(
-      {
-        id: removedItem.id,
-        payload: removedItem.payload,
-        priority: removedItem.priority,
-      },
-      group.processor,
-    )
-      .then((result) => {
-        removedItem.resolve(result)
-      })
-      .catch((error) => {
-        removedItem.reject(error)
-      })
-
-    this.log("debug", `Item ${item.id} timed out and processed individually`)
-  }
-
-  /**
-   * 处理批处理组
-   * @param groupId 组ID
-   */
-  private async processGroup<T>(groupId: string): Promise<void> {
-    const group = this.groups.get(groupId) as BatchGroup<T>
-    if (!group || group.processing || group.items.length === 0) return
-
-    // 标记组为处理中
-    group.processing = true
-
-    // 获取要处理的项
-    const items = [...group.items]
-    group.items = []
-
-    // 清除所有超时
-    for (const item of items) {
-      if (item.timeout) {
-        clearTimeout(item.timeout)
-      }
-    }
-
-    // 更新统计信息
-    this.processingCount++
-    this.batchedCount += items.length
-    this.savedRequestsCount += items.length - 1
-
-    this.log("info", `Processing batch group ${groupId} with ${items.length} items`)
-
-    try {
-      // 处理批处理组
-      const results = await group.processor(items)
-
-      // 确保结果数量与项数量匹配
-      if (results.length !== items.length) {
-        throw new Error(`Batch processor returned ${results.length} results for ${items.length} items`)
-      }
-
-      // 解析每个项的结果
-      for (let i = 0; i < items.length; i++) {
-        items[i].resolve(results[i])
-      }
-
-      this.log("debug", `Successfully processed batch group ${groupId}`)
-    } catch (error) {
-      this.log("error", `Error processing batch group ${groupId}:`, error)
-
-      // 拒绝所有项
-      for (const item of items) {
-        item.reject(error)
-      }
-    } finally {
-      // 更新统计信息
-      this.processingCount--
-
-      // 如果组中还有项，继续处理
-      if (this.groups.has(groupId)) {
-        const updatedGroup = this.groups.get(groupId) as BatchGroup<T>
-        updatedGroup.processing = false
-
-        if (updatedGroup.items.length > 0) {
-          // 延迟处理，避免递归调用堆栈溢出
+      // 处理任务失败
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // 检查是否需要重试
+      if (task.attempts < task.maxAttempts) {
+        // 标记为等待重试
+        task.status = 'pending';
+        task.error = errorMessage;
+        
+        // 触发重试事件
+        this.eventsSubject.next({
+          type: 'task:retrying',
+          jobId,
+          taskId,
+          attempt: task.attempts
+        });
+        
+        // 从运行中的任务集合中移除
+        runningTasksSet.delete(taskId);
+        
+        // 设置延迟重试
           setTimeout(() => {
-            this.processGroup(groupId)
-          }, 0)
-        }
+          // 确保作业还在运行
+          if (job.status === 'running') {
+            this.startTask(jobId, taskId);
+          }
+        }, task.retryDelay);
+      } else {
+        // 超过最大重试次数，标记为失败
+        task.status = 'failed';
+        task.error = errorMessage;
+        
+        // 从运行中的任务集合中移除
+        runningTasksSet.delete(taskId);
+        
+        // 触发失败事件
+        this.eventsSubject.next({
+          type: 'task:failed',
+          jobId,
+          taskId,
+          error: errorMessage
+        });
       }
     }
+    
+    // 通知订阅者
+    this.jobsSubject.next({ ...this.jobs });
+    
+    // 处理下一批任务
+    this.processTasks(jobId);
   }
-
-  /**
-   * 启动处理定时器
-   */
-  private startProcessingTimer(): void {
-    // 每10毫秒检查一次是否有需要处理的组
-    this.processingTimer = setInterval(() => {
-      const now = Date.now()
-
-      // 检查每个组
-      for (const [groupId, group] of this.groups.entries()) {
-        // 如果组正在处理中或没有项，跳过
-        if (group.processing || group.items.length === 0) continue
-
-        // 检查是否有项已经等待足够长时间
-        const oldestItem = group.items.reduce((oldest, item) => {
-          return item.timestamp < oldest.timestamp ? item : oldest
-        }, group.items[0])
-
-        if (now - oldestItem.timestamp >= oldestItem.maxWaitTime) {
-          this.processGroup(groupId)
-        }
+  
+  // 检查作业是否完成
+  private checkJobCompletion(jobId: string): void {
+    const job = this.jobs[jobId];
+    if (!job || job.status !== 'running') return;
+    
+    // 检查是否所有任务都已完成或失败
+    const allTasksFinished = job.tasks.every(
+      task => ['completed', 'failed', 'canceled'].includes(task.status)
+    );
+    
+    if (allTasksFinished) {
+      // 检查是否有失败的任务
+      const hasFailedTasks = job.tasks.some(task => task.status === 'failed');
+      
+      // 更新作业状态
+      job.status = hasFailedTasks ? 'failed' : 'completed';
+      job.completedAt = Date.now();
+      this.runningJobs.delete(jobId);
+      
+      // 清理运行中的任务集合
+      this.runningTasks.delete(jobId);
+      
+      // 更新进度
+      this.updateJobProgress(jobId);
+      
+      // 通知订阅者
+      this.jobsSubject.next({ ...this.jobs });
+      
+      // 触发事件
+      if (hasFailedTasks) {
+        this.eventsSubject.next({
+          type: 'job:failed',
+          jobId,
+          error: 'One or more tasks failed'
+        });
+      } else {
+        this.eventsSubject.next({
+          type: 'job:completed',
+          jobId
+        });
       }
-    }, 10)
-  }
-
-  /**
-   * 停止处理定时器
-   */
-  public dispose(): void {
-    if (this.processingTimer) {
-      clearInterval(this.processingTimer)
-      this.processingTimer = null
+      
+      // 检查是否有等待的作业可以启动
+      this.checkPendingJobs();
     }
-
-    this.clear()
-    this.log("info", "BatchProcessor disposed")
   }
-
-  /**
-   * 记录日志
-   * @param level 日志级别
-   * @param message 日志消息
-   * @param data 附加数据
-   */
-  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: any): void {
-    // 根据配置的日志级别过滤日志
-    const levelPriority = { error: 0, warn: 1, info: 2, debug: 3 }
-    if (levelPriority[level] > levelPriority[this.config.logLevel]) {
-      return
+  
+  // 更新作业进度
+  private updateJobProgress(jobId: string): void {
+    const job = this.jobs[jobId];
+    if (!job) return;
+    
+    // 计算作业总进度
+    const totalTasks = job.tasks.length;
+    if (totalTasks === 0) {
+      job.progress = 0;
+      return;
     }
-
-    // 只有在调试模式下或错误日志才输出
-    if (this.config.debug || level === "error") {
-      const timestamp = new Date().toISOString()
-      const formattedMessage = `[${timestamp}] [BatchProcessor] [${level.toUpperCase()}] ${message}`
-
-      switch (level) {
-        case "error":
-          console.error(formattedMessage, data)
-          break
-        case "warn":
-          console.warn(formattedMessage, data)
-          break
-        case "info":
-          console.info(formattedMessage, data)
-          break
-        case "debug":
-          console.debug(formattedMessage, data)
-          break
+    
+    // 计算所有任务的进度总和
+    const totalProgress = job.tasks.reduce((sum, task) => sum + task.progress, 0);
+    
+    // 计算平均进度
+    job.progress = Math.round(totalProgress / totalTasks);
+  }
+  
+  // 检查是否有等待的作业可以启动
+  private checkPendingJobs(): void {
+    if (this.stopped) return;
+    
+    // 如果未达到最大并发作业数，检查是否有待处理的作业
+    if (this.runningJobs.size < this.config.maxConcurrentJobs) {
+      // 获取所有待处理的作业
+      const pendingJobs = Object.values(this.jobs)
+        .filter(job => job.status === 'pending')
+        .sort((a, b) => a.createdAt - b.createdAt); // 按创建时间排序
+      
+      // 启动待处理的作业
+      for (const job of pendingJobs) {
+        if (this.runningJobs.size >= this.config.maxConcurrentJobs) {
+          break;
+        }
+        
+        this.startJob(job.id);
       }
     }
   }

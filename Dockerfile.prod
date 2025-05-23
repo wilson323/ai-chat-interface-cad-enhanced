@@ -1,0 +1,75 @@
+# 多阶段构建的生产环境Dockerfile
+# AI Chat Interface - Production Ready with AG-UI Optimizations
+
+FROM node:18-alpine AS deps
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json* ./
+
+# Install dependencies using npm
+RUN npm ci --only=production --omit=dev
+
+# Builder stage
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# Copy dependencies from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+
+# Copy source code
+COPY . .
+
+# Set production environment for build
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build the application
+RUN npm run build
+
+# Production runner stage
+FROM node:18-alpine AS runner
+
+# Install necessary packages for production
+RUN apk add --no-cache \
+    ca-certificates \
+    dumb-init \
+    && addgroup --system --gid 1001 nodejs \
+    && adduser --system --uid 1001 nextjs
+
+WORKDIR /app
+
+# Copy built application
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /var/log /tmp/uploads \
+    && chown -R nextjs:nodejs /var/log /tmp/uploads
+
+# Set production environment variables
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD node healthcheck.js || exit 1
+
+# Switch to non-root user
+USER nextjs
+
+# Expose port
+EXPOSE 3000
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init", "--"]
+
+# Start the application
+CMD ["node", "server.js"] 

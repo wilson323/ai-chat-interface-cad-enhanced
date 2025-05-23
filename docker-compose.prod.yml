@@ -1,0 +1,105 @@
+version: '3.8'
+
+services:
+  # Redis服务 - 用于缓存和会话管理
+  redis:
+    image: redis:7-alpine
+    container_name: ai-chat-redis
+    command: redis-server --requirepass "RedisPassword123" --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+    networks:
+      - ai-chat-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "RedisPassword123", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # AI Chat Interface主应用
+  ai-chat-interface:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: ai-chat-app
+    restart: unless-stopped
+    ports:
+      - "8005:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+      - REDIS_URL=redis://:RedisPassword123@redis:6379
+      - NEXT_PUBLIC_APP_URL=http://171.43.138.237:8005
+      - AG_UI_STREAM_BUFFER_SIZE=8192
+      - AG_UI_CHUNK_DELAY=16
+      - AG_UI_TYPEWRITER_SPEED=120
+      - AG_UI_BATCH_SIZE=10
+      - AG_UI_MAX_BUFFER=65536
+      - AG_UI_DEBOUNCE_MS=5
+      - NEXT_PUBLIC_AG_UI_PERFORMANCE_ENABLED=true
+      - NEXT_PUBLIC_AG_UI_METRICS_ENABLED=false
+      - NEXT_PUBLIC_ADMIN_ENABLED=true
+      - NEXT_PUBLIC_ADMIN_DASHBOARD_PATH=/admin/dashboard
+      - MONITORING_ENABLED=true
+      - PERFORMANCE_LOGGING=true
+      - HEALTH_CHECK_ENABLED=true
+      - LOG_LEVEL=info
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - RATE_LIMIT_WINDOW_MS=60000
+    env_file:
+      - .env.production
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - ai-chat-network
+    volumes:
+      - app-logs:/var/log
+      - app-uploads:/tmp/uploads
+      - app-cache:/app/.next/cache
+    healthcheck:
+      test: ["CMD", "node", "healthcheck.js"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
+        reservations:
+          memory: 512M
+          cpus: '0.25'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+# 数据卷
+volumes:
+  redis-data:
+    driver: local
+  app-logs:
+    driver: local
+  app-uploads:
+    driver: local
+  app-cache:
+    driver: local
+
+# 网络
+networks:
+  ai-chat-network:
+    driver: bridge 

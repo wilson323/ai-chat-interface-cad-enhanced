@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
@@ -42,15 +44,34 @@ export interface ButtonProps
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
+    
+    // 检查是否是嵌套在另一个按钮中
+    const isNestedInButton = React.useContext(ButtonNestingContext)
+    if (isNestedInButton && asChild) {
+      // 如果嵌套在按钮中且asChild为true，则渲染为span
+      return (
+        <span
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref as React.RefObject<HTMLSpanElement>}
+          {...props}
+        />
+      )
+    }
+
     return (
-      <Comp
-        className={cn(buttonVariants({ variant, size, className }))}
-        ref={ref}
-        {...props}
-      />
+      <ButtonNestingContext.Provider value={true}>
+        <Comp
+          className={cn(buttonVariants({ variant, size, className }))}
+          ref={ref}
+          {...props}
+        />
+      </ButtonNestingContext.Provider>
     )
   }
 )
 Button.displayName = "Button"
+
+// 创建上下文来跟踪按钮嵌套
+const ButtonNestingContext = React.createContext(false)
 
 export { Button, buttonVariants }

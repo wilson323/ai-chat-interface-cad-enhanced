@@ -1,8 +1,10 @@
 import { initializeApp } from "@/lib/init"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
-import { ThemeProvider } from "@/components/ui/theme-provider"
 import "./globals.css"
+import ClientLayout from "./client-layout"
+import { FastGPTProvider } from "@/contexts/FastGPTContext"
+import { ReactNode } from 'react'
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
@@ -16,19 +18,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: {
+  children: ReactNode
+}) {
   return (
     <html lang="en">
       <body className={`font-sans ${inter.variable}`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-        >
-          {children}
-        </ThemeProvider>
+        <FastGPTProvider>
+          <ClientLayout>{children}</ClientLayout>
+        </FastGPTProvider>
       </body>
     </html>
   )

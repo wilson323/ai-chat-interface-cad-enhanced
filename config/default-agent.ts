@@ -4,8 +4,8 @@ export const DEFAULT_AGENT = {
   avatar: "/images/clean-assistant-avatar.png",
   description: "通用AI助手，可以回答各种问题",
   modelId: "gpt-3.5-turbo",
-  status: "active",
-  type: "fastgpt",
+  status: "active" as const,
+  type: "fastgpt" as const,
   config: {
     systemPrompt: "你是一个友好、专业的AI助手，随时准备帮助用户解决问题。",
     temperature: 0.7,

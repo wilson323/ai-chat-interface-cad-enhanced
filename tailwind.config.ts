@@ -92,8 +92,9 @@ const config: Config = {
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
-        float: "float 3s ease-in-out infinite",
-        fadeIn: "fadeIn 0.3s ease-out",
+        "float": "float 3s ease-in-out infinite",
+        "fadeIn": "fadeIn 0.3s ease-out",
+        "typing": "typingAnimation 1.5s ease-in-out infinite",
       },
     },
   },

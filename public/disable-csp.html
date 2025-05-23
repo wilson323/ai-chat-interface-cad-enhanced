@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSP禁用工具</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+        }
+        .btn {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 10px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .warning {
+            background-color: #ffe6e6;
+            border-left: 5px solid #ff6666;
+            padding: 10px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>临时CSP禁用工具</h1>
+    <p>此页面设置了宽松的CSP策略，可用于开发环境。</p>
+    
+    <div class="warning">
+        <strong>警告：</strong> 此方法仅用于本地开发，不要在生产环境中使用。
+    </div>
+    
+    <h2>使用方法：</h2>
+    <ol>
+        <li>首先访问此页面</li>
+        <li>然后点击下面的按钮访问应用首页</li>
+    </ol>
+    
+    <button class="btn" onclick="window.location.href='/'">跳转到首页</button>
+    
+    <h2>原理说明：</h2>
+    <p>此页面设置了宽松的CSP策略，允许所有类型的内联脚本和样式。由于浏览器对同一站点的导航会保留最后一个页面的CSP策略，因此先访问此页面后，再访问应用首页可以临时绕过CSP限制。</p>
+    
+    <script>
+        console.log("CSP禁用工具已加载");
+    </script>
+</body>
+</html> 

@@ -1,110 +1,129 @@
-// CAD解析监控和指标收集
-type CADMetricName = 
-  | 'parse_duration'
-  | 'file_size'
-  | 'entity_count'
-  | 'complexity_score'
-  | 'error_count';
+/**
+ * CAD分析器指标收集工具
+ * 用于记录和跟踪CAD分析相关的性能和使用指标
+ */
 
-interface CADMetric {
-  name: CADMetricName;
-  value: number;
-  unit?: string;
+type MetricValue = number;
+type MetricUnit = 'ms' | 'bytes' | 'count' | 'percentage';
+type MetricTags = Record<string, string>;
+
+interface Metric {
+  name: string;
+  value: MetricValue;
+  unit: MetricUnit;
   timestamp: number;
-  metadata?: Record<string, string>;
+  tags?: MetricTags;
 }
 
-class CADMetricsCollector {
-  private metrics: CADMetric[] = [];
-  private sessionId: string;
-  private static instance: CADMetricsCollector;
+class CADMetrics {
+  private static instance: CADMetrics;
+  private metrics: Metric[] = [];
+  private maxStoredMetrics = 1000;
+  
+  // 单例模式
+  public static getInstance(): CADMetrics {
+    if (!CADMetrics.instance) {
+      CADMetrics.instance = new CADMetrics();
+    }
+    return CADMetrics.instance;
+  }
   
   private constructor() {
-    this.sessionId = `session_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    // 私有构造函数，防止直接实例化
   }
   
-  static getInstance(): CADMetricsCollector {
-    if (!CADMetricsCollector.instance) {
-      CADMetricsCollector.instance = new CADMetricsCollector();
-    }
-    return CADMetricsCollector.instance;
-  }
-  
-  // 记录指标
-  record(name: CADMetricName, value: number, unit?: string, metadata?: Record<string, string>): void {
-    this.metrics.push({
+  /**
+   * 记录一个指标
+   * @param name 指标名称
+   * @param value 指标值
+   * @param unit 指标单位
+   * @param tags 可选的标签/维度
+   */
+  public record(
+    name: string, 
+    value: MetricValue, 
+    unit: MetricUnit, 
+    tags?: MetricTags
+  ): void {
+    // 创建指标对象
+    const metric: Metric = {
       name,
       value,
       unit,
       timestamp: Date.now(),
-      metadata: {
-        sessionId: this.sessionId,
-        ...metadata
-      }
-    });
+      tags
+    };
     
-    // 如果在客户端环境，同时记录到控制台
-    if (typeof window !== 'undefined') {
-      console.info(`[CAD Metrics] ${name}: ${value}${unit ? unit : ''}`);
+    // 添加到指标集合
+    this.metrics.push(metric);
+    
+    // 如果超过最大存储数量，移除最早的
+    if (this.metrics.length > this.maxStoredMetrics) {
+      this.metrics.shift();
     }
     
-    // 如果积累了很多指标，考虑发送到服务器
-    if (this.metrics.length >= 20) {
-      this.flush();
+    // 在开发环境中打印指标
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[CADMetrics] ${name}: ${value} ${unit}`, tags);
     }
+    
+    // 在实际项目中，这里可以添加指标上报到监控系统的逻辑
+    // 例如发送到Prometheus、Datadog、CloudWatch等
+    this.reportToMonitoringSystem(metric);
   }
   
-  // 计算文件复杂度分数
-  calculateComplexityScore(entities: Record<string, number>, layers: string[]): number {
-    const entityCount = Object.values(entities).reduce((sum, count) => sum + count, 0);
-    const layerCount = layers.length;
-    
-    // 复杂度计算公式: 基于实体数、图层数和不同实体类型的权重
-    let complexityScore = (entityCount * 0.6) + (layerCount * 50) + (Object.keys(entities).length * 100);
-    
-    // 对特定类型实体增加权重
-    if ('polylines' in entities) complexityScore += entities.polylines * 1.5;
-    if ('text' in entities) complexityScore += entities.text * 0.8;
-    if ('dimensions' in entities) complexityScore += entities.dimensions * 2;
-    
-    return Math.round(complexityScore);
+  /**
+   * 获取最近的指标
+   * @param name 指标名称
+   * @param limit 最大返回数量
+   */
+  public getRecentMetrics(name: string, limit: number = 10): Metric[] {
+    return this.metrics
+      .filter(m => m.name === name)
+      .sort((a, b) => b.timestamp - a.timestamp)
+      .slice(0, limit);
   }
   
-  // 将指标发送到服务器
-  async flush(): Promise<void> {
-    if (this.metrics.length === 0) return;
+  /**
+   * 获取指标的统计信息
+   * @param name 指标名称
+   */
+  public getStatistics(name: string): { avg: number; min: number; max: number; count: number } {
+    const values = this.metrics
+      .filter(m => m.name === name)
+      .map(m => m.value);
     
-    if (typeof window !== 'undefined' && process.env.NODE_ENV === 'production') {
-      try {
-        const metricsToSend = [...this.metrics];
-        this.metrics = [];
-        
-        await fetch('/api/cad/metrics', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            metrics: metricsToSend,
-            timestamp: Date.now(),
-            sessionId: this.sessionId
-          })
-        });
-      } catch (error) {
-        console.error('Failed to send metrics:', error);
-        // 将失败的指标放回队列
-        this.metrics = [...this.metrics];
-      }
-    } else {
-      // 在非生产环境，只清除指标
-      this.metrics = [];
+    if (values.length === 0) {
+      return { avg: 0, min: 0, max: 0, count: 0 };
     }
+    
+    return {
+      avg: values.reduce((a, b) => a + b, 0) / values.length,
+      min: Math.min(...values),
+      max: Math.max(...values),
+      count: values.length
+    };
   }
   
-  // 获取当前会话中收集的所有指标
-  getMetrics(): CADMetric[] {
-    return [...this.metrics];
+  /**
+   * 清除指标数据
+   */
+  public clear(): void {
+    this.metrics = [];
+  }
+  
+  /**
+   * 上报到监控系统
+   * 实际项目中，这里应该实现与监控系统的集成
+   */
+  private reportToMonitoringSystem(metric: Metric): void {
+    // 在实际项目中，这里应该实现发送指标到监控系统的逻辑
+    // 例如:
+    // - 使用fetch或axios发送到API端点
+    // - 使用SDK上报到监控系统
+    // - 写入到本地日志文件
   }
 }
 
-export const cadMetrics = CADMetricsCollector.getInstance(); 
+// 导出单例实例
+export const cadMetrics = CADMetrics.getInstance(); 

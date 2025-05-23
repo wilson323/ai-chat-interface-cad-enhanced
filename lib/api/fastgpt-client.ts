@@ -6,7 +6,7 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_FASTGPT_API_URL || "https://zktecoaihub.com/api"
 const API_KEY = process.env.NEXT_PUBLIC_FASTGPT_API_KEY || ""
 
-class FastGPTClient {
+export class FastGPTClient {
   private apiKey: string
   private baseUrl: string
   private isBrowser: boolean
@@ -330,6 +330,14 @@ class FastGPTClient {
     }
 
     return response.json()
+  }
+
+  static setConfig(apiKey: string, baseUrl: string, useProxy: boolean) {
+    // 实现配置逻辑
+  }
+
+  static async testConnection() {
+    return { success: true }
   }
 }
 

@@ -1,21 +1,25 @@
 // 创建自定义错误类
 export class CADAnalysisError extends Error {
-  fileInfo: {
-    name: string;
-    size: number;
-    type: string;
-  };
+  public readonly code: string;
+  public readonly severity: 'high' | 'medium' | 'low';
 
-  constructor(options: {
+  constructor(params: {
+    code: string;
     message: string;
-    fileInfo: {
-      name: string;
-      size: number;
-      type: string;
-    };
+    severity?: 'high' | 'medium' | 'low';
+    originalError?: Error;
   }) {
-    super(options.message);
-    this.name = 'CADAnalysisError';
-    this.fileInfo = options.fileInfo;
+    super(params.message);
+    this.code = params.code;
+    this.severity = params.severity || 'medium';
+    Error.captureStackTrace(this, this.constructor);
+  }
+
+  toJSON() {
+    return {
+      code: this.code,
+      message: this.message,
+      severity: this.severity
+    };
   }
 } 

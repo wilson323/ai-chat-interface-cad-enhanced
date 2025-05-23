@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "types": [
+      "node",
+      "react",
+      "react-dom",
+      "next",
+      "jest"
+    ]
+  }
+} 

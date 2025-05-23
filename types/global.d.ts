@@ -41,4 +41,18 @@ declare namespace NodeJS {
   interface ProcessEnv {
     NODE_ENV: 'development' | 'production' | 'test';
   }
+}
+
+// 扩展Next.js类型
+declare module 'next' {
+  interface PageProps {}
+}
+
+declare module 'next-themes' {
+  export interface ThemeProviderProps {
+    children: React.ReactNode
+    attribute?: string
+    defaultTheme?: string
+    enableSystem?: boolean
+  }
 } 

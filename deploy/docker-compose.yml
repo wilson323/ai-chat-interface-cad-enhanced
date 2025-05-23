@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  redis:
+    image: redis:alpine
+    command: redis-server --requirepass RedisPassword123 --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "RedisPassword123", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  ai-chat-interface:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "5008:5008"
+    env_file:
+      - .env
+    depends_on:
+      - redis
+    environment:
+      - NODE_ENV=production
+      - PORT=5008
+      - REDIS_URL=redis://:RedisPassword123@redis:6379
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+volumes:
+  redis-data:

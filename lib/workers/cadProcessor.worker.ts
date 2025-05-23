@@ -59,4 +59,20 @@ function extractMetadata(data) {
     createdAt: new Date().toISOString(),
     software: "未知软件",
   };
-} 
+}
+
+// 增加内存监控
+const memoryMonitor = setInterval(() => {
+  if (process.memoryUsage().heapUsed > 500 * 1024 * 1024) {
+    process.exit(1); // 防止内存泄漏
+  }
+}, 5000);
+
+// 增加未捕获异常处理
+process.on('uncaughtException', (err) => {
+  parentPort?.postMessage({
+    type: 'error',
+    error: serializeError(err)
+  });
+  process.exit(1);
+}); 

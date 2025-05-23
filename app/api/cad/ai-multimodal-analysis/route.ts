@@ -1,168 +1,244 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Configuration, OpenAIApi } from "openai";
+import { v4 as uuidv4 } from "uuid";
 import { createQueue } from '@/lib/utils/processingQueue';
+import { ApiError, ApiErrorCode } from '@/lib/errors/error-handler';
+import { CADAnalysisResult } from '@/lib/types/cad';
+import path from "path";
+import fs from "fs/promises";
+import { AIMultimodalAnalysisResult } from '@/lib/services/cad-analyzer/ai-analyzer';
+import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
+import { 
+  validateFile, 
+  updateSessionStatus, 
+  createSession,
+  generateBasicAnalysisResult,
+  createAIAnalysisResult,
+  createDomainAnalysis,
+  parseIFCFile,
+  extractComponentTypes,
+  calculateCADStats
+} from '@/lib/services/cad-analyzer/controller';
+import { 
+  CADFileType, 
+  CADAnalysisType, 
+  DomainSpecificAnalysis 
+} from '@/lib/types/cad';
+import { isBIMFile } from '@/lib/services/cad-analyzer/cad-analyzer-service';
 
-// 使用队列处理AI分析请求
+// 使用处理队列限制并发
 const aiAnalysisQueue = createQueue({
-  concurrency: 2,
-  timeout: 180_000 // 3分钟超时
+  concurrency: 1, // AI分析是计算密集型，限制并发数
+  timeout: 300_000 // 5分钟超时
 });
 
-// AI请求配置
-const config = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY
-});
-const openai = new OpenAIApi(config);
-
+/**
+ * CAD文件AI多模态分析API
+ * 处理上传的CAD文件，使用AI进行增强分析，包括:
+ * - 几何结构识别
+ * - 组件和材质分析
+ * - 专业领域分析（机械/建筑/电气/管道）
+ * - 制造性和优化建议
+ */
 export async function POST(request: NextRequest) {
-  return aiAnalysisQueue.add(async () => {
+  try {
+    // 获取表单数据
+    const formData = await request.formData();
+    const file = formData.get('file') as File;
+    const fileId = formData.get('fileId')?.toString() || `file_${uuidv4()}`;
+    const userId = formData.get('userId')?.toString() || 'anonymous';
+    const sessionId = formData.get('sessionId')?.toString() || `session_${uuidv4()}`;
+    
+    // 获取分析选项
+    const analysisTypeRaw = formData.get('analysisType')?.toString() || 'standard';
+    const analysisType = ['standard', 'detailed', 'professional', 'measurement'].includes(analysisTypeRaw) 
+      ? analysisTypeRaw as CADAnalysisType 
+      : 'standard';
+    
+    const optionsJson = formData.get('options')?.toString() || '{}';
+    let options = {};
     try {
-      const body = await request.json();
-      const { cadMetadata, screenshot, options } = body;
+      options = JSON.parse(optionsJson);
+    } catch (e) {
+      console.error('解析选项失败，使用默认值', e);
+    }
+    
+    // 验证文件
+    const validation = validateFile(file);
+    if (!validation.valid) {
+      return NextResponse.json({ 
+        error: validation.error 
+      }, { status: 400 });
+    }
+    
+    const fileType = validation.fileType as CADFileType;
+    
+    // 创建分析会话
+    const session = createSession(file.name, fileType, file.size);
+    session.analysisType = analysisType;
+    session.sessionId = sessionId;
+    
+    // 更新会话状态为处理中
+    updateSessionStatus(sessionId, 'processing', { 
+      percentage: 10, 
+      stage: '分析中', 
+      details: '处理文件基本信息' 
+    });
+
+    // 生成分析结果
+    // 注意：实际项目中，这里应该是一个异步过程，将文件发送到处理服务
+    // 这里为了演示，我们使用同步代码模拟分析过程
+    
+    // 1. 生成基本分析结果
+    const basicResult = generateBasicAnalysisResult(
+      fileId,
+      file.name,
+      fileType,
+      file.size
+    );
+    
+    // 模拟处理时间
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // 更新进度
+    updateSessionStatus(sessionId, 'processing', { 
+      percentage: 30, 
+      stage: '分析中', 
+      details: '提取CAD实体数据' 
+    });
+    
+    // 2. 计算CAD统计信息
+    const stats = calculateCADStats({});
+    basicResult.entities = stats.componentCounts;
+    
+    // 模拟更多分析过程
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // 更新进度
+    updateSessionStatus(sessionId, 'processing', { 
+      percentage: 50, 
+      stage: '分析中', 
+      details: 'AI多模态分析' 
+    });
+    
+    // 3. 进行AI多模态分析
+    let aiAnalysisResult: AIMultimodalAnalysisResult | null = null;
+    let domainAnalysis: DomainSpecificAnalysis | null = null;
+    
+    if (options.includeAIAnalysis !== false) {
+      // 根据文件类型构建提示语
+      const prompt = `分析这个${file.name}CAD文件，提供详细的工程见解和建议`;
       
-      if (!cadMetadata) {
-        return NextResponse.json(
-          { error: "缺少CAD元数据" },
-          { status: 400 }
-        );
-      }
-      
-      // 准备多模态请求
-      const messages = [
-        {
-          role: "system",
-          content: `你是一个专业的CAD图纸分析AI助手，专长于${getSpecialtyDescription(options.modelType)}。
-                   请基于提供的CAD元数据和图片(如有)，进行全面专业的分析。
-                   你的分析应该包括:
-                   1. 图纸的整体概述和主要内容
-                   2. 专业领域的具体见解和发现
-                   3. 识别潜在的设计问题和优化机会
-                   4. 符合行业标准的专业评估
-                   
-                   请以结构化的JSON格式返回，包含summary、categorySpecificInsights等字段。`
-        },
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: `请分析以下CAD图纸数据:\n${JSON.stringify(cadMetadata, null, 2)}\n\n详细级别: ${options.detailLevel}\n分析类型: ${options.modelType}`
-            }
-          ]
-        }
-      ];
-      
-      // 如果有截图，添加到请求中
-      if (screenshot) {
-        messages[1].content.push({
-          type: "image_url",
-          image_url: {
-            url: screenshot
-          }
-        });
-      }
-      
-      // 调用GPT-4V接口
-      const completion = await openai.createChatCompletion({
-        model: "gpt-4-vision-preview",
-        messages,
-        temperature: 0.2,
-        max_tokens: 4000,
-        response_format: { type: "json_object" }
+      // 调用AI分析
+      aiAnalysisResult = await createAIAnalysisResult(prompt, undefined, {
+        fileType,
+        fileName: file.name,
+        fileSize: file.size
       });
       
-      const responseContent = completion.data.choices[0].message.content;
-      let analysisResult;
+      // 更新进度
+      updateSessionStatus(sessionId, 'processing', { 
+        percentage: 70, 
+        stage: '分析中', 
+        details: '领域专家分析' 
+      });
       
-      try {
-        analysisResult = JSON.parse(responseContent || "{}");
-      } catch (error) {
-        console.error("解析AI响应失败:", error);
-        throw new Error("无法解析AI响应");
+      // 4. 如果指定了领域，进行领域特定分析
+      if (options.aiModelType && options.aiModelType !== 'general') {
+        domainAnalysis = await createDomainAnalysis(
+          options.aiModelType as any,
+          { fileType, fileName: file.name }
+        );
       }
-      
-      // 添加额外分析 (根据选项)
-      if (options.includeTechnicalValidation && !analysisResult.technicalAnalysis) {
-        analysisResult.technicalAnalysis = await generateTechnicalAnalysis(cadMetadata, options);
-      }
-      
-      if (options.includeOptimizationSuggestions && !analysisResult.optimizationSuggestions) {
-        analysisResult.optimizationSuggestions = await generateOptimizationSuggestions(cadMetadata, options);
-      }
-      
-      // 设置置信度
-      analysisResult.confidenceScore = screenshot ? 0.92 : 0.85;
-      
-      return NextResponse.json(analysisResult);
-    } catch (error) {
-      console.error("CAD AI多模态分析错误:", error);
-      
-      return NextResponse.json(
-        {
-          error: `AI分析失败: ${error instanceof Error ? error.message : String(error)}`,
-          success: false
-        },
-        { status: 500 }
-      );
     }
-  });
-}
-
-// 辅助函数
-function getSpecialtyDescription(modelType: string): string {
-  switch (modelType) {
-    case 'electrical': return '电气工程和电路设计';
-    case 'mechanical': return '机械工程和零部件设计';
-    case 'architecture': return '建筑设计和空间布局';
-    case 'plumbing': return '管道系统和流体工程';
-    default: return 'CAD设计和工程绘图';
+    
+    // 5. 如果是BIM/IFC文件，解析特定数据
+    let bimData = null;
+    if (isBIMFile(fileType) && options.ifcOptions) {
+      // 更新进度
+      updateSessionStatus(sessionId, 'processing', { 
+        percentage: 80, 
+        stage: '分析中', 
+        details: '解析BIM数据' 
+      });
+      
+      bimData = await parseIFCFile(file, options.ifcOptions as any);
+    }
+    
+    // 6. 生成缩略图链接
+    let thumbnail = null;
+    if (options.includeThumbnail !== false) {
+      // 更新进度
+      updateSessionStatus(sessionId, 'processing', { 
+        percentage: 90, 
+        stage: '分析中', 
+        details: '生成缩略图' 
+      });
+      
+      // 模拟缩略图URL
+      thumbnail = `/api/cad/generate-thumbnail?id=${fileId}`;
+    }
+    
+    // 构建完整的分析结果
+    const fullResult = {
+      ...basicResult,
+      thumbnail,
+      aiAnalysis: aiAnalysisResult,
+      domainAnalysis: domainAnalysis,
+      bimData: bimData,
+      processingTimeMs: 1500, // 模拟处理时间
+      options: options
+    };
+    
+    // 更新会话状态为完成
+    updateSessionStatus(sessionId, 'completed', { 
+      percentage: 100, 
+      stage: '完成', 
+      details: '分析完成' 
+    });
+    
+    // 返回结果
+    return NextResponse.json(fullResult);
+  } catch (error) {
+    console.error('CAD AI多模态分析出错:', error);
+    
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : '分析过程中发生错误',
+    }, { status: 500 });
   }
 }
 
-// 生成技术分析
-async function generateTechnicalAnalysis(cadMetadata: any, options: any): Promise<any> {
-  // 简单的基于规则的技术分析
-  return {
-    standardsCompliance: [
-      {
-        standard: "ISO 9001",
-        compliant: true,
-        issues: []
-      }
-    ],
-    technicalIssues: [],
-    performance: [
-      {
-        metric: "设计复杂度",
-        value: calculateComplexity(cadMetadata),
-        unit: "分",
-        benchmark: 75,
-        status: "average"
-      }
-    ]
-  };
-}
-
-// 生成优化建议
-async function generateOptimizationSuggestions(cadMetadata: any, options: any): Promise<any> {
-  // 简单的优化建议
-  return {
-    designOptimizations: [],
-    materialSuggestions: [],
-    workflowImprovements: [
-      "考虑使用图块(Blocks)组织重复元素以提高效率",
-      "添加适当的注释以增强图纸的可读性"
-    ]
-  };
-}
-
-// 计算复杂度得分
-function calculateComplexity(cadMetadata: any): number {
-  const entityCount = Object.values(cadMetadata.entities).reduce((sum: number, count: number) => sum + count, 0);
-  const layerCount = cadMetadata.layers.length;
-  
-  // 复杂度计算公式
-  return Math.min(100, Math.round((entityCount * 0.05) + (layerCount * 5)));
+/**
+ * 获取分析状态与进度
+ */
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const sessionId = searchParams.get('sessionId');
+    
+    if (!sessionId) {
+      return NextResponse.json({ error: '缺少会话ID' }, { status: 400 });
+    }
+    
+    // 获取指定会话的状态
+    // 实际项目中应从数据库或缓存中获取
+    const mockProgress = {
+      percentage: Math.floor(Math.random() * 100),
+      stage: '分析中',
+      details: '正在处理组件数据...'
+    };
+    
+    return NextResponse.json({
+      sessionId,
+      status: 'processing',
+      progress: mockProgress
+    });
+  } catch (error) {
+    console.error('获取CAD分析状态出错:', error);
+    
+    return NextResponse.json({
+      error: error instanceof Error ? error.message : '获取状态失败',
+    }, { status: 500 });
+  }
 }
 
 export const config = {
