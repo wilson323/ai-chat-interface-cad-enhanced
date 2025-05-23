@@ -29,36 +29,51 @@ export class UserFriendlyError extends Error {
   }
 }
 
-// 错误边界组件
-export function createErrorBoundary(Component: React.ComponentType<any>) {
-  return class ErrorBoundary extends React.Component<any, { hasError: boolean; error: Error | null }> {
-    constructor(props: any) {
-      super(props);
-      this.state = { hasError: false, error: null };
-    }
+// 错误处理辅助函数
+export function handleAsyncError<T>(
+  promise: Promise<T>,
+  fallbackValue?: T
+): Promise<T | undefined> {
+  return promise.catch((error) => {
+    captureException(error);
+    return fallbackValue;
+  });
+}
 
-    static getDerivedStateFromError(error: Error) {
-      return { hasError: true, error };
-    }
+// 安全的JSON解析
+export function safeJsonParse<T>(jsonString: string, fallback: T): T {
+  try {
+    return JSON.parse(jsonString);
+  } catch (error) {
+    captureException(error as Error);
+    return fallback;
+  }
+}
 
-    componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-      captureException(error);
-    }
-
-    render() {
-      if (this.state.hasError) {
-        return (
-          <div className="error-boundary-container">
-            <h2>出现了一些问题</h2>
-            <p>请刷新页面或联系管理员</p>
-            <button onClick={() => this.setState({ hasError: false, error: null })}>
-              重试
-            </button>
-          </div>
-        );
+// 错误重试机制
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  baseDelay: number = 1000
+): Promise<T> {
+  let lastError: Error;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error as Error;
+      
+      if (attempt === maxRetries) {
+        captureException(lastError);
+        throw lastError;
       }
-
-      return <Component {...this.props} />;
+      
+      // 指数退避
+      const delay = baseDelay * Math.pow(2, attempt);
+      await new Promise(resolve => setTimeout(resolve, delay));
     }
-  };
+  }
+  
+  throw lastError!;
 } 

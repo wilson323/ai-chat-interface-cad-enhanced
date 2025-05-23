@@ -110,9 +110,9 @@ build_image() {
 ssh_exec() {
     local command="$1"
     if command -v sshpass &> /dev/null; then
-        sshpass -p "${SERVER_PASSWORD}" ssh -o StrictHostKeyChecking=no ${PRODUCTION_USER}@${PRODUCTION_SERVER} "${command}"
+        sshpass -p "${SERVER_PASSWORD}" ssh -o StrictHostKeyChecking=no "${PRODUCTION_USER}@${PRODUCTION_SERVER}" "${command}"
     else
-        ssh -o StrictHostKeyChecking=no ${PRODUCTION_USER}@${PRODUCTION_SERVER} "${command}"
+        ssh -o StrictHostKeyChecking=no "${PRODUCTION_USER}@${PRODUCTION_SERVER}" "${command}"
     fi
 }
 
@@ -121,9 +121,9 @@ scp_upload() {
     local source="$1"
     local dest="$2"
     if command -v sshpass &> /dev/null; then
-        sshpass -p "${SERVER_PASSWORD}" scp -o StrictHostKeyChecking=no "${source}" ${PRODUCTION_USER}@${PRODUCTION_SERVER}:"${dest}"
+        sshpass -p "${SERVER_PASSWORD}" scp -o StrictHostKeyChecking=no "${source}" "${PRODUCTION_USER}@${PRODUCTION_SERVER}:${dest}"
     else
-        scp -o StrictHostKeyChecking=no "${source}" ${PRODUCTION_USER}@${PRODUCTION_SERVER}:"${dest}"
+        scp -o StrictHostKeyChecking=no "${source}" "${PRODUCTION_USER}@${PRODUCTION_SERVER}:${dest}"
     fi
 }
 
@@ -136,24 +136,24 @@ deploy_to_server() {
     
     # 复制项目文件到临时目录（排除node_modules和.git）
     log_info "准备项目文件..."
-    mkdir -p ${TEMP_DIR}/project
-    cp -r . ${TEMP_DIR}/project/
+    mkdir -p "${TEMP_DIR}/project"
+    cp -r . "${TEMP_DIR}/project/"
     
     # 清理不需要的目录
-    rm -rf ${TEMP_DIR}/project/node_modules 2>/dev/null || true
-    rm -rf ${TEMP_DIR}/project/.git 2>/dev/null || true
-    rm -rf ${TEMP_DIR}/project/.next 2>/dev/null || true
-    rm -rf ${TEMP_DIR}/project/tmp 2>/dev/null || true
-    rm -rf ${TEMP_DIR}/project/.pytest_cache 2>/dev/null || true
+    rm -rf "${TEMP_DIR}/project/node_modules" 2>/dev/null || true
+    rm -rf "${TEMP_DIR}/project/.git" 2>/dev/null || true
+    rm -rf "${TEMP_DIR}/project/.next" 2>/dev/null || true
+    rm -rf "${TEMP_DIR}/project/tmp" 2>/dev/null || true
+    rm -rf "${TEMP_DIR}/project/.pytest_cache" 2>/dev/null || true
     
     # 复制部署相关文件到项目目录
-    cp docker-compose.prod.yml ${TEMP_DIR}/project/docker-compose.yml
-    cp .env.production ${TEMP_DIR}/project/ 2>/dev/null || true
-    cp healthcheck.js ${TEMP_DIR}/project/ 2>/dev/null || true
+    cp docker-compose.prod.yml "${TEMP_DIR}/project/docker-compose.yml"
+    cp .env.production "${TEMP_DIR}/project/" 2>/dev/null || true
+    cp healthcheck.js "${TEMP_DIR}/project/" 2>/dev/null || true
     
     # 创建项目压缩包
     log_info "创建项目压缩包..."
-    cd ${TEMP_DIR}
+    cd "${TEMP_DIR}"
     tar -czf project.tar.gz project/
     cd - > /dev/null
     
@@ -173,8 +173,8 @@ deploy_to_server() {
             echo \"警告: 存储盘可用空间不足 (\${AVAILABLE_SPACE}KB < \${REQUIRED_SPACE}KB)\"
         fi
         
-        mkdir -p ${DEPLOY_PATH}
-        cd ${DEPLOY_PATH}
+        mkdir -p "${DEPLOY_PATH}"
+        cd "${DEPLOY_PATH}"
         docker-compose down 2>/dev/null || true
         docker system prune -f || true
         rm -rf project/ || true
@@ -188,7 +188,7 @@ deploy_to_server() {
     # 在服务器上执行构建和部署
     log_info "在服务器上构建和启动服务..."
     ssh_exec "
-        cd ${DEPLOY_PATH}
+        cd "${DEPLOY_PATH}"
         
         # 解压项目文件
         echo '解压项目文件...'
@@ -219,11 +219,11 @@ deploy_to_server() {
         cd ..
         rm -f project.tar.gz
         
-        echo '部署完成！'
+        echo 'Deployment completed!'
     "
     
     # 清理本地临时目录
-    rm -rf ${TEMP_DIR}
+    rm -rf "${TEMP_DIR}"
     
     log_success "服务器部署完成"
 }
@@ -238,7 +238,7 @@ verify_deployment() {
     local max_attempts=10
     local attempt=1
     
-    while [ $attempt -le $max_attempts ]; do
+    while [ "$attempt" -le "$max_attempts" ]; do
         log_info "尝试健康检查... ($attempt/$max_attempts)"
         
         if curl -f --connect-timeout 10 --max-time 30 "http://${PRODUCTION_SERVER}:${PRODUCTION_PORT}/api/health" > /dev/null 2>&1; then
@@ -246,10 +246,10 @@ verify_deployment() {
             break
         fi
         
-        if [ $attempt -eq $max_attempts ]; then
+        if [ "$attempt" -eq "$max_attempts" ]; then
             log_error "健康检查失败，请检查服务状态"
             # 显示服务器日志
-            ssh_exec "cd ${DEPLOY_PATH} && docker-compose logs --tail=50"
+            ssh_exec "cd \"${DEPLOY_PATH}\" && docker-compose logs --tail=50"
             return 1
         fi
         

@@ -522,4 +522,3 @@ export function CADChatUpload({
     </Card>
   )
 } 
-} 

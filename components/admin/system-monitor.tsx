@@ -891,8 +891,8 @@ export function SystemMonitor() {
                   <div className="text-green-500">[2023-05-21 07:17:45] [INFO] Redis连接恢复</div>
                   <div className="text-blue-500">[2023-05-21 07:18:12] [DEBUG] 清理过期缓存项: 23个</div>
                   <div className="text-green-500">[2023-05-21 07:19:05] [INFO] 系统健康检查通过</div>
-                  <div className="text-yellow-500">[2023-05-21 07:20:18] [WARN] 网络状态变更: wifi -> cellular</div>
-                  <div className="text-green-500">[2023-05-21 07:21:30] [INFO] 网络状态变更: cellular -> wifi</div>
+                  <div className="text-yellow-500">[2023-05-21 07:20:18] [WARN] 网络状态变更: wifi -&gt; cellular</div>
+                  <div className="text-green-500">[2023-05-21 07:21:30] [INFO] 网络状态变更: cellular -&gt; wifi</div>
                 </div>
               </CardContent>
             </Card>
