@@ -1,9 +1,9 @@
 /**
- * AG-UI客户端 - 提供客户端AG-UI协议支持
- * AG-UI Client - Provides client-side AG-UI protocol support
+ * @fileoverview Provides a client-side implementation for the AG-UI protocol.
+ * @file_zh-CN: 提供AG-UI协议的客户端实现。
  *
- * 本文件提供了一个简化的HttpAgent实现，用于客户端处理AG-UI协议
- * 调用关系: 被hooks/use-ag-ui-cad.tsx调用
+ * This file contains a simplified HttpAgent for handling AG-UI protocol on the client.
+ * It is primarily used by the `use-ag-ui-cad` hook.
  */
 
 export interface HttpAgentOptions {

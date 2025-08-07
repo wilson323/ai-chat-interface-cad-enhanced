@@ -10,14 +10,31 @@
     "simple-import-sort"
   ],
   "rules": {
-    "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-unused-vars": "warn",
-    "@typescript-eslint/strict-boolean-expressions": "warn",
-    "react-hooks/exhaustive-deps": "warn",
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-unused-vars": "error",
+    "@typescript-eslint/strict-boolean-expressions": "error",
+    "react-hooks/exhaustive-deps": "error",
     "react/prop-types": "off",
     "react/react-in-jsx-scope": "off",
-    "react/no-unescaped-entities": "warn",
+    "react/no-unescaped-entities": "error",
     "simple-import-sort/imports": "warn",
-    "simple-import-sort/exports": "warn"
+    "simple-import-sort/exports": "warn",
+    "no-console": "error",
+    "@typescript-eslint/naming-convention": [
+      "error",
+      {
+        "selector": "variable",
+        "format": ["camelCase", "PascalCase", "UPPER_CASE"],
+        "leadingUnderscore": "allow"
+      },
+      {
+        "selector": "function",
+        "format": ["camelCase", "PascalCase"]
+      },
+      {
+        "selector": "typeLike",
+        "format": ["PascalCase"]
+      }
+    ]
   }
 }

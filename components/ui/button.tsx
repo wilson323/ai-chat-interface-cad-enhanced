@@ -1,4 +1,7 @@
-"use client"
+/**
+ * @fileoverview A flexible and customizable button component.
+ * @file_zh-CN: 一个灵活且可自定义的按钮组件。
+ */
 
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
@@ -38,40 +41,31 @@ const buttonVariants = cva(
 export interface ButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
     VariantProps<typeof buttonVariants> {
+  /**
+   * @property {boolean} asChild - If true, the button will be rendered as a child of the Slot component.
+   * @property_zh-CN {boolean} asChild - 如果为 true，按钮将作为 Slot 组件的子组件进行渲染。
+   */
   asChild?: boolean
 }
 
+/**
+ * Renders a button or a button-like element with various styles and sizes.
+ * @param {ButtonProps} props - The props for the button component.
+ * @param {React.Ref<HTMLButtonElement>} ref - The ref to forward to the button element.
+ * @returns {JSX.Element} The rendered button component.
+ */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
     const Comp = asChild ? Slot : "button"
-    
-    // 检查是否是嵌套在另一个按钮中
-    const isNestedInButton = React.useContext(ButtonNestingContext)
-    if (isNestedInButton && asChild) {
-      // 如果嵌套在按钮中且asChild为true，则渲染为span
-      return (
-        <span
-          className={cn(buttonVariants({ variant, size, className }))}
-          ref={ref as React.RefObject<HTMLSpanElement>}
-          {...props}
-        />
-      )
-    }
-
     return (
-      <ButtonNestingContext.Provider value={true}>
-        <Comp
-          className={cn(buttonVariants({ variant, size, className }))}
-          ref={ref}
-          {...props}
-        />
-      </ButtonNestingContext.Provider>
+      <Comp
+        className={cn(buttonVariants({ variant, size, className }))}
+        ref={ref}
+        {...props}
+      />
     )
   }
 )
 Button.displayName = "Button"
-
-// 创建上下文来跟踪按钮嵌套
-const ButtonNestingContext = React.createContext(false)
 
 export { Button, buttonVariants }

@@ -1,9 +1,9 @@
 /**
- * AG-UI类型定义 - 定义AG-UI协议中使用的所有类型和接口
- * AG-UI Type Definitions - Defines all types and interfaces used in AG-UI protocol
+ * @fileoverview Defines all types and interfaces for the AG-UI protocol.
+ * @file_zh-CN: 定义AG-UI协议所使用的所有类型和接口。
  *
- * 本文件包含AG-UI事件类型、消息格式、工具调用等类型定义
- * 调用关系: 被lib/ag-ui/core-adapter.ts和hooks/use-ag-ui.tsx引用
+ * This file contains type definitions for AG-UI events, message formats, tool calls, etc.
+ * It is referenced by core adapters and hooks that implement the AG-UI protocol.
  */
 
 // 基础事件类型
