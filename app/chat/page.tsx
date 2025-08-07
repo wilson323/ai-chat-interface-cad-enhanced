@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
 import { useMobile } from "@/hooks/use-mobile"
 import { Sun, Moon, Menu, LogOut, Sparkles, User } from "lucide-react"
-import { ChatInterface } from "@/components/chat/chat-interface"
+import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
 import { AgentSelector } from "@/components/chat/agent-selector"
 import { useFastGPT } from "@/contexts/FastGPTContext"
@@ -310,7 +310,7 @@ export default function ChatPage() {
         {/* 聊天界面 */}
         <main className="flex-1 flex flex-col overflow-hidden bg-gradient-to-br from-gray-50/50 to-white/50 dark:from-gray-900/50 dark:to-gray-800/50">
           {selectedApp ? (
-            <ChatInterface />
+            <UnifiedChatInterface key={selectedApp.id} initialAgentId={selectedApp.id} />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center p-4">
               <div className="text-center max-w-md">
