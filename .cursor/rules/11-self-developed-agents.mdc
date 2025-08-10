@@ -1,0 +1,792 @@
+---
+alwaysApply: true
+---
+
+# ZK-Agent 自研智能体架构规范
+
+## 📋 自研智能体概述
+
+基于 [自研智能体技术指导](.kiro/steering/self-developed-agents.md) 和 [项目架构规范](.cursor/rules/01-project-architecture.mdc)，ZK-Agent平台包含两个核心的自研智能体。
+
+### 核心特性
+- **操作式智能体**: 非纯对话，具备实际操作能力
+- **AG-UI协议集成**: 通过CopilotKit + AG-UI协议统一对话式操作控制
+- **计算密集型优化**: 针对GPU加速、内存池管理、流式处理优化
+- **微服务架构**: 基于渐进式微服务架构设计
+
+## 🔧 CAD解读智能体
+
+### 核心功能架构
+```typescript
+interface CADAgentCapabilities {
+  fileFormats: ["DWG", "DXF", "STEP", "IGES", "STL", "OBJ"];
+  rendering: {
+    engine: "Three.js + WebGL";
+    features: ["实时3D渲染", "交互式查看", "多视角展示"];
+  };
+  analysis: {
+    geometry: "几何分析、尺寸测量";
+    materials: "材料属性分析";
+    assembly: "装配关系解析";
+  };
+  reporting: {
+    formats: ["PDF", "JSON", "XML"];
+    autoGeneration: "自动生成技术报告";
+  };
+}
+```
+
+### 目录结构标准
+```
+app/cad-analyzer/
+├── page.tsx                    # 主页面
+├── layout.tsx                  # 布局组件
+├── upload/                     # 文件上传模块
+├── viewer/                     # 3D查看器模块
+├── analysis/                   # 分析面板模块
+└── copilot/                    # 对话控制模块
+
+components/cad/
+├── file-uploader.tsx           # 文件上传组件
+├── model-viewer.tsx            # 3D模型查看器
+├── analysis-panel.tsx          # 分析面板
+├── measurement-tools.tsx       # 测量工具
+├── material-inspector.tsx      # 材料检查器
+├── assembly-tree.tsx           # 装配树组件
+└── report-generator.tsx        # 报告生成器
+
+lib/cad/
+├── parsers/                    # 文件解析器
+│   ├── dwg-parser.ts          # DWG格式解析
+│   ├── step-parser.ts         # STEP格式解析
+│   └── base-parser.ts         # 基础解析器
+├── renderers/                  # 渲染引擎
+│   ├── three-renderer.ts      # Three.js渲染
+│   └── webgl-renderer.ts      # WebGL渲染
+├── analyzers/                  # 分析引擎
+│   ├── geometry-analyzer.ts   # 几何分析
+│   ├── material-analyzer.ts   # 材料分析
+│   └── assembly-analyzer.ts   # 装配分析
+└── exporters/                  # 导出器
+    ├── pdf-exporter.ts        # PDF导出
+    └── json-exporter.ts       # JSON导出
+```
+
+### CAD解析器实现标准
+```typescript
+/**
+ * CAD文件解析器基类
+ *
+ * 定义了所有CAD解析器的统一接口和基础功能
+ */
+export abstract class BaseCADParser {
+  /**
+   * 解析CAD文件
+   *
+   * @param file - 待解析的CAD文件
+   * @param options - 解析选项配置
+   * @returns Promise<CADModel> - 解析后的3D模型数据
+   *
+   * @throws CADParseError - 当文件格式不支持或解析失败时抛出
+   *
+   * @example
+   * ```typescript
+   * const parser = new DWGParser();
+   * const model = await parser.parse(file, { precision: 'high' });
+   * ```
+   */
+  abstract parse(file: File, options?: ParseOptions): Promise<CADModel>;
+
+  /**
+   * 验证文件格式
+   *
+   * @param file - 待验证的文件
+   * @returns boolean - 是否支持该格式
+   */
+  abstract validateFormat(file: File): boolean;
+
+  /**
+   * 获取支持的文件扩展名
+   *
+   * @returns string[] - 支持的扩展名列表
+   */
+  abstract getSupportedExtensions(): string[];
+}
+
+/**
+ * DWG文件解析器
+ */
+export class DWGParser extends BaseCADParser {
+  async parse(file: File, options: ParseOptions = {}): Promise<CADModel> {
+    try {
+      // 验证文件格式
+      if (!this.validateFormat(file)) {
+        throw new CADParseError('不支持的DWG文件格式');
+      }
+
+      // 读取文件数据
+      const buffer = await file.arrayBuffer();
+
+      // 解析DWG数据结构
+      const dwgData = await this.parseDWGStructure(buffer);
+
+      // 转换为标准3D模型
+      const model = this.convertToCADModel(dwgData, options);
+
+      return model;
+    } catch (error) {
+      throw new CADParseError(`DWG解析失败: ${error.message}`);
+    }
+  }
+
+  validateFormat(file: File): boolean {
+    return file.name.toLowerCase().endsWith('.dwg');
+  }
+
+  getSupportedExtensions(): string[] {
+    return ['.dwg'];
+  }
+}
+```
+
+## 🎨 海报生成智能体
+
+### 核心功能架构
+```typescript
+interface PosterAgentCapabilities {
+  templates: {
+    categories: ["商业", "教育", "活动", "产品", "社交"];
+    customization: "完全可定制化";
+  };
+  aiGeneration: {
+    textGeneration: "基于提示词生成文案";
+    imageGeneration: "AI图像生成和编辑";
+    layoutOptimization: "智能布局优化";
+  };
+  export: {
+    formats: ["PNG", "JPG", "PDF", "SVG"];
+    resolutions: ["Web", "Print", "Social"];
+  };
+}
+```
+
+### 海报生成器实现标准
+```typescript
+/**
+ * 海报生成引擎
+ *
+ * 负责海报的设计、生成和导出功能
+ */
+export class PosterGenerationEngine {
+  private aiTextGenerator: AITextGenerator;
+  private imageProcessor: ImageProcessor;
+  private layoutEngine: LayoutEngine;
+
+  constructor() {
+    this.aiTextGenerator = new AITextGenerator();
+    this.imageProcessor = new ImageProcessor();
+    this.layoutEngine = new LayoutEngine();
+  }
+
+  /**
+   * 生成海报
+   *
+   * @param requirements - 海报需求描述
+   * @param template - 使用的模板
+   * @param options - 生成选项
+   * @returns Promise<PosterResult> - 生成的海报数据
+   *
+   * @example
+   * ```typescript
+   * const engine = new PosterGenerationEngine();
+   * const poster = await engine.generatePoster({
+   *   theme: "科技产品发布",
+   *   style: "现代简约",
+   *   size: "A4"
+   * }, template);
+   * ```
+   */
+  async generatePoster(
+    requirements: PosterRequirements,
+    template: PosterTemplate,
+    options: GenerationOptions = {}
+  ): Promise<PosterResult> {
+    try {
+      // 使用AI生成文案内容
+      const content = await this.aiTextGenerator.generateContent(requirements);
+
+      // 生成或处理图像
+      const images = await this.imageProcessor.processImages(
+        requirements.images,
+        options.imageStyle
+      );
+
+      // 智能布局优化
+      const layout = await this.layoutEngine.optimizeLayout(
+        template,
+        content,
+        images,
+        requirements.size
+      );
+
+      // 渲染最终海报
+      const posterData = await this.renderPoster(layout);
+
+      return {
+        success: true,
+        posterData,
+        metadata: {
+          template: template.id,
+          generationTime: Date.now(),
+          aiGenerated: true
+        }
+      };
+    } catch (error) {
+      throw new PosterGenerationError(`海报生成失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 导出海报
+   *
+   * @param poster - 海报数据
+   * @param format - 导出格式
+   * @param quality - 导出质量
+   * @returns Promise<Blob> - 导出的文件数据
+   */
+  async exportPoster(
+    poster: PosterData,
+    format: ExportFormat,
+    quality: ExportQuality = 'high'
+  ): Promise<Blob> {
+    try {
+      const exporter = this.getExporter(format);
+      return await exporter.export(poster, quality);
+    } catch (error) {
+      throw new PosterExportError(`海报导出失败: ${error.message}`);
+    }
+  }
+}
+```
+
+## 🔄 AG-UI协议集成
+
+### CopilotKit集成标准
+```typescript
+/**
+ * 自研智能体的AG-UI协议适配器
+ */
+export class SelfDevelopedAgentAdapter {
+  /**
+   * CAD智能体对话控制
+   */
+  async handleCADConversation(
+    message: string,
+    context: CADContext
+  ): Promise<AgentResponse> {
+    // 解析用户意图
+    const intent = await this.parseUserIntent(message, 'cad');
+
+    switch (intent.action) {
+      case 'upload_file':
+        return this.handleFileUpload(intent.parameters);
+      case 'analyze_model':
+        return this.handleModelAnalysis(intent.parameters, context);
+      case 'generate_report':
+        return this.handleReportGeneration(intent.parameters, context);
+      default:
+        return this.handleGeneralCADQuery(message, context);
+    }
+  }
+
+  /**
+   * 海报智能体对话控制
+   */
+  async handlePosterConversation(
+    message: string,
+    context: PosterContext
+  ): Promise<AgentResponse> {
+    const intent = await this.parseUserIntent(message, 'poster');
+
+    switch (intent.action) {
+      case 'create_poster':
+        return this.handlePosterCreation(intent.parameters);
+      case 'modify_design':
+        return this.handleDesignModification(intent.parameters, context);
+      case 'export_poster':
+        return this.handlePosterExport(intent.parameters, context);
+      default:
+        return this.handleGeneralPosterQuery(message, context);
+    }
+  }
+}
+```
+
+## 🚀 性能优化要求
+
+### GPU加速优化
+```typescript
+/**
+ * GPU加速管理器
+ */
+export class GPUAccelerationManager {
+  /**
+   * CAD模型渲染加速
+   */
+  async accelerateCADRendering(model: CADModel): Promise<void> {
+    // 使用WebGL进行GPU加速渲染
+    // 实现几何体缓存和LOD优化
+  }
+
+  /**
+   * 海报生成加速
+   */
+  async acceleratePosterGeneration(requirements: PosterRequirements): Promise<void> {
+    // 使用GPU加速图像处理
+    // 实现并行文案生成
+  }
+}
+```
+
+### 内存池管理
+```typescript
+/**
+ * 内存池管理器
+ */
+export class MemoryPoolManager {
+  private cadModelPool: Map<string, CADModel> = new Map();
+  private posterTemplatePool: Map<string, PosterTemplate> = new Map();
+
+  /**
+   * CAD模型缓存管理
+   */
+  async cacheCADModel(modelId: string, model: CADModel): Promise<void> {
+    // 实现智能缓存策略
+    // 基于文件大小和访问频率优化
+  }
+
+  /**
+   * 清理过期缓存
+   */
+  async cleanupExpiredCache(): Promise<void> {
+    // 定期清理不再使用的模型数据
+  }
+}
+```
+
+## ⚠️ 开发约束
+
+### 强制要求
+1. **AG-UI协议**: 所有智能体必须支持AG-UI协议
+2. **CopilotKit集成**: 必须通过CopilotKit实现对话控制
+3. **性能优化**: 必须实现GPU加速和内存池管理
+4. **类型安全**: 所有接口必须有完整的TypeScript类型定义
+5. **错误处理**: 必须有完善的异常处理和错误恢复机制
+
+### 最佳实践
+1. **模块化设计**: 解析器、渲染器、分析器独立开发
+2. **缓存策略**: 合理使用内存缓存提升性能
+3. **流式处理**: 大文件处理必须支持流式操作
+4. **用户体验**: 提供实时进度反馈和错误提示
+
+---
+
+**参考文档**:
+- [自研智能体技术指导](.kiro/steering/self-developed-agents.md)
+- [项目架构规范](.cursor/rules/01-project-architecture.mdc)
+- [技术栈和AI模型管理规范](.cursor/rules/08-tech-stack-ai-models.mdc)
+- [API设计标准](.cursor/rules/06-api-design-standards.mdc)
+# ZK-Agent 自研智能体架构规范
+
+## 📋 自研智能体概述
+
+基于 [自研智能体技术指导](.kiro/steering/self-developed-agents.md) 和 [项目架构规范](.cursor/rules/01-project-architecture.mdc)，ZK-Agent平台包含两个核心的自研智能体。
+
+### 核心特性
+- **操作式智能体**: 非纯对话，具备实际操作能力
+- **AG-UI协议集成**: 通过CopilotKit + AG-UI协议统一对话式操作控制
+- **计算密集型优化**: 针对GPU加速、内存池管理、流式处理优化
+- **微服务架构**: 基于渐进式微服务架构设计
+
+## 🔧 CAD解读智能体
+
+### 核心功能架构
+```typescript
+interface CADAgentCapabilities {
+  fileFormats: ["DWG", "DXF", "STEP", "IGES", "STL", "OBJ"];
+  rendering: {
+    engine: "Three.js + WebGL";
+    features: ["实时3D渲染", "交互式查看", "多视角展示"];
+  };
+  analysis: {
+    geometry: "几何分析、尺寸测量";
+    materials: "材料属性分析";
+    assembly: "装配关系解析";
+  };
+  reporting: {
+    formats: ["PDF", "JSON", "XML"];
+    autoGeneration: "自动生成技术报告";
+  };
+}
+```
+
+### 目录结构标准
+```
+app/cad-analyzer/
+├── page.tsx                    # 主页面
+├── layout.tsx                  # 布局组件
+├── upload/                     # 文件上传模块
+├── viewer/                     # 3D查看器模块
+├── analysis/                   # 分析面板模块
+└── copilot/                    # 对话控制模块
+
+components/cad/
+├── file-uploader.tsx           # 文件上传组件
+├── model-viewer.tsx            # 3D模型查看器
+├── analysis-panel.tsx          # 分析面板
+├── measurement-tools.tsx       # 测量工具
+├── material-inspector.tsx      # 材料检查器
+├── assembly-tree.tsx           # 装配树组件
+└── report-generator.tsx        # 报告生成器
+
+lib/cad/
+├── parsers/                    # 文件解析器
+│   ├── dwg-parser.ts          # DWG格式解析
+│   ├── step-parser.ts         # STEP格式解析
+│   └── base-parser.ts         # 基础解析器
+├── renderers/                  # 渲染引擎
+│   ├── three-renderer.ts      # Three.js渲染
+│   └── webgl-renderer.ts      # WebGL渲染
+├── analyzers/                  # 分析引擎
+│   ├── geometry-analyzer.ts   # 几何分析
+│   ├── material-analyzer.ts   # 材料分析
+│   └── assembly-analyzer.ts   # 装配分析
+└── exporters/                  # 导出器
+    ├── pdf-exporter.ts        # PDF导出
+    └── json-exporter.ts       # JSON导出
+```
+
+### CAD解析器实现标准
+```typescript
+/**
+ * CAD文件解析器基类
+ *
+ * 定义了所有CAD解析器的统一接口和基础功能
+ */
+export abstract class BaseCADParser {
+  /**
+   * 解析CAD文件
+   *
+   * @param file - 待解析的CAD文件
+   * @param options - 解析选项配置
+   * @returns Promise<CADModel> - 解析后的3D模型数据
+   *
+   * @throws CADParseError - 当文件格式不支持或解析失败时抛出
+   *
+   * @example
+   * ```typescript
+   * const parser = new DWGParser();
+   * const model = await parser.parse(file, { precision: 'high' });
+   * ```
+   */
+  abstract parse(file: File, options?: ParseOptions): Promise<CADModel>;
+
+  /**
+   * 验证文件格式
+   *
+   * @param file - 待验证的文件
+   * @returns boolean - 是否支持该格式
+   */
+  abstract validateFormat(file: File): boolean;
+
+  /**
+   * 获取支持的文件扩展名
+   *
+   * @returns string[] - 支持的扩展名列表
+   */
+  abstract getSupportedExtensions(): string[];
+}
+
+/**
+ * DWG文件解析器
+ */
+export class DWGParser extends BaseCADParser {
+  async parse(file: File, options: ParseOptions = {}): Promise<CADModel> {
+    try {
+      // 验证文件格式
+      if (!this.validateFormat(file)) {
+        throw new CADParseError('不支持的DWG文件格式');
+      }
+
+      // 读取文件数据
+      const buffer = await file.arrayBuffer();
+
+      // 解析DWG数据结构
+      const dwgData = await this.parseDWGStructure(buffer);
+
+      // 转换为标准3D模型
+      const model = this.convertToCADModel(dwgData, options);
+
+      return model;
+    } catch (error) {
+      throw new CADParseError(`DWG解析失败: ${error.message}`);
+    }
+  }
+
+  validateFormat(file: File): boolean {
+    return file.name.toLowerCase().endsWith('.dwg');
+  }
+
+  getSupportedExtensions(): string[] {
+    return ['.dwg'];
+  }
+}
+```
+
+## 🎨 海报生成智能体
+
+### 核心功能架构
+```typescript
+interface PosterAgentCapabilities {
+  templates: {
+    categories: ["商业", "教育", "活动", "产品", "社交"];
+    customization: "完全可定制化";
+  };
+  aiGeneration: {
+    textGeneration: "基于提示词生成文案";
+    imageGeneration: "AI图像生成和编辑";
+    layoutOptimization: "智能布局优化";
+  };
+  export: {
+    formats: ["PNG", "JPG", "PDF", "SVG"];
+    resolutions: ["Web", "Print", "Social"];
+  };
+}
+```
+
+### 海报生成器实现标准
+```typescript
+/**
+ * 海报生成引擎
+ *
+ * 负责海报的设计、生成和导出功能
+ */
+export class PosterGenerationEngine {
+  private aiTextGenerator: AITextGenerator;
+  private imageProcessor: ImageProcessor;
+  private layoutEngine: LayoutEngine;
+
+  constructor() {
+    this.aiTextGenerator = new AITextGenerator();
+    this.imageProcessor = new ImageProcessor();
+    this.layoutEngine = new LayoutEngine();
+  }
+
+  /**
+   * 生成海报
+   *
+   * @param requirements - 海报需求描述
+   * @param template - 使用的模板
+   * @param options - 生成选项
+   * @returns Promise<PosterResult> - 生成的海报数据
+   *
+   * @example
+   * ```typescript
+   * const engine = new PosterGenerationEngine();
+   * const poster = await engine.generatePoster({
+   *   theme: "科技产品发布",
+   *   style: "现代简约",
+   *   size: "A4"
+   * }, template);
+   * ```
+   */
+  async generatePoster(
+    requirements: PosterRequirements,
+    template: PosterTemplate,
+    options: GenerationOptions = {}
+  ): Promise<PosterResult> {
+    try {
+      // 使用AI生成文案内容
+      const content = await this.aiTextGenerator.generateContent(requirements);
+
+      // 生成或处理图像
+      const images = await this.imageProcessor.processImages(
+        requirements.images,
+        options.imageStyle
+      );
+
+      // 智能布局优化
+      const layout = await this.layoutEngine.optimizeLayout(
+        template,
+        content,
+        images,
+        requirements.size
+      );
+
+      // 渲染最终海报
+      const posterData = await this.renderPoster(layout);
+
+      return {
+        success: true,
+        posterData,
+        metadata: {
+          template: template.id,
+          generationTime: Date.now(),
+          aiGenerated: true
+        }
+      };
+    } catch (error) {
+      throw new PosterGenerationError(`海报生成失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 导出海报
+   *
+   * @param poster - 海报数据
+   * @param format - 导出格式
+   * @param quality - 导出质量
+   * @returns Promise<Blob> - 导出的文件数据
+   */
+  async exportPoster(
+    poster: PosterData,
+    format: ExportFormat,
+    quality: ExportQuality = 'high'
+  ): Promise<Blob> {
+    try {
+      const exporter = this.getExporter(format);
+      return await exporter.export(poster, quality);
+    } catch (error) {
+      throw new PosterExportError(`海报导出失败: ${error.message}`);
+    }
+  }
+}
+```
+
+## 🔄 AG-UI协议集成
+
+### CopilotKit集成标准
+```typescript
+/**
+ * 自研智能体的AG-UI协议适配器
+ */
+export class SelfDevelopedAgentAdapter {
+  /**
+   * CAD智能体对话控制
+   */
+  async handleCADConversation(
+    message: string,
+    context: CADContext
+  ): Promise<AgentResponse> {
+    // 解析用户意图
+    const intent = await this.parseUserIntent(message, 'cad');
+
+    switch (intent.action) {
+      case 'upload_file':
+        return this.handleFileUpload(intent.parameters);
+      case 'analyze_model':
+        return this.handleModelAnalysis(intent.parameters, context);
+      case 'generate_report':
+        return this.handleReportGeneration(intent.parameters, context);
+      default:
+        return this.handleGeneralCADQuery(message, context);
+    }
+  }
+
+  /**
+   * 海报智能体对话控制
+   */
+  async handlePosterConversation(
+    message: string,
+    context: PosterContext
+  ): Promise<AgentResponse> {
+    const intent = await this.parseUserIntent(message, 'poster');
+
+    switch (intent.action) {
+      case 'create_poster':
+        return this.handlePosterCreation(intent.parameters);
+      case 'modify_design':
+        return this.handleDesignModification(intent.parameters, context);
+      case 'export_poster':
+        return this.handlePosterExport(intent.parameters, context);
+      default:
+        return this.handleGeneralPosterQuery(message, context);
+    }
+  }
+}
+```
+
+## 🚀 性能优化要求
+
+### GPU加速优化
+```typescript
+/**
+ * GPU加速管理器
+ */
+export class GPUAccelerationManager {
+  /**
+   * CAD模型渲染加速
+   */
+  async accelerateCADRendering(model: CADModel): Promise<void> {
+    // 使用WebGL进行GPU加速渲染
+    // 实现几何体缓存和LOD优化
+  }
+
+  /**
+   * 海报生成加速
+   */
+  async acceleratePosterGeneration(requirements: PosterRequirements): Promise<void> {
+    // 使用GPU加速图像处理
+    // 实现并行文案生成
+  }
+}
+```
+
+### 内存池管理
+```typescript
+/**
+ * 内存池管理器
+ */
+export class MemoryPoolManager {
+  private cadModelPool: Map<string, CADModel> = new Map();
+  private posterTemplatePool: Map<string, PosterTemplate> = new Map();
+
+  /**
+   * CAD模型缓存管理
+   */
+  async cacheCADModel(modelId: string, model: CADModel): Promise<void> {
+    // 实现智能缓存策略
+    // 基于文件大小和访问频率优化
+  }
+
+  /**
+   * 清理过期缓存
+   */
+  async cleanupExpiredCache(): Promise<void> {
+    // 定期清理不再使用的模型数据
+  }
+}
+```
+
+## ⚠️ 开发约束
+
+### 强制要求
+1. **AG-UI协议**: 所有智能体必须支持AG-UI协议
+2. **CopilotKit集成**: 必须通过CopilotKit实现对话控制
+3. **性能优化**: 必须实现GPU加速和内存池管理
+4. **类型安全**: 所有接口必须有完整的TypeScript类型定义
+5. **错误处理**: 必须有完善的异常处理和错误恢复机制
+
+### 最佳实践
+1. **模块化设计**: 解析器、渲染器、分析器独立开发
+2. **缓存策略**: 合理使用内存缓存提升性能
+3. **流式处理**: 大文件处理必须支持流式操作
+4. **用户体验**: 提供实时进度反馈和错误提示
+
+---
+
+**参考文档**:
+- [自研智能体技术指导](.kiro/steering/self-developed-agents.md)
+- [项目架构规范](.cursor/rules/01-project-architecture.mdc)
+- [技术栈和AI模型管理规范](.cursor/rules/08-tech-stack-ai-models.mdc)
+- [API设计标准](.cursor/rules/06-api-design-standards.mdc)

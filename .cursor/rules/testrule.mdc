@@ -1,0 +1,141 @@
+---
+alwaysApply: true
+---
+# 项目测试标准与规范
+
+## 1. 测试框架统一
+
+### 1.1 框架选择
+- **单元测试与集成测试**: 统一使用 [Vitest](https://vitest.dev/) 作为主要测试框架
+- **端到端测试**: 继续使用 [Playwright](https://playwright.dev/)，但需遵循统一配置规范
+- **禁止** 引入其他测试框架 (如 Jest、Mocha 等)
+
+### 1.2 配置统一
+- 所有测试配置集中在 `vitest.config.ts` 文件中
+- 端到端测试配置集中在 `playwright.config.ts` 文件中
+- 测试环境初始化通过 `vitest.setup.ts` 统一处理
+
+## 2. 测试文件命名与存放规范
+
+### 2.1 命名规范
+- 单元测试文件: 使用 `.test.ts` 后缀 (如 `rule-validator.test.ts`)
+- 集成测试文件: 使用 `.test.ts` 后缀并放在 `integration` 目录下
+- 端到端测试文件: 使用 `.spec.ts` 后缀并放在 `e2e` 目录下
+- 测试工具文件: 放在 `lib/testing/` 目录下，不使用测试后缀
+
+### 2.2 存放位置
+- 单元测试: 与被测试代码放在同一目录下
+- 集成测试: 放在 `tests/integration/` 目录下
+- 端到端测试: 放在 `e2e/` 目录下
+- 测试配置: 放在项目根目录下
+- 测试工具: 放在 `lib/testing/` 目录下
+
+## 3. 测试工具统一
+
+### 3.1 工具封装
+- 统一使用 `lib/testing/test-utils.ts` 中的 `TestUtils` 类作为测试工具
+- 性能测试使用 `PerformanceTestUtils` 类
+- 集成测试使用 `IntegrationTestUtils` 类
+- 禁止创建重复功能的测试工具
+
+### 3.2 测试环境
+- 使用 `withTestEnvironment` 装饰器统一管理测试环境
+- 测试环境配置通过 `TestEnvironmentConfig` 接口统一设置
+- 禁止在测试文件中直接修改环境变量
+
+## 4. 测试编写规范
+
+### 4.1 单元测试
+```typescript
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { TestUtils, withTestEnvironment } from '@lib/testing/unified-test-utils';
+import { RuleValidator } from './rule-validator';
+
+describe('RuleValidator', () => {
+  let validator: RuleValidator;
+
+  beforeAll(() => {
+    TestUtils.initialize();
+    validator = new RuleValidator();
+  });
+
+  afterAll(() => {
+    TestUtils.cleanup();
+  });
+
+  it('should validate rule correctly', async () => {
+    const rule = { id: 'test-rule', pattern: /test/g };
+    const testCode = 'const test = 123;';
+    const result = await validator.testRule(rule, testCode);
+    expect(result.matches.length).toBe(1);
+  });
+});
+```
+
+### 4.2 集成测试
+```typescript
+import { describe, it, expect } from 'vitest';
+import { IntegrationTestUtils, withTestEnvironment } from '@lib/testing/unified-test-utils';
+import { request } from 'supertest';
+import { app } from '@/app';
+
+describe('API Integration Tests', () => {
+  beforeAll(async () => {
+    await IntegrationTestUtils.setupTestDatabase();
+    await IntegrationTestUtils.startTestServer();
+  });
+
+  afterAll(async () => {
+    await IntegrationTestUtils.stopTestServer();
+    await IntegrationTestUtils.cleanupTestDatabase();
+  });
+
+  it('should return user data', withTestEnvironment(async () => {
+    const response = await request(app).get('/api/users/1');
+    expect(response.status).toBe(200);
+    expect(response.body).toHaveProperty('id', '1');
+  }));
+});
+```
+
+### 4.3 端到端测试
+```typescript
+import { test, expect } from '@playwright/test';
+
+test('homepage should load correctly', async ({ page }) => {
+  await page.goto('/');
+  await expect(page).toHaveTitle('ZK Agent');
+  await expect(page.getByRole('heading', { name: 'Welcome' })).toBeVisible();
+});
+```
+
+## 5. 测试覆盖率要求
+- 单元测试覆盖率: ≥ 80%
+- 集成测试覆盖率: ≥ 60%
+- 关键业务逻辑: ≥ 90%
+- 覆盖率报告通过 `npm run test:coverage` 生成
+
+## 6. 测试执行命令
+- 运行单元测试: `npm run test`
+- 运行集成测试: `npm run test:integration`
+- 运行端到端测试: `npm run test:e2e`
+- 运行所有测试: `npm run test:all`
+- 查看测试覆盖率: `npm run test:coverage`
+
+## 7. 测试最佳实践
+1. **独立测试**: 每个测试用例应独立运行，不依赖其他测试
+2. **明确命名**: 测试用例名称应清晰描述测试内容
+3. **单一职责**: 每个测试用例只测试一个功能点
+4. **模拟依赖**: 适当使用 Mock 减少测试依赖
+5. **及时清理**: 测试后清理测试数据和状态
+6. **代码风格**: 测试代码与业务代码遵循相同的代码风格
+7. **文档完善**: 复杂测试用例应添加适当注释
+
+## 8. 禁止事项
+- 禁止在测试中使用真实生产数据
+- 禁止测试代码中包含硬编码的敏感信息
+- 禁止编写没有断言的测试用例
+- 禁止测试用例之间相互依赖
+- 禁止使用 `console.log` 进行调试，改用 `vitest` 的调试工具
+
+本规范自发布之日起执行，请所有团队成员严格遵守。

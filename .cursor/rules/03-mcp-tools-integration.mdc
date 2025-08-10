@@ -1,0 +1,727 @@
+---
+alwaysApply: true
+---
+# ZK-Agent MCP工具强制使用规范
+
+## 📋 核心原则
+
+基于 [MCP工具指导钩子](.kiro/hooks/mcp-tools-guidance.kiro.hook)，**每个开发工作必须充分使用MCP工具**。违反此规则将导致工作流程强制终止。
+
+### 强制使用要求
+- 🚨 **TaskManager 与 Mentor 强制协作**: 所有重要决策必须经过双重验证
+- 🚨 **代码审查必须使用 Mentor**: 不得绕过 Mentor 代码审查机制
+- 🚨 **质量控制强制 Serena**: 代码质量检查必须通过 Serena 验证
+- 🚨 **记忆管理强制 Memory**: 关键决策和经验必须存储到 Memory
+
+## 🛠️ TaskManager 核心功能强制使用
+
+### 必须使用的功能
+```typescript
+interface TaskManagerRequiredUsage {
+  // 任务调度与管理
+  taskScheduling: {
+    "TaskManager.schedule_task()": "任务创建和调度";
+    "TaskManager.monitor_progress()": "进度实时监控";
+    "TaskManager.handle_dependencies()": "依赖关系管理";
+    "TaskManager.resource_allocation()": "资源分配优化";
+  };
+
+  // 状态监控与追踪
+  statusMonitoring: {
+    "TaskManager.track_status()": "状态变更追踪";
+    "TaskManager.performance_metrics()": "性能指标监控";
+    "TaskManager.bottleneck_detection()": "瓶颈检测";
+    "TaskManager.health_check()": "系统健康检查";
+  };
+
+  // 错误处理与恢复
+  errorHandling: {
+    "TaskManager.error_recovery()": "自动错误恢复";
+    "TaskManager.rollback_strategy()": "回滚策略执行";
+    "TaskManager.incident_management()": "事故管理";
+    "TaskManager.failure_analysis()": "失败原因分析";
+  };
+
+  // 配置管理与加载
+  configManagement: {
+    "TaskManager.load_config()": "配置文件加载";
+    "TaskManager.validate_config()": "配置验证";
+    "TaskManager.hot_reload()": "热重载配置";
+    "TaskManager.environment_sync()": "环境同步";
+  };
+}
+```
+
+### 使用示例
+```typescript
+// ✅ 正确的TaskManager使用
+async function developNewFeature(featureSpec: FeatureSpec) {
+  // 1. 创建任务并调度
+  const task = await TaskManager.schedule_task({
+    name: "develop-new-feature",
+    spec: featureSpec,
+    priority: "high",
+    estimatedTime: "2h"
+  });
+
+  // 2. 监控任务进度
+  TaskManager.monitor_progress(task.id, (progress) => {
+    console.log(`开发进度: ${progress.percentage}%`);
+  });
+
+  // 3. 处理依赖关系
+  await TaskManager.handle_dependencies(task.id, [
+    "database-migration",
+    "api-endpoint-setup"
+  ]);
+
+  // 4. 分配资源
+  const resources = await TaskManager.resource_allocation({
+    taskId: task.id,
+    requiredResources: ["cpu", "memory", "database"]
+  });
+
+  return task;
+}
+```
+
+## 🧠 Mentor 指导过程强制要求
+
+### 代码审查强制流程
+```typescript
+interface MentorRequiredUsage {
+  // 代码审查功能（强制）
+  codeReview: {
+    "Mentor.review_code()": "代码质量审查";
+    "Mentor.style_check()": "代码风格检查";
+    "Mentor.security_audit()": "安全漏洞审计";
+    "Mentor.performance_analysis()": "性能瓶颈分析";
+  };
+
+  // 架构设计功能（强制）
+  architectureReview: {
+    "Mentor.validate_architecture()": "架构设计验证";
+    "Mentor.design_pattern_check()": "设计模式检查";
+    "Mentor.dependency_analysis()": "依赖关系分析";
+    "Mentor.scalability_assessment()": "可扩展性评估";
+  };
+
+  // 质量把控功能（强制）
+  qualityControl: {
+    "Mentor.quality_metrics()": "质量度量分析";
+    "Mentor.test_coverage_check()": "测试覆盖率检查";
+    "Mentor.maintainability_score()": "可维护性评分";
+    "Mentor.technical_debt_analysis()": "技术债务分析";
+  };
+}
+```
+
+### 强制审查检查点
+```typescript
+// ✅ 每次代码变更必须执行
+async function codeChangeWorkflow(changes: CodeChange[]) {
+  // 1. 强制代码审查
+  const reviewResult = await Mentor.review_code(changes);
+  if (!reviewResult.approved) {
+    throw new Error(`代码审查未通过: ${reviewResult.issues.join(', ')}`);
+  }
+
+  // 2. 强制架构验证
+  const archValidation = await Mentor.validate_architecture(changes);
+  if (!archValidation.compliant) {
+    throw new Error(`架构验证失败: ${archValidation.violations.join(', ')}`);
+  }
+
+  // 3. 强制安全检查
+  const securityCheck = await Mentor.security_audit(changes);
+  if (securityCheck.vulnerabilities.length > 0) {
+    throw new Error(`发现安全漏洞: ${securityCheck.vulnerabilities.length}个`);
+  }
+
+  // 4. 强制质量检查
+  const qualityCheck = await Mentor.quality_metrics(changes);
+  if (qualityCheck.score < 90) {
+    throw new Error(`代码质量评分过低: ${qualityCheck.score}/100`);
+  }
+
+  return { approved: true, metrics: qualityCheck };
+}
+```
+
+## 🔧 Serena 代码质量管理强制使用
+
+### 必须使用的Serena功能
+```typescript
+interface SerenaRequiredUsage {
+  // 代码质量检查（强制）
+  qualityChecks: {
+    "serena.code_review()": "全面代码审查";
+    "serena.style_check()": "代码风格检查";
+    "serena.complexity_check()": "复杂度分析";
+    "serena.duplicate_check()": "重复代码检测";
+    "serena.naming_check()": "命名规范检查";
+  };
+
+  // 测试管理（强制）
+  testManagement: {
+    "serena.test_coverage()": "测试覆盖率检查";
+    "serena.test_generate()": "自动生成测试用例";
+    "serena.test_run()": "执行测试套件";
+    "serena.benchmark_test()": "性能基准测试";
+  };
+
+  // 安全检查（强制）
+  securityChecks: {
+    "serena.security_scan()": "安全漏洞扫描";
+    "serena.dependency_check()": "依赖包安全检查";
+    "serena.secret_scan()": "敏感信息扫描";
+    "serena.permission_check()": "权限检查";
+  };
+
+  // 性能分析（强制）
+  performanceAnalysis: {
+    "serena.performance_analyze()": "性能分析";
+    "serena.memory_profile()": "内存分析";
+    "serena.bottleneck_detect()": "性能瓶颈检测";
+    "serena.optimization_suggest()": "优化建议";
+  };
+}
+```
+
+### 质量门禁强制检查
+```typescript
+// ✅ 提交前强制质量检查
+async function preCommitQualityGate(files: string[]) {
+  console.log("🔍 执行强制质量检查...");
+
+  // 1. 代码风格检查（强制通过）
+  const styleResult = await serena.style_check(files);
+  if (!styleResult.passed) {
+    throw new Error(`代码风格检查失败: ${styleResult.errors.length}个错误`);
+  }
+
+  // 2. 复杂度检查（强制通过）
+  const complexityResult = await serena.complexity_check(files);
+  if (complexityResult.averageComplexity > 10) {
+    throw new Error(`代码复杂度过高: ${complexityResult.averageComplexity}`);
+  }
+
+  // 3. 安全扫描（强制通过）
+  const securityResult = await serena.security_scan(files);
+  if (securityResult.vulnerabilities.length > 0) {
+    throw new Error(`发现安全漏洞: ${securityResult.vulnerabilities.length}个`);
+  }
+
+  // 4. 测试覆盖率检查（强制≥85%）
+  const coverageResult = await serena.test_coverage(files);
+  if (coverageResult.percentage < 85) {
+    throw new Error(`测试覆盖率不足: ${coverageResult.percentage}% < 85%`);
+  }
+
+  console.log("✅ 所有质量检查通过");
+  return true;
+}
+```
+
+## 🧠 Memory 知识管理强制使用
+
+### 强制记录的信息类型
+```typescript
+interface MemoryRequiredUsage {
+  // 设计决策记录（强制）
+  designDecisions: {
+    "memory.store_decision()": "重要设计决策存储";
+    "memory.retrieve_patterns()": "历史模式检索";
+    "memory.analyze_trends()": "趋势分析";
+  };
+
+  // 错误经验记录（强制）
+  errorExperience: {
+    "memory.record_failure()": "失败经验记录";
+    "memory.solution_mapping()": "解决方案映射";
+    "memory.prevention_strategy()": "预防策略存储";
+  };
+
+  // 最佳实践记录（强制）
+  bestPractices: {
+    "memory.store_practice()": "最佳实践存储";
+    "memory.context_mapping()": "上下文映射";
+    "memory.reuse_analysis()": "复用性分析";
+  };
+}
+```
+
+### 强制记录工作流
+```typescript
+// ✅ 每次重要工作结束后强制记录
+async function recordWorkExperience(work: WorkSession) {
+  // 1. 记录设计决策
+  await memory.store_decision({
+    type: "architecture_choice",
+    decision: work.decisions,
+    context: work.context,
+    reasoning: work.reasoning,
+    outcomes: work.outcomes
+  });
+
+  // 2. 记录遇到的问题和解决方案
+  for (const issue of work.issues) {
+    await memory.record_failure({
+      problem: issue.description,
+      solution: issue.solution,
+      prevention: issue.preventionStrategy,
+      tags: issue.tags
+    });
+  }
+
+  // 3. 记录可复用的最佳实践
+  await memory.store_practice({
+    pattern: work.successfulPatterns,
+    context: work.applicableContexts,
+    benefits: work.benefits,
+    limitations: work.limitations
+  });
+}
+```
+
+## 🔄 Sequential Thinking 与 Context7 协同使用
+
+### 问题分析强制流程
+```typescript
+// ✅ 复杂问题必须使用Sequential Thinking分解
+async function solveComplexProblem(problem: ComplexProblem) {
+  // 1. 使用Sequential Thinking分解问题
+  const decomposition = await sequentialThinking.decompose({
+    problem: problem.description,
+    constraints: problem.constraints,
+    goals: problem.goals
+  });
+
+  // 2. 使用Context7获取相关技术文档
+  const relevantDocs = await context7.search({
+    query: problem.keywords,
+    type: "technical_documentation",
+    limit: 10
+  });
+
+  // 3. 结合历史经验
+  const historicalSolutions = await memory.search({
+    pattern: problem.pattern,
+    context: problem.context
+  });
+
+  // 4. 制定分步解决方案
+  const solution = await sequentialThinking.synthesize({
+    subProblems: decomposition.subProblems,
+    resources: relevantDocs,
+    experience: historicalSolutions
+  });
+
+  return solution;
+}
+```
+
+## ⚠️ 违规处理机制
+
+### 强制中断条件
+1. **绕过Mentor代码审查**: 立即中断工作流程
+2. **跳过Serena质量检查**: 拒绝代码提交
+3. **未使用TaskManager调度**: 工作无效化
+4. **未记录到Memory**: 经验无法积累，影响评估
+
+### 合规性检查
+```typescript
+// ✅ 工作开始前的合规性检查
+async function complianceCheck(workPlan: WorkPlan) {
+  const checks = [
+    TaskManager.isAvailable(),
+    Mentor.isConfigured(),
+    serena.isActive(),
+    memory.isAccessible(),
+    sequentialThinking.isReady(),
+    context7.isConnected()
+  ];
+
+  const results = await Promise.all(checks);
+  const failedTools = results
+    .map((result, index) => ({ result, tool: TOOL_NAMES[index] }))
+    .filter(({ result }) => !result)
+    .map(({ tool }) => tool);
+
+  if (failedTools.length > 0) {
+    throw new Error(`MCP工具未就绪: ${failedTools.join(', ')}`);
+  }
+
+  console.log("✅ 所有MCP工具就绪，可以开始工作");
+  return true;
+}
+```
+
+---
+
+**参考文档**:
+- [MCP工具指导钩子](.kiro/hooks/mcp-tools-guidance.kiro.hook)
+- [工作质量保证钩子](.kiro/hooks/work-quality-assurance.kiro.hook)
+- [开发工作流程增强钩子](.kiro/hooks/development-workflow-enhancement.kiro.hook)
+# ZK-Agent MCP工具强制使用规范
+
+## 📋 核心原则
+
+基于 [MCP工具指导钩子](.kiro/hooks/mcp-tools-guidance.kiro.hook)，**每个开发工作必须充分使用MCP工具**。违反此规则将导致工作流程强制终止。
+
+### 强制使用要求
+- 🚨 **TaskManager 与 Mentor 强制协作**: 所有重要决策必须经过双重验证
+- 🚨 **代码审查必须使用 Mentor**: 不得绕过 Mentor 代码审查机制
+- 🚨 **质量控制强制 Serena**: 代码质量检查必须通过 Serena 验证
+- 🚨 **记忆管理强制 Memory**: 关键决策和经验必须存储到 Memory
+
+## 🛠️ TaskManager 核心功能强制使用
+
+### 必须使用的功能
+```typescript
+interface TaskManagerRequiredUsage {
+  // 任务调度与管理
+  taskScheduling: {
+    "TaskManager.schedule_task()": "任务创建和调度";
+    "TaskManager.monitor_progress()": "进度实时监控";
+    "TaskManager.handle_dependencies()": "依赖关系管理";
+    "TaskManager.resource_allocation()": "资源分配优化";
+  };
+
+  // 状态监控与追踪
+  statusMonitoring: {
+    "TaskManager.track_status()": "状态变更追踪";
+    "TaskManager.performance_metrics()": "性能指标监控";
+    "TaskManager.bottleneck_detection()": "瓶颈检测";
+    "TaskManager.health_check()": "系统健康检查";
+  };
+
+  // 错误处理与恢复
+  errorHandling: {
+    "TaskManager.error_recovery()": "自动错误恢复";
+    "TaskManager.rollback_strategy()": "回滚策略执行";
+    "TaskManager.incident_management()": "事故管理";
+    "TaskManager.failure_analysis()": "失败原因分析";
+  };
+
+  // 配置管理与加载
+  configManagement: {
+    "TaskManager.load_config()": "配置文件加载";
+    "TaskManager.validate_config()": "配置验证";
+    "TaskManager.hot_reload()": "热重载配置";
+    "TaskManager.environment_sync()": "环境同步";
+  };
+}
+```
+
+### 使用示例
+```typescript
+// ✅ 正确的TaskManager使用
+async function developNewFeature(featureSpec: FeatureSpec) {
+  // 1. 创建任务并调度
+  const task = await TaskManager.schedule_task({
+    name: "develop-new-feature",
+    spec: featureSpec,
+    priority: "high",
+    estimatedTime: "2h"
+  });
+
+  // 2. 监控任务进度
+  TaskManager.monitor_progress(task.id, (progress) => {
+    console.log(`开发进度: ${progress.percentage}%`);
+  });
+
+  // 3. 处理依赖关系
+  await TaskManager.handle_dependencies(task.id, [
+    "database-migration",
+    "api-endpoint-setup"
+  ]);
+
+  // 4. 分配资源
+  const resources = await TaskManager.resource_allocation({
+    taskId: task.id,
+    requiredResources: ["cpu", "memory", "database"]
+  });
+
+  return task;
+}
+```
+
+## 🧠 Mentor 指导过程强制要求
+
+### 代码审查强制流程
+```typescript
+interface MentorRequiredUsage {
+  // 代码审查功能（强制）
+  codeReview: {
+    "Mentor.review_code()": "代码质量审查";
+    "Mentor.style_check()": "代码风格检查";
+    "Mentor.security_audit()": "安全漏洞审计";
+    "Mentor.performance_analysis()": "性能瓶颈分析";
+  };
+
+  // 架构设计功能（强制）
+  architectureReview: {
+    "Mentor.validate_architecture()": "架构设计验证";
+    "Mentor.design_pattern_check()": "设计模式检查";
+    "Mentor.dependency_analysis()": "依赖关系分析";
+    "Mentor.scalability_assessment()": "可扩展性评估";
+  };
+
+  // 质量把控功能（强制）
+  qualityControl: {
+    "Mentor.quality_metrics()": "质量度量分析";
+    "Mentor.test_coverage_check()": "测试覆盖率检查";
+    "Mentor.maintainability_score()": "可维护性评分";
+    "Mentor.technical_debt_analysis()": "技术债务分析";
+  };
+}
+```
+
+### 强制审查检查点
+```typescript
+// ✅ 每次代码变更必须执行
+async function codeChangeWorkflow(changes: CodeChange[]) {
+  // 1. 强制代码审查
+  const reviewResult = await Mentor.review_code(changes);
+  if (!reviewResult.approved) {
+    throw new Error(`代码审查未通过: ${reviewResult.issues.join(', ')}`);
+  }
+
+  // 2. 强制架构验证
+  const archValidation = await Mentor.validate_architecture(changes);
+  if (!archValidation.compliant) {
+    throw new Error(`架构验证失败: ${archValidation.violations.join(', ')}`);
+  }
+
+  // 3. 强制安全检查
+  const securityCheck = await Mentor.security_audit(changes);
+  if (securityCheck.vulnerabilities.length > 0) {
+    throw new Error(`发现安全漏洞: ${securityCheck.vulnerabilities.length}个`);
+  }
+
+  // 4. 强制质量检查
+  const qualityCheck = await Mentor.quality_metrics(changes);
+  if (qualityCheck.score < 90) {
+    throw new Error(`代码质量评分过低: ${qualityCheck.score}/100`);
+  }
+
+  return { approved: true, metrics: qualityCheck };
+}
+```
+
+## 🔧 Serena 代码质量管理强制使用
+
+### 必须使用的Serena功能
+```typescript
+interface SerenaRequiredUsage {
+  // 代码质量检查（强制）
+  qualityChecks: {
+    "serena.code_review()": "全面代码审查";
+    "serena.style_check()": "代码风格检查";
+    "serena.complexity_check()": "复杂度分析";
+    "serena.duplicate_check()": "重复代码检测";
+    "serena.naming_check()": "命名规范检查";
+  };
+
+  // 测试管理（强制）
+  testManagement: {
+    "serena.test_coverage()": "测试覆盖率检查";
+    "serena.test_generate()": "自动生成测试用例";
+    "serena.test_run()": "执行测试套件";
+    "serena.benchmark_test()": "性能基准测试";
+  };
+
+  // 安全检查（强制）
+  securityChecks: {
+    "serena.security_scan()": "安全漏洞扫描";
+    "serena.dependency_check()": "依赖包安全检查";
+    "serena.secret_scan()": "敏感信息扫描";
+    "serena.permission_check()": "权限检查";
+  };
+
+  // 性能分析（强制）
+  performanceAnalysis: {
+    "serena.performance_analyze()": "性能分析";
+    "serena.memory_profile()": "内存分析";
+    "serena.bottleneck_detect()": "性能瓶颈检测";
+    "serena.optimization_suggest()": "优化建议";
+  };
+}
+```
+
+### 质量门禁强制检查
+```typescript
+// ✅ 提交前强制质量检查
+async function preCommitQualityGate(files: string[]) {
+  console.log("🔍 执行强制质量检查...");
+
+  // 1. 代码风格检查（强制通过）
+  const styleResult = await serena.style_check(files);
+  if (!styleResult.passed) {
+    throw new Error(`代码风格检查失败: ${styleResult.errors.length}个错误`);
+  }
+
+  // 2. 复杂度检查（强制通过）
+  const complexityResult = await serena.complexity_check(files);
+  if (complexityResult.averageComplexity > 10) {
+    throw new Error(`代码复杂度过高: ${complexityResult.averageComplexity}`);
+  }
+
+  // 3. 安全扫描（强制通过）
+  const securityResult = await serena.security_scan(files);
+  if (securityResult.vulnerabilities.length > 0) {
+    throw new Error(`发现安全漏洞: ${securityResult.vulnerabilities.length}个`);
+  }
+
+  // 4. 测试覆盖率检查（强制≥85%）
+  const coverageResult = await serena.test_coverage(files);
+  if (coverageResult.percentage < 85) {
+    throw new Error(`测试覆盖率不足: ${coverageResult.percentage}% < 85%`);
+  }
+
+  console.log("✅ 所有质量检查通过");
+  return true;
+}
+```
+
+## 🧠 Memory 知识管理强制使用
+
+### 强制记录的信息类型
+```typescript
+interface MemoryRequiredUsage {
+  // 设计决策记录（强制）
+  designDecisions: {
+    "memory.store_decision()": "重要设计决策存储";
+    "memory.retrieve_patterns()": "历史模式检索";
+    "memory.analyze_trends()": "趋势分析";
+  };
+
+  // 错误经验记录（强制）
+  errorExperience: {
+    "memory.record_failure()": "失败经验记录";
+    "memory.solution_mapping()": "解决方案映射";
+    "memory.prevention_strategy()": "预防策略存储";
+  };
+
+  // 最佳实践记录（强制）
+  bestPractices: {
+    "memory.store_practice()": "最佳实践存储";
+    "memory.context_mapping()": "上下文映射";
+    "memory.reuse_analysis()": "复用性分析";
+  };
+}
+```
+
+### 强制记录工作流
+```typescript
+// ✅ 每次重要工作结束后强制记录
+async function recordWorkExperience(work: WorkSession) {
+  // 1. 记录设计决策
+  await memory.store_decision({
+    type: "architecture_choice",
+    decision: work.decisions,
+    context: work.context,
+    reasoning: work.reasoning,
+    outcomes: work.outcomes
+  });
+
+  // 2. 记录遇到的问题和解决方案
+  for (const issue of work.issues) {
+    await memory.record_failure({
+      problem: issue.description,
+      solution: issue.solution,
+      prevention: issue.preventionStrategy,
+      tags: issue.tags
+    });
+  }
+
+  // 3. 记录可复用的最佳实践
+  await memory.store_practice({
+    pattern: work.successfulPatterns,
+    context: work.applicableContexts,
+    benefits: work.benefits,
+    limitations: work.limitations
+  });
+}
+```
+
+## 🔄 Sequential Thinking 与 Context7 协同使用
+
+### 问题分析强制流程
+```typescript
+// ✅ 复杂问题必须使用Sequential Thinking分解
+async function solveComplexProblem(problem: ComplexProblem) {
+  // 1. 使用Sequential Thinking分解问题
+  const decomposition = await sequentialThinking.decompose({
+    problem: problem.description,
+    constraints: problem.constraints,
+    goals: problem.goals
+  });
+
+  // 2. 使用Context7获取相关技术文档
+  const relevantDocs = await context7.search({
+    query: problem.keywords,
+    type: "technical_documentation",
+    limit: 10
+  });
+
+  // 3. 结合历史经验
+  const historicalSolutions = await memory.search({
+    pattern: problem.pattern,
+    context: problem.context
+  });
+
+  // 4. 制定分步解决方案
+  const solution = await sequentialThinking.synthesize({
+    subProblems: decomposition.subProblems,
+    resources: relevantDocs,
+    experience: historicalSolutions
+  });
+
+  return solution;
+}
+```
+
+## ⚠️ 违规处理机制
+
+### 强制中断条件
+1. **绕过Mentor代码审查**: 立即中断工作流程
+2. **跳过Serena质量检查**: 拒绝代码提交
+3. **未使用TaskManager调度**: 工作无效化
+4. **未记录到Memory**: 经验无法积累，影响评估
+
+### 合规性检查
+```typescript
+// ✅ 工作开始前的合规性检查
+async function complianceCheck(workPlan: WorkPlan) {
+  const checks = [
+    TaskManager.isAvailable(),
+    Mentor.isConfigured(),
+    serena.isActive(),
+    memory.isAccessible(),
+    sequentialThinking.isReady(),
+    context7.isConnected()
+  ];
+
+  const results = await Promise.all(checks);
+  const failedTools = results
+    .map((result, index) => ({ result, tool: TOOL_NAMES[index] }))
+    .filter(({ result }) => !result)
+    .map(({ tool }) => tool);
+
+  if (failedTools.length > 0) {
+    throw new Error(`MCP工具未就绪: ${failedTools.join(', ')}`);
+  }
+
+  console.log("✅ 所有MCP工具就绪，可以开始工作");
+  return true;
+}
+```
+
+---
+
+**参考文档**:
+- [MCP工具指导钩子](.kiro/hooks/mcp-tools-guidance.kiro.hook)
+- [工作质量保证钩子](.kiro/hooks/work-quality-assurance.kiro.hook)
+- [开发工作流程增强钩子](.kiro/hooks/development-workflow-enhancement.kiro.hook)

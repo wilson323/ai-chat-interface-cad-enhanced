@@ -17,11 +17,11 @@ import type {
   CADAnalysisProgress 
 } from '@/lib/types/cad';
 import { v4 as uuidv4 } from 'uuid';
-import { SUPPORTED_CAD_FILE_TYPES, CAD_FILE_TYPE_MAP } from './cad-analyzer-service';
+import { CADAnalyzerService } from '../cad-analyzer-service';
 import { DomainSpecificAnalysis, IFCAnalysisOptions, CADComponentType } from '@/lib/types/cad';
 
-// 支持的文件类型
-export const SUPPORTED_CAD_FILE_TYPES: CADFileType[] = [
+// 支持的文件类型（本地定义，避免与其他模块重复导入冲突）
+const SUPPORTED_CAD_FILE_TYPES: CADFileType[] = [
   'dxf', 'dwg', 'step', 'stp', 'iges', 'igs', 'stl', 'obj', 'gltf', 'glb'
 ];
 

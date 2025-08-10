@@ -1,0 +1,731 @@
+---
+alwaysApply: true
+---
+# ZK-Agent CI/CD 规范 - Linux Ubuntu生产环境
+
+## 📋 CI/CD核心原则
+
+基于 [CI/CD指导文档](mdc:docs/CI_CD_GUIDELINES.md) 和 [项目架构规范](mdc:.cursor/rules/01-project-architecture.mdc)，专门为Linux Ubuntu生产环境优化。
+
+### 核心设计原则
+- **质量优先**: 每个阶段都必须通过严格的质量门禁
+- **自动化优先**: 所有检查和部署都必须自动化
+- **快速反馈**: CI/CD流程必须在10分钟内给出反馈
+- **零停机部署**: 生产环境部署必须确保零停机
+- **可观测性**: 全流程可监控、可追踪、可回滚
+
+### Linux Ubuntu生产环境技术栈
+- **生产环境**: Ubuntu 22.04 LTS Server
+- **CI/CD平台**: GitHub Actions (主) + GitLab CI (备选)
+- **容器化**: Docker + Docker Compose + Kubernetes
+- **制品管理**: GitHub Container Registry + Docker Hub
+- **监控告警**: Prometheus + Grafana + Jaeger
+- **安全扫描**: Trivy + Snyk + CodeQL
+- **包管理**: APT + Snap (Ubuntu特有)
+
+## 🔄 CI流程规范 - Ubuntu优化
+
+### GitHub Actions工作流配置
+```yaml
+# ✅ Ubuntu生产环境CI工作流
+name: 🚀 ZK-Agent CI/CD Pipeline (Ubuntu Production)
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    - cron: '0 2 * * *'  # 每日安全扫描
+
+env:
+  NODE_VERSION: '18'
+  PYTHON_VERSION: '3.11'
+  DOCKER_REGISTRY: ghcr.io
+  IMAGE_NAME: zk-agent
+  UBUNTU_VERSION: '22.04'
+
+jobs:
+  # 阶段1：代码质量检查 - Ubuntu环境
+  code-quality:
+    name: 📊 代码质量检查 (Ubuntu)
+    runs-on: ubuntu-22.04  # 使用与生产环境相同的Ubuntu版本
+    timeout-minutes: 15
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 🔧 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: 🐍 设置Python环境
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: 'pip'
+
+      - name: 📦 安装Ubuntu系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential libpq-dev redis-tools
+
+      - name: 📦 安装依赖
+        run: |
+          npm ci
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: 🔍 ESLint检查
+        run: |
+          npm run lint:check
+          npm run lint:report
+
+      - name: 🐍 Python代码检查
+        run: |
+          black --check .
+          flake8 .
+          mypy .
+          isort --check-only .
+
+      - name: 📊 TypeScript编译检查
+        run: npm run type-check
+
+      - name: 🚫 质量门禁检查
+        run: |
+          node scripts/quality-gate.js
+        env:
+          MIN_COVERAGE: 85
+          MAX_COMPLEXITY: 10
+          MAX_DUPLICATION: 3
+
+  # 阶段2：安全扫描 - Ubuntu专用
+  security-scan:
+    name: 🔒 安全扫描 (Ubuntu)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🔍 CodeQL代码安全分析
+        uses: github/codeql-action/init@v2
+        with:
+          languages: typescript, python
+
+      - name: 🏗️ 自动构建
+        uses: github/codeql-action/autobuild@v2
+
+      - name: 🔍 执行CodeQL分析
+        uses: github/codeql-action/analyze@v2
+
+      - name: 📦 依赖安全扫描
+        run: |
+          # Node.js依赖扫描
+          npm audit --audit-level=high
+          npx snyk test --severity-threshold=high
+
+          # Python依赖扫描
+          pip-audit --require-hashes --desc
+          safety check --full-report
+
+      - name: 🐳 Ubuntu Docker镜像安全扫描
+        run: |
+          docker build -t temp-image .
+          trivy image --exit-code 1 --severity HIGH,CRITICAL temp-image
+
+      - name: 🔐 敏感信息检测
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: main
+          head: HEAD
+
+  # 阶段3：单元测试 - 多Ubuntu版本兼容性
+  unit-tests:
+    name: 🧪 单元测试 (Ubuntu)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+
+    strategy:
+      matrix:
+        ubuntu-version: [20.04, 22.04]
+        node-version: [18, 20]
+        python-version: [3.11, 3.12]
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🔧 设置环境
+        uses: ./.github/actions/setup-ubuntu-environment
+        with:
+          ubuntu-version: ${{ matrix.ubuntu-version }}
+          node-version: ${{ matrix.node-version }}
+          python-version: ${{ matrix.python-version }}
+
+      - name: 🧪 前端单元测试
+        run: |
+          npm run test:unit
+          npm run test:coverage
+
+      - name: 🐍 后端单元测试
+        run: |
+          pytest tests/unit/ \
+            --cov=app \
+            --cov-report=xml \
+            --cov-report=html \
+            --cov-fail-under=85 \
+            --junitxml=test-results.xml
+
+  # 阶段4：集成测试 - Ubuntu服务集成
+  integration-tests:
+    name: 🔗 集成测试 (Ubuntu Services)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+    needs: [unit-tests]
+
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: zk_agent_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🔧 设置Ubuntu环境
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client redis-tools
+
+      - name: 🐳 启动服务
+        run: |
+          docker-compose -f docker-compose.ubuntu.yml up -d
+
+      - name: ⏳ 等待服务就绪
+        run: |
+          timeout 300s bash -c 'until curl -f http://localhost:8000/health; do sleep 5; done'
+
+      - name: 🔗 API集成测试
+        run: |
+          npm run test:integration
+          pytest tests/integration/ --maxfail=5
+
+  # 阶段5：构建Ubuntu优化镜像
+  build-ubuntu-images:
+    name: 🐳 构建Ubuntu优化镜像
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    needs: [code-quality, security-scan, unit-tests]
+    if: github.event_name == 'push'
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tags }}
+      image-digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - name: 📥 检出代码
+        uses: actions/checkout@v4
+
+      - name: 🔧 设置Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: 🔐 登录Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.DOCKER_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 📝 提取元数据
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=sha,prefix=ubuntu-
+            type=raw,value=ubuntu-latest,enable={{is_default_branch}}
+
+      - name: 🏗️ 构建Ubuntu优化镜像
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.ubuntu
+          platforms: linux/amd64  # Ubuntu生产环境优化
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            UBUNTU_VERSION=22.04
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            REVISION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+
+      - name: 🔍 Ubuntu镜像安全扫描
+        run: |
+          trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            ${{ env.DOCKER_REGISTRY }}/${{ github.repository }}:ubuntu-${{ github.sha }}
+```
+
+## 🚀 Ubuntu生产部署规范
+
+### Ubuntu服务器部署配置
+```yaml
+# ✅ Ubuntu生产部署工作流
+deploy-ubuntu-production:
+  name: 🚀 Ubuntu生产环境部署
+  runs-on: ubuntu-22.04
+  timeout-minutes: 30
+  needs: [build-ubuntu-images, integration-tests]
+  if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+  environment:
+    name: production-ubuntu
+    url: https://zk-agent.com
+
+  steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+
+    - name: 🔧 设置kubectl for Ubuntu
+      run: |
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        chmod +x kubectl
+        sudo mv kubectl /usr/local/bin/
+
+    - name: 🔐 配置Ubuntu Kubernetes认证
+      run: |
+        echo "${{ secrets.KUBE_CONFIG_UBUNTU }}" | base64 -d > ~/.kube/config
+        chmod 600 ~/.kube/config
+
+    - name: 🔄 Ubuntu蓝绿部署
+      run: |
+        # 部署到Ubuntu绿色环境
+        kubectl apply -f k8s/ubuntu/green/
+
+        # 等待Ubuntu部署就绪
+        kubectl rollout status deployment/zk-agent-green -n production-ubuntu --timeout=600s
+
+        # Ubuntu环境健康检查
+        kubectl wait --for=condition=ready pod -l app=zk-agent-green,os=ubuntu -n production-ubuntu --timeout=300s
+
+    - name: 🧪 Ubuntu生产烟雾测试
+      run: |
+        # Ubuntu环境功能测试
+        curl -f https://green.zk-agent.com/health
+        curl -f https://green.zk-agent.com/api/health
+
+        # Ubuntu系统资源检查
+        kubectl top nodes
+        kubectl top pods -n production-ubuntu
+
+    - name: 🔄 Ubuntu流量切换
+      run: |
+        # Ubuntu环境流量切换
+        kubectl patch service zk-agent-service -n production-ubuntu \
+          -p '{"spec":{"selector":{"version":"green","os":"ubuntu"}}}'
+
+    - name: ⏳ 验证Ubuntu部署
+      run: |
+        # 验证Ubuntu生产环境
+        for i in {1..10}; do
+          curl -f https://zk-agent.com/health && break
+          sleep 30
+        done
+
+        # Ubuntu系统状态检查
+        kubectl get nodes -l kubernetes.io/os=linux
+        kubectl describe node -l kubernetes.io/os=linux | grep -E "Kernel|OS|Container"
+```
+
+## 📈 Ubuntu监控配置
+
+### Ubuntu系统监控
+```yaml
+# ✅ Ubuntu Prometheus监控配置
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-ubuntu-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      evaluation_interval: 15s
+
+    scrape_configs:
+      - job_name: 'ubuntu-nodes'
+        static_configs:
+          - targets: ['node-exporter:9100']
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: instance
+          - target_label: os
+            replacement: ubuntu
+
+      - job_name: 'zk-agent-ubuntu'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names: ['production-ubuntu']
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_node_name]
+            target_label: ubuntu_node
+
+      - job_name: 'ubuntu-system-metrics'
+        static_configs:
+          - targets: ['localhost:9100']
+        metrics_path: /metrics
+        params:
+          collect[]:
+            - cpu
+            - meminfo
+            - diskstats
+            - filesystem
+            - netdev
+            - systemd
+
+---
+# ✅ Ubuntu告警规则
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ubuntu-alert-rules
+data:
+  ubuntu-alerts.yml: |
+    groups:
+      - name: ubuntu-system-alerts
+        rules:
+          # Ubuntu系统资源告警
+          - alert: UbuntuHighCpuUsage
+            expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+            for: 5m
+            labels:
+              severity: warning
+              os: ubuntu
+            annotations:
+              summary: "Ubuntu服务器CPU使用率过高"
+              description: "Ubuntu节点 {{ $labels.instance }} CPU使用率: {{ $value }}% > 80%"
+
+          - alert: UbuntuHighMemoryUsage
+            expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 85
+            for: 5m
+            labels:
+              severity: warning
+              os: ubuntu
+            annotations:
+              summary: "Ubuntu服务器内存使用率过高"
+              description: "Ubuntu节点 {{ $labels.instance }} 内存使用率: {{ $value }}% > 85%"
+
+          - alert: UbuntuDiskSpaceHigh
+            expr: (1 - (node_filesystem_avail_bytes{fstype!="tmpfs"} / node_filesystem_size_bytes)) * 100 > 90
+            for: 5m
+            labels:
+              severity: critical
+              os: ubuntu
+            annotations:
+              summary: "Ubuntu服务器磁盘空间不足"
+              description: "Ubuntu节点 {{ $labels.instance }} 磁盘使用率: {{ $value }}% > 90%"
+
+          - alert: UbuntuSystemdServiceDown
+            expr: node_systemd_unit_state{state="active"} == 0
+            for: 2m
+            labels:
+              severity: critical
+              os: ubuntu
+            annotations:
+              summary: "Ubuntu系统服务异常"
+              description: "Ubuntu服务 {{ $labels.name }} 在节点 {{ $labels.instance }} 上处于非活动状态"
+```
+
+## 🐧 Ubuntu Dockerfile优化
+
+### Ubuntu专用Dockerfile
+```dockerfile
+# ✅ Ubuntu生产环境优化Dockerfile
+FROM ubuntu:22.04 as base
+
+# 设置Ubuntu环境变量
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+ENV UBUNTU_VERSION=22.04
+
+# 安装Ubuntu基础依赖
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    build-essential \
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装Node.js (Ubuntu推荐方式)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# 安装Python (Ubuntu系统Python)
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-pip \
+    python3.11-venv \
+    python3.11-dev \
+    && ln -s /usr/bin/python3.11 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制依赖文件
+COPY package*.json ./
+COPY requirements.txt ./
+
+# 安装依赖
+RUN npm ci --only=production \
+    && python -m pip install --no-cache-dir -r requirements.txt
+
+# 复制应用代码
+COPY . .
+
+# 构建应用
+RUN npm run build
+
+# 创建非root用户（Ubuntu安全最佳实践）
+RUN groupadd -r ubuntu-app && useradd -r -g ubuntu-app ubuntu-app \
+    && chown -R ubuntu-app:ubuntu-app /app
+
+USER ubuntu-app
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# 暴露端口
+EXPOSE 3000
+
+# 启动命令
+CMD ["npm", "start"]
+```
+
+## ⚠️ Ubuntu安全要求
+
+### Ubuntu安全配置
+```bash
+# ✅ Ubuntu安全加固脚本
+#!/bin/bash
+set -euo pipefail
+
+echo "🔒 开始Ubuntu安全加固..."
+
+# 更新系统
+apt-get update && apt-get upgrade -y
+
+# 安装安全工具
+apt-get install -y \
+    ufw \
+    fail2ban \
+    unattended-upgrades \
+    apt-listchanges
+
+# 配置防火墙
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+
+# 配置自动安全更新
+cat << 'EOF' > /etc/apt/apt.conf.d/50unattended-upgrades
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}:${distro_codename}-updates";
+};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+
+# 启用fail2ban
+systemctl enable fail2ban
+systemctl start fail2ban
+
+echo "✅ Ubuntu安全加固完成"
+```
+
+### Ubuntu性能要求
+- **启动时间**: Ubuntu容器启动 ≤ 30秒
+- **内存占用**: 基础镜像 ≤ 500MB
+- **构建时间**: Ubuntu镜像构建 ≤ 10分钟
+- **网络延迟**: Ubuntu节点间通信 ≤ 1ms
+- **磁盘IO**: Ubuntu存储响应 ≤ 10ms
+
+---
+
+## 🐧 Ubuntu Dockerfile优化
+
+### Ubuntu专用Dockerfile
+```dockerfile
+# ✅ Ubuntu生产环境优化Dockerfile
+FROM ubuntu:22.04 as base
+
+# 设置Ubuntu环境变量
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Asia/Shanghai
+ENV UBUNTU_VERSION=22.04
+
+# 安装Ubuntu基础依赖
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    git \
+    build-essential \
+    software-properties-common \
+    apt-transport-https \
+    ca-certificates \
+    gnupg \
+    lsb-release \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装Node.js (Ubuntu推荐方式)
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - \
+    && apt-get install -y nodejs
+
+# 安装Python (Ubuntu系统Python)
+RUN apt-get update && apt-get install -y \
+    python3.11 \
+    python3.11-pip \
+    python3.11-venv \
+    python3.11-dev \
+    && ln -s /usr/bin/python3.11 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
+
+# 设置工作目录
+WORKDIR /app
+
+# 复制依赖文件
+COPY package*.json ./
+COPY requirements.txt ./
+
+# 安装依赖
+RUN npm ci --only=production \
+    && python -m pip install --no-cache-dir -r requirements.txt
+
+# 复制应用代码
+COPY . .
+
+# 构建应用
+RUN npm run build
+
+# 创建非root用户（Ubuntu安全最佳实践）
+RUN groupadd -r ubuntu-app && useradd -r -g ubuntu-app ubuntu-app \
+    && chown -R ubuntu-app:ubuntu-app /app
+
+USER ubuntu-app
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:3000/health || exit 1
+
+# 暴露端口
+EXPOSE 3000
+
+# 启动命令
+CMD ["npm", "start"]
+```
+
+## ⚠️ Ubuntu安全要求
+
+### Ubuntu安全配置
+```bash
+# ✅ Ubuntu安全加固脚本
+#!/bin/bash
+set -euo pipefail
+
+echo "🔒 开始Ubuntu安全加固..."
+
+# 更新系统
+apt-get update && apt-get upgrade -y
+
+# 安装安全工具
+apt-get install -y \
+    ufw \
+    fail2ban \
+    unattended-upgrades \
+    apt-listchanges
+
+# 配置防火墙
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow 80/tcp
+ufw allow 443/tcp
+ufw --force enable
+
+# 配置自动安全更新
+cat << 'EOF' > /etc/apt/apt.conf.d/50unattended-upgrades
+Unattended-Upgrade::Allowed-Origins {
+    "${distro_id}:${distro_codename}-security";
+    "${distro_id}:${distro_codename}-updates";
+};
+Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+Unattended-Upgrade::MinimalSteps "true";
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+Unattended-Upgrade::Automatic-Reboot "false";
+EOF
+
+# 启用fail2ban
+systemctl enable fail2ban
+systemctl start fail2ban
+
+echo "✅ Ubuntu安全加固完成"
+```
+
+### Ubuntu性能要求
+- **启动时间**: Ubuntu容器启动 ≤ 30秒
+- **内存占用**: 基础镜像 ≤ 500MB
+- **构建时间**: Ubuntu镜像构建 ≤ 10分钟
+- **网络延迟**: Ubuntu节点间通信 ≤ 1ms
+- **磁盘IO**: Ubuntu存储响应 ≤ 10ms
+
+---
+
+**参考文档**:
+- [CI/CD指导文档](mdc:docs/CI_CD_GUIDELINES.md)
+- [项目架构规范](mdc:.cursor/rules/01-project-architecture.mdc)
+- [Ubuntu官方文档](https://ubuntu.com/server/docs)
+- [Kubernetes Ubuntu节点配置](https://kubernetes.io/docs/setup/production-environment/)

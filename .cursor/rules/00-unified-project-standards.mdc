@@ -1,0 +1,224 @@
+---
+alwaysApply: true
+---
+
+# ZK-Agent 统一项目开发规范（去重版 Cursor 规则）
+
+本规则整合并去重项目内分散规范，作为唯一规范来源。若与其它文档冲突，以本文件为准；禁止新增第二套平行规范。
+
+参考文件（可跳转）：
+- 架构优化与演进计划：[ARCHITECTURE_OPTIMIZATION_PLAN.md](mdc:ARCHITECTURE_OPTIMIZATION_PLAN.md)
+- API 总览与说明：[docs/API.md](mdc:docs/API.md)
+- 架构合规配置：[config/architecture-compliance.config.json](mdc:config/architecture-compliance.config.json)
+- E2E 测试示例：[e2e/homepage.spec.ts](mdc:e2e/homepage.spec.ts)
+- 安全与监控目录：[lib/security/](mdc:lib/security/)、[monitoring/](mdc:monitoring/)
+
+## 1) 技术栈与禁止项
+- 前端：Next.js + React + TypeScript（严格模式）
+- 后端：Python FastAPI（Python 3.11+）
+- 数据：PostgreSQL 为唯一关系型；Redis（含 Streams）缓存/队列；向量优先 Qdrant；对象存储 MinIO；分析 ClickHouse
+- 模型接入：统一经 OpenAI 协议适配器（区分对话/嵌入模型）
+- 禁止项：禁止使用 SQLite、禁止在生产路径使用 Mock/模拟服务
+
+## 2) 目录导航（关键路径）
+- Web 应用：`app/`（Next.js App Router）
+- 后端服务：`backend/app/`（FastAPI），容器化见 `backend/Dockerfile` 与 `backend/docker-compose.yml`
+- 数据与迁移：`migrations/`、`prisma/`
+- 公共库：`lib/`（ai、security、monitoring、multi-agent 等）
+- 测试：`vitest/`、`tests/`、`e2e/`
+
+## 3) TypeScript 规范
+- 显式导出公共 API 类型；偏好早返回与错误优先处理；避免 >3 层嵌套
+- 测试：统一 Vitest；E2E 使用 Playwright；禁止新增 Jest/Mocha
+- 组件与模块命名语义化；新增前须全局检索避免重复造轮子
+
+## 4) Python 规范
+- 风格：PEP 8；使用 black、flake8、isort（行宽 88）
+- 类型：所有函数必须有类型注解；mypy 静态检查
+- 异步：优先 asyncio；IO 密集异步化；CPU 密集入队列/Worker
+- 日志与异常：统一 logging；语义化异常，自定义异常优先
+
+## 5) 测试与覆盖率
+- TS 单测/集成：Vitest；E2E：Playwright；必要时后端用 pytest
+- 覆盖率指标：单元 ≥ 80%，关键路径 ≥ 90%，集成 ≥ 60%
+- 统一命令示例：`npm run test`、`npm run test:coverage`、`npm run test:e2e`
+
+## 6) API 与多智能体
+- API：RESTful + OpenAPI；优先 Next.js API Routes，逐步网关化
+- 多智能体：AutoGen/CrewAI/LangGraph 由编排服务负责；状态/队列使用 Redis（Streams）
+- 流式通信需具备断线重连与错误恢复
+
+## 7) 安全与合规
+- 鉴权与授权：NextAuth/JWT + RBAC/ABAC；服务间 mTLS；端到端加密
+- 输入/输出安全：校验、内容过滤、Prompt 注入防护；敏感信息用环境变量
+- 依赖安全：定期审计；严禁高危漏洞依赖进入主分支
+
+## 8) 性能与可观测性
+- 缓存：L1 内存 + L2 Redis，Cache-Aside 写失效；模板与热点缓存
+- 并发：CPU 密集走 Worker/队列；WebSocket 集群 + Redis 适配器
+- 观测：Prometheus + Grafana、Jaeger、结构化日志
+
+## 9) 提交、版本与文档
+- Git Flow + 语义化版本；提交前必须通过 Lint/Tests/Sec 扫描
+- 文档即代码：变更须同步更新相关 md，并在同一 PR 提交
+- 新模块先有设计文档（`docs/` 或 `.kiro/specs/`），后编码实现
+
+## 10) Windows 环境注意
+- 以 PowerShell 语法示例为准；路径/通配符遵循 PowerShell
+- 长命令请分步执行，避免 Linux 专属命令
+
+## 11) 去冗余与一致性（强制）
+- 禁止新增第二套测试/风格/安全等标准；冲突时以本文件为准
+- 新功能前做全库搜索复用已有模块；删除被替代的旧规范以防多头
+
+## 快速清单（Do/Don't）
+- DO：PostgreSQL + Redis + Qdrant/MinIO/ClickHouse；OpenAI 适配；Vitest + Playwright
+- DO：TS/py 全量类型；结构化日志；缓存与异步；零信任安全
+- DON'T：SQLite、Jest/Mocha、生产 Mock、重复规范文件、无类型导出
+
+## 📋 详细规范文件索引
+
+### 核心架构规范
+- [01-项目架构规范](.cursor/rules/01-project-architecture.mdc) - 系统整体架构、技术栈、三大智能体子系统
+- [02-开发规范](.cursor/rules/02-development-standards.mdc) - 代码质量、Python/TypeScript开发标准
+- [08-技术栈和AI模型管理规范](.cursor/rules/08-tech-stack-ai-models.mdc) - 技术选型、AI模型管理
+
+### 工具与流程规范
+- [03-MCP工具集成规范](.cursor/rules/03-mcp-tools-integration.mdc) - 强制MCP工具使用标准
+- [04-测试标准](.cursor/rules/04-testing-standards.mdc) - 统一测试框架和覆盖率要求
+- [09-工作质量保证规范](.cursor/rules/09-work-quality-assurance.mdc) - 工作前后质量验证流程
+
+### 环境与部署规范
+- [05-Windows环境钩子规范](.cursor/rules/05-windows-environment-hooks.mdc) - Windows开发环境特殊要求
+- [07-CI/CD标准](.cursor/rules/07-cicd-standards.mdc) - Linux Ubuntu生产环境CI/CD
+
+### API与接口规范
+- [06-API设计标准](.cursor/rules/06-api-design-standards.mdc) - RESTful API设计、认证、版本控制
+
+## ⚠️ 违规处理与质量门禁
+
+### 强制执行规则
+1. **技术栈一致性**: 严格遵循指定技术栈，禁止擅自更改
+2. **MCP工具强制使用**: 每个开发阶段必须使用对应MCP工具
+3. **质量门禁**: 代码质量≥90%，测试覆盖率≥85%，安全漏洞=0
+4. **真实环境**: 禁止使用模拟数据和服务
+5. **全局一致性**: 所有规范必须与本统一标准一致
+
+### 质量检查点
+- **提交前**: ESLint/Black + 类型检查 + 单元测试
+- **合并前**: 集成测试 + 安全扫描 + 性能回归检查
+- **部署前**: E2E测试 + 容器安全扫描 + 生产兼容性验证
+
+---
+
+**重要提醒**: 本文件为项目开发规范的唯一权威来源，所有开发工作必须严格遵循。如发现与其他文档冲突，以本规则为准。
+# ZK-Agent 统一项目开发规范（去重版 Cursor 规则）
+
+本规则整合并去重项目内分散规范，作为唯一规范来源。若与其它文档冲突，以本文件为准；禁止新增第二套平行规范。
+
+参考文件（可跳转）：
+- 架构优化与演进计划：[ARCHITECTURE_OPTIMIZATION_PLAN.md](mdc:ARCHITECTURE_OPTIMIZATION_PLAN.md)
+- API 总览与说明：[docs/API.md](mdc:docs/API.md)
+- 架构合规配置：[config/architecture-compliance.config.json](mdc:config/architecture-compliance.config.json)
+- E2E 测试示例：[e2e/homepage.spec.ts](mdc:e2e/homepage.spec.ts)
+- 安全与监控目录：[lib/security/](mdc:lib/security/)、[monitoring/](mdc:monitoring/)
+
+## 1) 技术栈与禁止项
+- 前端：Next.js + React + TypeScript（严格模式）
+- 后端：Python FastAPI（Python 3.11+）
+- 数据：PostgreSQL 为唯一关系型；Redis（含 Streams）缓存/队列；向量优先 Qdrant；对象存储 MinIO；分析 ClickHouse
+- 模型接入：统一经 OpenAI 协议适配器（区分对话/嵌入模型）
+- 禁止项：禁止使用 SQLite、禁止在生产路径使用 Mock/模拟服务
+
+## 2) 目录导航（关键路径）
+- Web 应用：`app/`（Next.js App Router）
+- 后端服务：`backend/app/`（FastAPI），容器化见 `backend/Dockerfile` 与 `backend/docker-compose.yml`
+- 数据与迁移：`migrations/`、`prisma/`
+- 公共库：`lib/`（ai、security、monitoring、multi-agent 等）
+- 测试：`vitest/`、`tests/`、`e2e/`
+
+## 3) TypeScript 规范
+- 显式导出公共 API 类型；偏好早返回与错误优先处理；避免 >3 层嵌套
+- 测试：统一 Vitest；E2E 使用 Playwright；禁止新增 Jest/Mocha
+- 组件与模块命名语义化；新增前须全局检索避免重复造轮子
+
+## 4) Python 规范
+- 风格：PEP 8；使用 black、flake8、isort（行宽 88）
+- 类型：所有函数必须有类型注解；mypy 静态检查
+- 异步：优先 asyncio；IO 密集异步化；CPU 密集入队列/Worker
+- 日志与异常：统一 logging；语义化异常，自定义异常优先
+
+## 5) 测试与覆盖率
+- TS 单测/集成：Vitest；E2E：Playwright；必要时后端用 pytest
+- 覆盖率指标：单元 ≥ 80%，关键路径 ≥ 90%，集成 ≥ 60%
+- 统一命令示例：`npm run test`、`npm run test:coverage`、`npm run test:e2e`
+
+## 6) API 与多智能体
+- API：RESTful + OpenAPI；优先 Next.js API Routes，逐步网关化
+- 多智能体：AutoGen/CrewAI/LangGraph 由编排服务负责；状态/队列使用 Redis（Streams）
+- 流式通信需具备断线重连与错误恢复
+
+## 7) 安全与合规
+- 鉴权与授权：NextAuth/JWT + RBAC/ABAC；服务间 mTLS；端到端加密
+- 输入/输出安全：校验、内容过滤、Prompt 注入防护；敏感信息用环境变量
+- 依赖安全：定期审计；严禁高危漏洞依赖进入主分支
+
+## 8) 性能与可观测性
+- 缓存：L1 内存 + L2 Redis，Cache-Aside 写失效；模板与热点缓存
+- 并发：CPU 密集走 Worker/队列；WebSocket 集群 + Redis 适配器
+- 观测：Prometheus + Grafana、Jaeger、结构化日志
+
+## 9) 提交、版本与文档
+- Git Flow + 语义化版本；提交前必须通过 Lint/Tests/Sec 扫描
+- 文档即代码：变更须同步更新相关 md，并在同一 PR 提交
+- 新模块先有设计文档（`docs/` 或 `.kiro/specs/`），后编码实现
+
+## 10) Windows 环境注意
+- 以 PowerShell 语法示例为准；路径/通配符遵循 PowerShell
+- 长命令请分步执行，避免 Linux 专属命令
+
+## 11) 去冗余与一致性（强制）
+- 禁止新增第二套测试/风格/安全等标准；冲突时以本文件为准
+- 新功能前做全库搜索复用已有模块；删除被替代的旧规范以防多头
+
+## 快速清单（Do/Don't）
+- DO：PostgreSQL + Redis + Qdrant/MinIO/ClickHouse；OpenAI 适配；Vitest + Playwright
+- DO：TS/py 全量类型；结构化日志；缓存与异步；零信任安全
+- DON'T：SQLite、Jest/Mocha、生产 Mock、重复规范文件、无类型导出
+
+## 📋 详细规范文件索引
+
+### 核心架构规范
+- [01-项目架构规范](.cursor/rules/01-project-architecture.mdc) - 系统整体架构、技术栈、三大智能体子系统
+- [02-开发规范](.cursor/rules/02-development-standards.mdc) - 代码质量、Python/TypeScript开发标准
+- [08-技术栈和AI模型管理规范](.cursor/rules/08-tech-stack-ai-models.mdc) - 技术选型、AI模型管理
+
+### 工具与流程规范
+- [03-MCP工具集成规范](.cursor/rules/03-mcp-tools-integration.mdc) - 强制MCP工具使用标准
+- [04-测试标准](.cursor/rules/04-testing-standards.mdc) - 统一测试框架和覆盖率要求
+- [09-工作质量保证规范](.cursor/rules/09-work-quality-assurance.mdc) - 工作前后质量验证流程
+
+### 环境与部署规范
+- [05-Windows环境钩子规范](.cursor/rules/05-windows-environment-hooks.mdc) - Windows开发环境特殊要求
+- [07-CI/CD标准](.cursor/rules/07-cicd-standards.mdc) - Linux Ubuntu生产环境CI/CD
+
+### API与接口规范
+- [06-API设计标准](.cursor/rules/06-api-design-standards.mdc) - RESTful API设计、认证、版本控制
+
+## ⚠️ 违规处理与质量门禁
+
+### 强制执行规则
+1. **技术栈一致性**: 严格遵循指定技术栈，禁止擅自更改
+2. **MCP工具强制使用**: 每个开发阶段必须使用对应MCP工具
+3. **质量门禁**: 代码质量≥90%，测试覆盖率≥85%，安全漏洞=0
+4. **真实环境**: 禁止使用模拟数据和服务
+5. **全局一致性**: 所有规范必须与本统一标准一致
+
+### 质量检查点
+- **提交前**: ESLint/Black + 类型检查 + 单元测试
+- **合并前**: 集成测试 + 安全扫描 + 性能回归检查
+- **部署前**: E2E测试 + 容器安全扫描 + 生产兼容性验证
+
+---
+
+**重要提醒**: 本文件为项目开发规范的唯一权威来源，所有开发工作必须严格遵循。如发现与其他文档冲突，以本规则为准。

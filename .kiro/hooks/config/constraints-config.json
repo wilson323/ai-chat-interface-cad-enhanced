@@ -1,0 +1,196 @@
+{
+  "version": "1.0.0",
+  "description": "Kiro 智能体约束检查配置",
+  "constraints": {
+    "typescript": {
+      "enabled": true,
+      "rules": {
+        "noAnyType": {
+          "level": "CRITICAL",
+          "message": "禁止使用 any 类型",
+          "autoFix": false
+        },
+        "functionReturnType": {
+          "level": "HIGH",
+          "message": "函数必须有返回类型注解",
+          "autoFix": true
+        },
+        "hookInheritance": {
+          "level": "CRITICAL",
+          "message": "钩子类必须继承 BaseHook",
+          "autoFix": false
+        },
+        "relativeImports": {
+          "level": "MEDIUM",
+          "message": "相对导入路径不应超过2级",
+          "autoFix": true
+        },
+        "emptyExceptionHandling": {
+          "level": "HIGH",
+          "message": "禁止空的异常处理块",
+          "autoFix": false
+        }
+      }
+    },
+    "python": {
+      "enabled": true,
+      "rules": {
+        "functionTypeAnnotation": {
+          "level": "CRITICAL",
+          "message": "函数必须有类型注解",
+          "autoFix": false
+        },
+        "bareExcept": {
+          "level": "CRITICAL",
+          "message": "禁止使用裸露的except",
+          "autoFix": false
+        }
+      }
+    },
+    "architecture": {
+      "enabled": true,
+      "rules": {
+        "requiredDirectories": {
+          "level": "HIGH",
+          "directories": ["core", "types", "config"],
+          "message": "缺少必需目录",
+          "autoFix": true
+        },
+        "forbiddenDirectories": {
+          "level": "MEDIUM",
+          "directories": ["utils", "helpers", "misc"],
+          "message": "禁止使用的目录",
+          "autoFix": false
+        },
+        "fileNaming": {
+          "level": "MEDIUM",
+          "message": "文件命名应遵循kebab-case规范",
+          "autoFix": false
+        },
+        "hookFileExtension": {
+          "level": "HIGH",
+          "message": "钩子文件应使用.kiro.hook扩展名",
+          "autoFix": false
+        }
+      }
+    },
+    "mcpTools": {
+      "enabled": true,
+      "rules": {
+        "directApiCall": {
+          "level": "HIGH",
+          "message": "应通过MCP工具管理器调用外部API",
+          "autoFix": false
+        },
+        "errorHandling": {
+          "level": "MEDIUM",
+          "message": "MCP工具调用应包含错误处理",
+          "autoFix": false
+        }
+      }
+    },
+    "security": {
+      "enabled": true,
+      "rules": {
+        "hardcodedSecrets": {
+          "level": "CRITICAL",
+          "patterns": [
+            "sk-[a-zA-Z0-9]{32,}",
+            "password\\s*[:=]\\s*[\"'][^\"']+[\"']",
+            "token\\s*[:=]\\s*[\"'][^\"']+[\"']",
+            "api[_-]?key\\s*[:=]\\s*[\"'][^\"']+[\"']"
+          ],
+          "message": "发现硬编码敏感信息",
+          "autoFix": false
+        },
+        "dangerousFunctions": {
+          "level": "CRITICAL",
+          "patterns": [
+            "eval\\s*\\(",
+            "Function\\s*\\(",
+            "setTimeout\\s*\\(\\s*[\"'][^\"']*[\"']",
+            "setInterval\\s*\\(\\s*[\"'][^\"']*[\"']"
+          ],
+          "message": "禁止使用危险函数",
+          "autoFix": false
+        },
+        "inputValidation": {
+          "level": "HIGH",
+          "message": "外部输入应进行验证",
+          "autoFix": false
+        }
+      }
+    },
+    "performance": {
+      "enabled": true,
+      "rules": {
+        "syncIO": {
+          "level": "MEDIUM",
+          "patterns": [
+            "fs\\.readFileSync",
+            "fs\\.writeFileSync",
+            "fs\\.existsSync"
+          ],
+          "message": "应使用异步IO操作",
+          "autoFix": false
+        },
+        "promiseErrorHandling": {
+          "level": "HIGH",
+          "message": "异步操作应包含错误处理",
+          "autoFix": false
+        }
+      }
+    },
+    "windows": {
+      "enabled": true,
+      "rules": {
+        "unixPaths": {
+          "level": "HIGH",
+          "patterns": [
+            "/home/",
+            "/usr/",
+            "/var/",
+            "/tmp/",
+            "/etc/"
+          ],
+          "message": "硬编码Unix路径，不兼容Windows",
+          "autoFix": false
+        },
+        "pathSeparators": {
+          "level": "MEDIUM",
+          "message": "应使用path模块处理路径",
+          "autoFix": false
+        }
+      }
+    }
+  },
+  "qualityGates": {
+    "critical": {
+      "maxViolations": 0,
+      "action": "reject"
+    },
+    "high": {
+      "maxViolations": 5,
+      "action": "warn"
+    },
+    "medium": {
+      "maxViolations": 20,
+      "action": "info"
+    },
+    "low": {
+      "maxViolations": 50,
+      "action": "info"
+    }
+  },
+  "reporting": {
+    "outputFormat": "json",
+    "includeContext": true,
+    "generateReport": true,
+    "reportPath": "constraint-violations-report.json"
+  },
+  "autoFix": {
+    "enabled": true,
+    "backupOriginal": true,
+    "confirmBeforeFix": false
+  }
+}

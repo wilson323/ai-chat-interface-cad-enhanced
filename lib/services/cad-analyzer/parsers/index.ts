@@ -11,6 +11,13 @@ export interface ParserOptions {
   extractMetadata?: boolean;
   extractMaterials?: boolean;
   extractDimensions?: boolean;
+  extractTopology?: boolean;
+  extractFeatures?: boolean;
+  calculateMassProperties?: boolean;
+  extractAssemblyStructure?: boolean;
+  extractAnnotations?: boolean;
+  optimizeMesh?: boolean;
+  extractMeasurements?: boolean;
 }
 
 /**

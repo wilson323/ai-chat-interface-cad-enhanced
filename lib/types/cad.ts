@@ -82,7 +82,12 @@ export interface CADAnalysisResult {
   fileType: string;
   fileSize: number;
   fileHash?: string;
-  
+  // 兼容历史字段
+  id?: string; // 某些解析器使用的局部标识
+  url?: string; // 旧实现中的模型URL
+  modelUrl?: string; // 标准模型URL 字段
+  originalFile?: File; // 源文件引用
+
   // 模型尺寸信息
   dimensions: {
     width: number;
@@ -90,36 +95,47 @@ export interface CADAnalysisResult {
     depth?: number;
     unit: string;
   };
-  
+
   // 实体统计
   entities: Record<string, number>;
-  
+
   // 实体详情
   entityDetails?: EntityDetail[];
-  
-  // 图层信息
-  layers: LayerInfo[];
-  
-  // 元数据
-  metadata?: Record<string, string>;
-  
-  // 缩略图
-  thumbnail?: string;
-  
-  // 模型URL (用于3D查看器)
-  modelUrl?: string;
-  
-  // AI分析结果
+
+  // 图层信息（兼容 string[] 与 LayerInfo[]）
+  layers: Array<LayerInfo | string>;
+
+  // 元数据（放宽为任意记录）
+  metadata?: Record<string, any>;
+
+  // 组件/材料/测量等（供高级解析与报告使用）
+  components?: CADComponent[];
+  materials?: CADMaterial[];
+  measurements?: CADMeasurement[];
+
+  // 高级计算结果（可选）
+  massProperties?: Record<string, number>;
+  features?: any;
+  topology?: any;
+  assemblyStructure?: any;
+
+  // AI分析摘要（轻量）
   aiSummary?: string;
   aiRecommendations?: string[];
-  
+  aiInsights?: { summary: string; recommendations: string[] };
+
+  // 其它分析数据
+  devices?: any[];
+  wiring?: { totalLength: number; details: any[] };
+  risks?: any[];
+
   // 分析过程
   analysisTime?: string; // ISO时间戳
   processingTimeMs?: number;
-  
+
   // 检测到的问题
   issues?: IssueInfo[];
-  
+
   // 历史分析记录
   previousAnalyses?: PreviousAnalysis[];
 }
@@ -267,6 +283,14 @@ export interface CADParserOptions {
   extractMetadata?: boolean;
   extractMaterials?: boolean;
   extractDimensions?: boolean;
+  // 兼容扩展选项（高级解析）
+  extractTopology?: boolean;
+  extractFeatures?: boolean;
+  calculateMassProperties?: boolean;
+  extractAssemblyStructure?: boolean;
+  extractAnnotations?: boolean;
+  optimizeMesh?: boolean;
+  extractMeasurements?: boolean;
 }
 
 /**

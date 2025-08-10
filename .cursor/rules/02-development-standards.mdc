@@ -1,0 +1,806 @@
+---
+alwaysApply: true
+---
+
+# ZK-Agent 开发规范与代码质量标准
+
+## 📋 核心开发原则
+
+基于 [代码一致性标准](.kiro/specs/code-consistency-standards.md) 和 [开发规范](.kiro/steering/development-standards.md)，确保代码质量和可维护性。
+
+### 质量标准
+- **零异常原则**: 所有代码必须有完善的异常处理
+- **类型安全**: TypeScript严格模式，Python类型注解
+- **测试覆盖**: 单元测试≥80%，集成测试≥60%，关键路径≥90%
+- **代码审查**: 所有代码必须通过同行评审
+
+### 性能要求
+- **响应时间**: API响应<200ms，页面加载<2s
+- **并发处理**: 支持1000+并发用户
+- **资源优化**: 内存使用<80%，CPU使用<70%
+
+## 🐍 Python开发规范
+
+### 代码风格规范
+```python
+# ✅ 正确的函数定义与注释
+def process_user_data(
+    user_id: str,
+    data: Dict[str, Any],
+    options: Optional[ProcessingOptions] = None
+) -> ProcessingResult:
+    """处理用户数据并返回处理结果
+
+    该函数负责对输入的用户数据进行清洗、验证和转换处理。
+
+    Args:
+        user_id: 用户唯一标识符
+        data: 待处理的用户数据字典
+            - name: 用户姓名
+            - email: 用户邮箱
+            - preferences: 用户偏好设置
+        options: 可选的处理配置参数
+
+    Returns:
+        ProcessingResult: 包含处理结果和状态信息
+            - success: 处理是否成功
+            - data: 处理后的数据
+            - errors: 错误信息列表
+
+    Raises:
+        ValueError: 当输入数据格式不正确时抛出
+        ValidationError: 当数据验证失败时抛出
+        ProcessingError: 当处理过程中发生错误时抛出
+
+    Examples:
+        >>> result = process_user_data(
+        ...     "user-123",
+        ...     {"name": "张三", "email": "zhangsan@example.com"}
+        ... )
+        >>> print(result.success)
+        True
+    """
+    try:
+        # 输入验证
+        if not user_id or not isinstance(user_id, str):
+            raise ValueError("用户ID必须是非空字符串")
+
+        # 数据处理逻辑
+        processed_data = _clean_and_validate_data(data)
+
+        return ProcessingResult(
+            success=True,
+            data=processed_data,
+            errors=[]
+        )
+    except Exception as e:
+        logger.error(f"处理用户数据失败: {user_id}, 错误: {str(e)}")
+        raise ProcessingError(f"数据处理失败: {str(e)}") from e
+```
+
+### 文件命名规范
+```python
+# ✅ 正确的文件命名
+user_service.py          # 用户服务
+auth_middleware.py       # 认证中间件
+database_manager.py      # 数据库管理器
+ai_model_adapter.py      # AI模型适配器
+fastgpt_client.py        # FastGPT客户端
+
+# ❌ 错误的文件命名
+UserService.py           # 不使用大驼峰
+authMiddleware.py        # 不使用小驼峰
+db-manager.py           # 不使用连字符
+aiModel.py              # 缺乏描述性
+```
+
+### 异步编程规范
+```python
+# ✅ 正确的异步函数定义
+async def fetch_user_profile(user_id: str) -> Optional[UserProfile]:
+    """异步获取用户档案信息"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"/users/{user_id}")
+            response.raise_for_status()
+            return UserProfile(**response.json())
+    except httpx.HTTPError as e:
+        logger.error(f"获取用户档案失败: {user_id}, 错误: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error(f"未知错误: {str(e)}")
+        raise
+```
+
+## 📜 TypeScript开发规范
+
+### 类型定义规范
+```typescript
+// ✅ 正确的接口定义
+interface UserProfile {
+  readonly id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  preferences: UserPreferences;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ✅ 正确的联合类型定义
+type AgentStatus = 'idle' | 'processing' | 'error' | 'completed';
+type EventHandler<T = any> = (event: T) => void | Promise<void>;
+
+// ✅ 正确的泛型定义
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: string;
+  timestamp: number;
+}
+```
+
+### 函数定义规范
+```typescript
+// ✅ 正确的函数定义与注释
+/**
+ * 异步获取用户档案信息
+ *
+ * @param userId - 用户唯一标识符
+ * @param options - 可选的获取配置
+ * @returns Promise<UserProfile | null> - 用户档案信息或null
+ *
+ * @example
+ * ```typescript
+ * const profile = await fetchUserProfile('user-123');
+ * if (profile) {
+ *   console.log(profile.name);
+ * }
+ * ```
+ */
+async function fetchUserProfile(
+  userId: string,
+  options?: FetchOptions
+): Promise<UserProfile | null> {
+  try {
+    const response = await apiClient.get<UserProfile>(`/users/${userId}`, options);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+    return null;
+  }
+}
+```
+
+### 组件定义规范
+```typescript
+// ✅ 正确的React组件定义
+interface UserCardProps {
+  user: UserProfile;
+  onEdit?: (user: UserProfile) => void;
+  onDelete?: (userId: string) => void;
+  className?: string;
+}
+
+/**
+ * 用户卡片组件
+ *
+ * 显示用户基本信息，支持编辑和删除操作
+ */
+export default function UserCard({
+  user,
+  onEdit,
+  onDelete,
+  className
+}: UserCardProps) {
+  const handleEdit = useCallback(() => {
+    onEdit?.(user);
+  }, [user, onEdit]);
+
+  const handleDelete = useCallback(() => {
+    onDelete?.(user.id);
+  }, [user.id, onDelete]);
+
+  return (
+    <div className={cn("user-card", className)}>
+      <div className="user-avatar">
+        <Image
+          src={user.avatar || '/default-avatar.png'}
+          alt={`${user.name}的头像`}
+          width={64}
+          height={64}
+        />
+      </div>
+      <div className="user-info">
+        <h3 className="user-name">{user.name}</h3>
+        <p className="user-email">{user.email}</p>
+      </div>
+      <div className="user-actions">
+        {onEdit && (
+          <Button onClick={handleEdit} variant="outline" size="sm">
+            编辑
+          </Button>
+        )}
+        {onDelete && (
+          <Button onClick={handleDelete} variant="destructive" size="sm">
+            删除
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+## 📝 注释与文档规范
+
+### 函数级注释要求
+```python
+def complex_algorithm(
+    input_data: List[Dict[str, Any]],
+    config: AlgorithmConfig,
+    callback: Optional[Callable[[str], None]] = None
+) -> AlgorithmResult:
+    """复杂算法处理函数
+
+    该函数实现了一个多步骤的数据处理算法，包括数据预处理、
+    核心算法执行和结果后处理。
+
+    算法步骤：
+    1. 数据验证和清洗
+    2. 特征提取和转换
+    3. 核心算法计算
+    4. 结果聚合和格式化
+
+    Args:
+        input_data: 输入数据列表，每个元素包含：
+            - id: 数据唯一标识
+            - values: 数值数组
+            - metadata: 元数据字典
+        config: 算法配置对象
+            - algorithm_type: 算法类型 ('fast' | 'accurate')
+            - threshold: 阈值参数 (0.0-1.0)
+            - max_iterations: 最大迭代次数
+        callback: 可选的进度回调函数
+
+    Returns:
+        AlgorithmResult: 算法执行结果
+            - processed_data: 处理后的数据
+            - metrics: 性能指标
+            - execution_time: 执行时间（秒）
+
+    Raises:
+        ValueError: 当输入数据格式无效时
+        AlgorithmError: 当算法执行失败时
+        TimeoutError: 当执行超时时
+
+    Examples:
+        >>> config = AlgorithmConfig(
+        ...     algorithm_type='fast',
+        ...     threshold=0.8,
+        ...     max_iterations=100
+        ... )
+        >>> data = [{'id': '1', 'values': [1, 2, 3], 'metadata': {}}]
+        >>> result = complex_algorithm(data, config)
+        >>> print(f"处理了 {len(result.processed_data)} 条数据")
+        处理了 1 条数据
+
+    Note:
+        - 该函数计算密集型，建议在后台线程中执行
+        - 大数据集可能需要较长时间处理
+        - 确保输入数据已经过预验证
+
+    See Also:
+        - simple_algorithm(): 简化版本的算法
+        - validate_input_data(): 输入数据验证函数
+    """
+    # 实现代码...
+```
+
+## 🧪 测试规范
+
+### 单元测试标准
+```python
+# ✅ 正确的pytest测试
+import pytest
+from unittest.mock import Mock, patch
+from myapp.services.user_service import UserService
+from myapp.models.user import User
+from myapp.exceptions import UserNotFoundError
+
+class TestUserService:
+    """用户服务测试类"""
+
+    @pytest.fixture
+    def user_service(self):
+        """创建用户服务实例"""
+        return UserService()
+
+    @pytest.fixture
+    def sample_user(self):
+        """创建示例用户数据"""
+        return User(
+            id="user-123",
+            name="张三",
+            email="zhangsan@example.com"
+        )
+
+    async def test_get_user_success(self, user_service, sample_user):
+        """测试成功获取用户信息"""
+        # Given
+        with patch.object(user_service.db, 'get_user') as mock_get:
+            mock_get.return_value = sample_user
+
+            # When
+            result = await user_service.get_user("user-123")
+
+            # Then
+            assert result is not None
+            assert result.id == "user-123"
+            assert result.name == "张三"
+            mock_get.assert_called_once_with("user-123")
+
+    async def test_get_user_not_found(self, user_service):
+        """测试用户不存在的情况"""
+        # Given
+        with patch.object(user_service.db, 'get_user') as mock_get:
+            mock_get.return_value = None
+
+            # When & Then
+            with pytest.raises(UserNotFoundError):
+                await user_service.get_user("nonexistent")
+```
+
+## 🔧 工具配置要求
+
+### 必须集成的工具
+```json
+{
+  "python": {
+    "formatter": "black",
+    "linter": "flake8",
+    "type_checker": "mypy",
+    "import_sorter": "isort",
+    "test_framework": "pytest"
+  },
+  "typescript": {
+    "formatter": "prettier",
+    "linter": "eslint",
+    "type_checker": "tsc",
+    "test_framework": "vitest"
+  },
+  "git_hooks": {
+    "pre_commit": ["lint", "type_check", "test"],
+    "pre_push": ["full_test_suite"]
+  }
+}
+```
+
+## ⚠️ 禁止事项
+
+### 代码质量
+- ❌ 使用 `any` 类型（TypeScript）
+- ❌ 忽略异常处理
+- ❌ 硬编码敏感信息
+- ❌ 使用模拟数据在生产代码中
+- ❌ 创建重复功能的模块
+
+### 性能
+- ❌ 同步IO操作（应使用异步）
+- ❌ N+1数据库查询
+- ❌ 内存泄漏代码
+- ❌ 无限递归
+
+### 安全
+- ❌ SQL注入漏洞
+- ❌ XSS攻击漏洞
+- ❌ 明文存储密码
+- ❌ 不安全的API端点
+
+---
+
+**参考文档**:
+- [代码一致性标准](.kiro/specs/code-consistency-standards.md)
+- [开发规范](.kiro/steering/development-standards.md)
+- [测试标准](mdc:docs/testing-standard.md)
+# ZK-Agent 开发规范与代码质量标准
+
+## 📋 核心开发原则
+
+基于 [代码一致性标准](.kiro/specs/code-consistency-standards.md) 和 [开发规范](.kiro/steering/development-standards.md)，确保代码质量和可维护性。
+
+### 质量标准
+- **零异常原则**: 所有代码必须有完善的异常处理
+- **类型安全**: TypeScript严格模式，Python类型注解
+- **测试覆盖**: 单元测试≥80%，集成测试≥60%，关键路径≥90%
+- **代码审查**: 所有代码必须通过同行评审
+
+### 性能要求
+- **响应时间**: API响应<200ms，页面加载<2s
+- **并发处理**: 支持1000+并发用户
+- **资源优化**: 内存使用<80%，CPU使用<70%
+
+## 🐍 Python开发规范
+
+### 代码风格规范
+```python
+# ✅ 正确的函数定义与注释
+def process_user_data(
+    user_id: str,
+    data: Dict[str, Any],
+    options: Optional[ProcessingOptions] = None
+) -> ProcessingResult:
+    """处理用户数据并返回处理结果
+
+    该函数负责对输入的用户数据进行清洗、验证和转换处理。
+
+    Args:
+        user_id: 用户唯一标识符
+        data: 待处理的用户数据字典
+            - name: 用户姓名
+            - email: 用户邮箱
+            - preferences: 用户偏好设置
+        options: 可选的处理配置参数
+
+    Returns:
+        ProcessingResult: 包含处理结果和状态信息
+            - success: 处理是否成功
+            - data: 处理后的数据
+            - errors: 错误信息列表
+
+    Raises:
+        ValueError: 当输入数据格式不正确时抛出
+        ValidationError: 当数据验证失败时抛出
+        ProcessingError: 当处理过程中发生错误时抛出
+
+    Examples:
+        >>> result = process_user_data(
+        ...     "user-123",
+        ...     {"name": "张三", "email": "zhangsan@example.com"}
+        ... )
+        >>> print(result.success)
+        True
+    """
+    try:
+        # 输入验证
+        if not user_id or not isinstance(user_id, str):
+            raise ValueError("用户ID必须是非空字符串")
+
+        # 数据处理逻辑
+        processed_data = _clean_and_validate_data(data)
+
+        return ProcessingResult(
+            success=True,
+            data=processed_data,
+            errors=[]
+        )
+    except Exception as e:
+        logger.error(f"处理用户数据失败: {user_id}, 错误: {str(e)}")
+        raise ProcessingError(f"数据处理失败: {str(e)}") from e
+```
+
+### 文件命名规范
+```python
+# ✅ 正确的文件命名
+user_service.py          # 用户服务
+auth_middleware.py       # 认证中间件
+database_manager.py      # 数据库管理器
+ai_model_adapter.py      # AI模型适配器
+fastgpt_client.py        # FastGPT客户端
+
+# ❌ 错误的文件命名
+UserService.py           # 不使用大驼峰
+authMiddleware.py        # 不使用小驼峰
+db-manager.py           # 不使用连字符
+aiModel.py              # 缺乏描述性
+```
+
+### 异步编程规范
+```python
+# ✅ 正确的异步函数定义
+async def fetch_user_profile(user_id: str) -> Optional[UserProfile]:
+    """异步获取用户档案信息"""
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"/users/{user_id}")
+            response.raise_for_status()
+            return UserProfile(**response.json())
+    except httpx.HTTPError as e:
+        logger.error(f"获取用户档案失败: {user_id}, 错误: {str(e)}")
+        return None
+    except Exception as e:
+        logger.error(f"未知错误: {str(e)}")
+        raise
+```
+
+## 📜 TypeScript开发规范
+
+### 类型定义规范
+```typescript
+// ✅ 正确的接口定义
+interface UserProfile {
+  readonly id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  preferences: UserPreferences;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ✅ 正确的联合类型定义
+type AgentStatus = 'idle' | 'processing' | 'error' | 'completed';
+type EventHandler<T = any> = (event: T) => void | Promise<void>;
+
+// ✅ 正确的泛型定义
+interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  error?: string;
+  timestamp: number;
+}
+```
+
+### 函数定义规范
+```typescript
+// ✅ 正确的函数定义与注释
+/**
+ * 异步获取用户档案信息
+ *
+ * @param userId - 用户唯一标识符
+ * @param options - 可选的获取配置
+ * @returns Promise<UserProfile | null> - 用户档案信息或null
+ *
+ * @example
+ * ```typescript
+ * const profile = await fetchUserProfile('user-123');
+ * if (profile) {
+ *   console.log(profile.name);
+ * }
+ * ```
+ */
+async function fetchUserProfile(
+  userId: string,
+  options?: FetchOptions
+): Promise<UserProfile | null> {
+  try {
+    const response = await apiClient.get<UserProfile>(`/users/${userId}`, options);
+    return response.data;
+  } catch (error) {
+    console.error('Failed to fetch user profile:', error);
+    return null;
+  }
+}
+```
+
+### 组件定义规范
+```typescript
+// ✅ 正确的React组件定义
+interface UserCardProps {
+  user: UserProfile;
+  onEdit?: (user: UserProfile) => void;
+  onDelete?: (userId: string) => void;
+  className?: string;
+}
+
+/**
+ * 用户卡片组件
+ *
+ * 显示用户基本信息，支持编辑和删除操作
+ */
+export default function UserCard({
+  user,
+  onEdit,
+  onDelete,
+  className
+}: UserCardProps) {
+  const handleEdit = useCallback(() => {
+    onEdit?.(user);
+  }, [user, onEdit]);
+
+  const handleDelete = useCallback(() => {
+    onDelete?.(user.id);
+  }, [user.id, onDelete]);
+
+  return (
+    <div className={cn("user-card", className)}>
+      <div className="user-avatar">
+        <Image
+          src={user.avatar || '/default-avatar.png'}
+          alt={`${user.name}的头像`}
+          width={64}
+          height={64}
+        />
+      </div>
+      <div className="user-info">
+        <h3 className="user-name">{user.name}</h3>
+        <p className="user-email">{user.email}</p>
+      </div>
+      <div className="user-actions">
+        {onEdit && (
+          <Button onClick={handleEdit} variant="outline" size="sm">
+            编辑
+          </Button>
+        )}
+        {onDelete && (
+          <Button onClick={handleDelete} variant="destructive" size="sm">
+            删除
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+```
+
+## 📝 注释与文档规范
+
+### 函数级注释要求
+```python
+def complex_algorithm(
+    input_data: List[Dict[str, Any]],
+    config: AlgorithmConfig,
+    callback: Optional[Callable[[str], None]] = None
+) -> AlgorithmResult:
+    """复杂算法处理函数
+
+    该函数实现了一个多步骤的数据处理算法，包括数据预处理、
+    核心算法执行和结果后处理。
+
+    算法步骤：
+    1. 数据验证和清洗
+    2. 特征提取和转换
+    3. 核心算法计算
+    4. 结果聚合和格式化
+
+    Args:
+        input_data: 输入数据列表，每个元素包含：
+            - id: 数据唯一标识
+            - values: 数值数组
+            - metadata: 元数据字典
+        config: 算法配置对象
+            - algorithm_type: 算法类型 ('fast' | 'accurate')
+            - threshold: 阈值参数 (0.0-1.0)
+            - max_iterations: 最大迭代次数
+        callback: 可选的进度回调函数
+
+    Returns:
+        AlgorithmResult: 算法执行结果
+            - processed_data: 处理后的数据
+            - metrics: 性能指标
+            - execution_time: 执行时间（秒）
+
+    Raises:
+        ValueError: 当输入数据格式无效时
+        AlgorithmError: 当算法执行失败时
+        TimeoutError: 当执行超时时
+
+    Examples:
+        >>> config = AlgorithmConfig(
+        ...     algorithm_type='fast',
+        ...     threshold=0.8,
+        ...     max_iterations=100
+        ... )
+        >>> data = [{'id': '1', 'values': [1, 2, 3], 'metadata': {}}]
+        >>> result = complex_algorithm(data, config)
+        >>> print(f"处理了 {len(result.processed_data)} 条数据")
+        处理了 1 条数据
+
+    Note:
+        - 该函数计算密集型，建议在后台线程中执行
+        - 大数据集可能需要较长时间处理
+        - 确保输入数据已经过预验证
+
+    See Also:
+        - simple_algorithm(): 简化版本的算法
+        - validate_input_data(): 输入数据验证函数
+    """
+    # 实现代码...
+```
+
+## 🧪 测试规范
+
+### 单元测试标准
+```python
+# ✅ 正确的pytest测试
+import pytest
+from unittest.mock import Mock, patch
+from myapp.services.user_service import UserService
+from myapp.models.user import User
+from myapp.exceptions import UserNotFoundError
+
+class TestUserService:
+    """用户服务测试类"""
+
+    @pytest.fixture
+    def user_service(self):
+        """创建用户服务实例"""
+        return UserService()
+
+    @pytest.fixture
+    def sample_user(self):
+        """创建示例用户数据"""
+        return User(
+            id="user-123",
+            name="张三",
+            email="zhangsan@example.com"
+        )
+
+    async def test_get_user_success(self, user_service, sample_user):
+        """测试成功获取用户信息"""
+        # Given
+        with patch.object(user_service.db, 'get_user') as mock_get:
+            mock_get.return_value = sample_user
+
+            # When
+            result = await user_service.get_user("user-123")
+
+            # Then
+            assert result is not None
+            assert result.id == "user-123"
+            assert result.name == "张三"
+            mock_get.assert_called_once_with("user-123")
+
+    async def test_get_user_not_found(self, user_service):
+        """测试用户不存在的情况"""
+        # Given
+        with patch.object(user_service.db, 'get_user') as mock_get:
+            mock_get.return_value = None
+
+            # When & Then
+            with pytest.raises(UserNotFoundError):
+                await user_service.get_user("nonexistent")
+```
+
+## 🔧 工具配置要求
+
+### 必须集成的工具
+```json
+{
+  "python": {
+    "formatter": "black",
+    "linter": "flake8",
+    "type_checker": "mypy",
+    "import_sorter": "isort",
+    "test_framework": "pytest"
+  },
+  "typescript": {
+    "formatter": "prettier",
+    "linter": "eslint",
+    "type_checker": "tsc",
+    "test_framework": "vitest"
+  },
+  "git_hooks": {
+    "pre_commit": ["lint", "type_check", "test"],
+    "pre_push": ["full_test_suite"]
+  }
+}
+```
+
+## ⚠️ 禁止事项
+
+### 代码质量
+- ❌ 使用 `any` 类型（TypeScript）
+- ❌ 忽略异常处理
+- ❌ 硬编码敏感信息
+- ❌ 使用模拟数据在生产代码中
+- ❌ 创建重复功能的模块
+
+### 性能
+- ❌ 同步IO操作（应使用异步）
+- ❌ N+1数据库查询
+- ❌ 内存泄漏代码
+- ❌ 无限递归
+
+### 安全
+- ❌ SQL注入漏洞
+- ❌ XSS攻击漏洞
+- ❌ 明文存储密码
+- ❌ 不安全的API端点
+
+---
+
+**参考文档**:
+- [代码一致性标准](.kiro/specs/code-consistency-standards.md)
+- [开发规范](.kiro/steering/development-standards.md)
+- [测试标准](mdc:docs/testing-standard.md)

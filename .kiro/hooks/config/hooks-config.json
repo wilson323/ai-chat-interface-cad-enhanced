@@ -1,0 +1,191 @@
+{
+  "hooks": {
+    "development-workflow-enhancement": {
+      "enabled": true,
+      "priority": 1,
+      "timeout": 30000,
+      "retryCount": 2,
+      "conditions": [],
+      "parameters": {
+        "mcpToolsRequired": ["serena", "memory", "sequentialThinking"],
+        "architectureScoreThreshold": 90,
+        "redundancyCheckEnabled": true,
+        "historicalAnalysisEnabled": true,
+        "filePatterns": [
+          "**/*.py",
+          "**/*.ts",
+          "**/*.tsx",
+          "**/*.js",
+          "**/*.jsx",
+          "**/*.md"
+        ]
+      }
+    },
+    "project-standards-compliance": {
+      "enabled": true,
+      "priority": 2,
+      "timeout": 60000,
+      "retryCount": 1,
+      "conditions": [],
+      "parameters": {
+        "pythonStandard": "pep8",
+        "typescriptStrict": true,
+        "testCoverageThreshold": 85,
+        "securityScanEnabled": true,
+        "windowsCompatibilityCheck": true,
+        "complianceChecks": {
+          "python": {
+            "pep8": true,
+            "typeAnnotations": true,
+            "asyncUsage": true,
+            "exceptionHandling": true,
+            "maxComplexity": 10
+          },
+          "typescript": {
+            "strictMode": true,
+            "noAnyType": true,
+            "importRules": true,
+            "eslintRules": true
+          },
+          "testing": {
+            "unitTestCoverage": 80,
+            "integrationTestCoverage": 60,
+            "testQuality": true
+          },
+          "security": {
+            "vulnerabilityScan": true,
+            "dependencyCheck": true,
+            "codeSecurityScan": true
+          }
+        }
+      }
+    },
+    "work-quality-assurance": {
+      "enabled": true,
+      "priority": 3,
+      "timeout": 45000,
+      "retryCount": 2,
+      "conditions": [],
+      "parameters": {
+        "preWorkAnalysis": {
+          "techStackConsistency": true,
+          "codeQualityPreCheck": true,
+          "testCoverageAnalysis": true,
+          "architectureValidation": true
+        },
+        "progressMonitoring": {
+          "realTimeQualityCheck": true,
+          "performanceMonitoring": true,
+          "resourceUsageTracking": true
+        },
+        "qualityThresholds": {
+          "minimumScore": 90,
+          "testCoverage": 85,
+          "codeComplexity": 10,
+          "technicalDebt": 20
+        }
+      }
+    },
+    "post-work-validation": {
+      "enabled": true,
+      "priority": 4,
+      "timeout": 90000,
+      "retryCount": 1,
+      "conditions": [],
+      "parameters": {
+        "validationPipeline": {
+          "functionalityValidation": true,
+          "performanceBenchmark": true,
+          "securityValidation": true,
+          "deploymentReadiness": true
+        },
+        "knowledgeStorage": {
+          "storeDesignDecisions": true,
+          "storeProblemSolutions": true,
+          "storeBestPractices": true,
+          "memoryIntegration": true
+        },
+        "reportGeneration": {
+          "detailedReport": true,
+          "improvementSuggestions": true,
+          "qualityMetrics": true
+        }
+      }
+    },
+    "mcp-tools-guidance": {
+      "enabled": true,
+      "priority": 5,
+      "timeout": 20000,
+      "retryCount": 3,
+      "conditions": [],
+      "parameters": {
+        "toolRecommendation": {
+          "taskAnalysis": true,
+          "toolMatching": true,
+          "usageGuidance": true,
+          "bestPractices": true
+        },
+        "usageMonitoring": {
+          "effectivenessTracking": true,
+          "performanceMetrics": true,
+          "qualityAssessment": true
+        },
+        "toolPreferences": {
+          "serena": {
+            "codeAnalysis": true,
+            "styleChecking": true,
+            "complexityAnalysis": true
+          },
+          "mentor": {
+            "guidance": true,
+            "recommendations": true,
+            "bestPractices": true
+          },
+          "memory": {
+            "knowledgeStorage": true,
+            "experienceRetrieval": true,
+            "learningTracking": true
+          }
+        }
+      }
+    }
+  },
+  "qualityStandards": {
+    "codeQuality": {
+      "minimumScore": 90,
+      "strictMode": true,
+      "noAnyType": true
+    },
+    "testCoverage": {
+      "unitTests": 80,
+      "integrationTests": 60,
+      "criticalPaths": 90
+    },
+    "performance": {
+      "apiResponseTime": 2000,
+      "pageLoadTime": 3000,
+      "resourceUtilization": {
+        "memory": 80,
+        "cpu": 70
+      }
+    },
+    "security": {
+      "allowedVulnerabilities": {
+        "critical": 0,
+        "high": 0,
+        "medium": 2
+      }
+    }
+  },
+  "global": {
+    "defaultTimeout": 30000,
+    "maxConcurrentHooks": 5,
+    "logLevel": "info",
+    "enablePerformanceMonitoring": true
+  },
+  "mcpTools": {
+    "connectionTimeout": 5000,
+    "retryCount": 3,
+    "healthCheckInterval": 30000
+  }
+}

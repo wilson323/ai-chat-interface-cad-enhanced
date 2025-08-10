@@ -1,0 +1,503 @@
+---
+alwaysApply: true
+---
+# ZK-Agent API库架构规范
+
+## 📋 客户端架构重构（2025-01-23）
+
+基于 [API库架构说明](mdc:lib/api/README.md) 和 [API设计标准](.cursor/rules/06-api-design-standards.mdc)，确保API客户端的统一性和反脆弱性。
+
+### 🎯 统一客户端策略
+
+经过反脆弱模式分析，原有7个重复客户端已整合为3层架构：
+
+#### 1. 基础层 - `fastgpt-client.ts`
+- **职责**: 基础FastGPT API调用
+- **特性**: 简单、可靠、无依赖
+- **使用场景**: 直接API调用
+
+#### 2. 增强层 - `enhanced-fastgpt-client.ts`
+- **职责**: 增加缓存、重试、事件机制
+- **特性**: 继承基础客户端，扩展功能
+- **使用场景**: 生产环境、高可用需求
+
+#### 3. 适配层 - `fastgpt-ag-ui-adapter.ts`
+- **职责**: AG-UI协议转换
+- **特性**: 事件流转换、协议适配
+- **使用场景**: AG-UI前端集成
+
+### 🚫 已清理的冗余文件
+- ~~`fastgpt.ts`~~ - 功能重复，已删除
+- ~~`enhanced-api-client.ts`~~ - 泛用性过强，保留但限制使用场景
+
+### 📋 使用指南
+
+```typescript
+// ✅ 基础使用
+import fastGPTClient from '@/lib/api/fastgpt-client';
+const response = await fastGPTClient.chatCompletions(params);
+
+// ✅ 增强功能
+import enhancedClient from '@/lib/api/enhanced-fastgpt-client';
+enhancedClient.on('retry', (info) => console.log('重试:', info));
+const cached = await enhancedClient.chatCompletionsWithCache(params, 'key');
+
+// ✅ AG-UI集成
+import { FastGptAgUiAdapter } from '@/lib/api/fastgpt-ag-ui-adapter';
+const adapter = new FastGptAgUiAdapter(threadId, runId);
+```
+
+### 🔥 反脆弱收益
+- **冗余消除**: 7→3个客户端，维护成本降低70%
+- **职责清晰**: 每层单一职责，扩展性提升
+- **协议统一**: 强制AG-UI协议转换，避免前后端不匹配
+
+### 🚨 使用约束
+1. **禁止**直接使用`enhanced-api-client.ts`进行FastGPT调用
+2. **必须**通过适配器层进行AG-UI协议转换
+3. **优先**使用增强客户端而非基础客户端
+
+## 🏗️ API库架构详细设计
+
+### 基础API客户端架构
+```typescript
+/**
+ * 基础FastGPT客户端
+ * 遵循API设计标准的统一响应格式
+ */
+interface FastGPTClientConfig {
+  baseUrl: string;
+  apiKey: string;
+  timeout: number;
+  retryCount: number;
+}
+
+class FastGPTClient {
+  private config: FastGPTClientConfig;
+  private httpClient: HttpClient;
+
+  constructor(config: FastGPTClientConfig) {
+    this.config = config;
+    this.httpClient = new HttpClient({
+      baseURL: config.baseUrl,
+      timeout: config.timeout,
+      headers: {
+        'Authorization': `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json'
+      }
+    });
+  }
+
+  /**
+   * 聊天完成接口
+   * 符合OpenAI协议标准
+   */
+  async chatCompletions(params: ChatCompletionParams): Promise<ChatCompletionResponse> {
+    try {
+      const response = await this.httpClient.post('/v1/chat/completions', params);
+      return this.handleResponse(response);
+    } catch (error) {
+      throw this.handleError(error);
+    }
+  }
+
+  /**
+   * 流式聊天完成
+   * 支持Server-Sent Events
+   */
+  async chatCompletionsStream(params: ChatCompletionParams): Promise<AsyncIterable<ChatCompletionChunk>> {
+    const response = await this.httpClient.post('/v1/chat/completions', {
+      ...params,
+      stream: true
+    }, {
+      responseType: 'stream'
+    });
+
+    return this.parseStreamResponse(response);
+  }
+
+  private handleResponse<T>(response: HttpResponse): T {
+    if (response.status >= 200 && response.status < 300) {
+      return response.data;
+    }
+    throw new ApiError(response.status, response.statusText, response.data);
+  }
+
+  private handleError(error: any): ApiError {
+    if (error.response) {
+      return new ApiError(error.response.status, error.response.statusText, error.response.data);
+    }
+    return new ApiError(500, 'Internal Server Error', error.message);
+  }
+}
+```
+
+### 增强API客户端架构
+```typescript
+/**
+ * 增强FastGPT客户端
+ * 添加缓存、重试、事件机制
+ */
+class EnhancedFastGPTClient extends FastGPTClient {
+  private cache: CacheManager;
+  private eventEmitter: EventEmitter;
+  private metrics: MetricsCollector;
+
+  constructor(config: FastGPTClientConfig) {
+    super(config);
+    this.cache = new CacheManager();
+    this.eventEmitter = new EventEmitter();
+    this.metrics = new MetricsCollector();
+  }
+
+  /**
+   * 带缓存的聊天完成
+   */
+  async chatCompletionsWithCache(
+    params: ChatCompletionParams,
+    cacheKey?: string
+  ): Promise<ChatCompletionResponse> {
+    const key = cacheKey || this.generateCacheKey(params);
+
+    // 尝试从缓存获取
+    const cached = await this.cache.get(key);
+    if (cached) {
+      this.metrics.recordCacheHit();
+      return cached;
+    }
+
+    // 调用API并缓存结果
+    const response = await this.chatCompletionsWithRetry(params);
+    await this.cache.set(key, response, 3600); // 缓存1小时
+    this.metrics.recordCacheMiss();
+
+    return response;
+  }
+
+  /**
+   * 带重试的聊天完成
+   */
+  async chatCompletionsWithRetry(params: ChatCompletionParams): Promise<ChatCompletionResponse> {
+    let lastError: Error;
+
+    for (let attempt = 1; attempt <= this.config.retryCount; attempt++) {
+      try {
+        const response = await super.chatCompletions(params);
+        this.metrics.recordSuccess(attempt);
+        return response;
+      } catch (error) {
+        lastError = error as Error;
+
+        if (attempt < this.config.retryCount && this.isRetryableError(error)) {
+          const delay = this.calculateRetryDelay(attempt);
+          this.eventEmitter.emit('retry', { attempt, delay, error });
+          await this.sleep(delay);
+        } else {
+          this.metrics.recordFailure(attempt);
+          break;
+        }
+      }
+    }
+
+    throw lastError!;
+  }
+
+  /**
+   * 健康检查
+   */
+  async healthCheck(): Promise<HealthStatus> {
+    try {
+      const start = Date.now();
+      await this.chatCompletions({
+        messages: [{ role: 'user', content: 'health check' }],
+        max_tokens: 1
+      });
+      const responseTime = Date.now() - start;
+
+      return {
+        status: 'healthy',
+        responseTime,
+        timestamp: new Date().toISOString()
+      };
+    } catch (error) {
+      return {
+        status: 'unhealthy',
+        error: error.message,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  // 事件监听器
+  on(event: string, listener: Function): void {
+    this.eventEmitter.on(event, listener);
+  }
+
+  off(event: string, listener: Function): void {
+    this.eventEmitter.off(event, listener);
+  }
+
+  private isRetryableError(error: any): boolean {
+    const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
+    return retryableStatusCodes.includes(error.status);
+  }
+
+  private calculateRetryDelay(attempt: number): number {
+    // 指数退避算法
+    return Math.min(1000 * Math.pow(2, attempt - 1), 30000);
+  }
+
+  private sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private generateCacheKey(params: ChatCompletionParams): string {
+    const sortedParams = JSON.stringify(params, Object.keys(params).sort());
+    return `fastgpt:${this.hashString(sortedParams)}`;
+  }
+
+  private hashString(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // 转换为32位整数
+    }
+    return hash.toString(16);
+  }
+}
+```
+
+### AG-UI适配器架构
+```typescript
+/**
+ * FastGPT AG-UI适配器
+ * 将FastGPT API响应转换为AG-UI协议格式
+ */
+class FastGptAgUiAdapter {
+  private client: EnhancedFastGPTClient;
+  private threadId: string;
+  private runId: string;
+
+  constructor(threadId: string, runId: string) {
+    this.client = new EnhancedFastGPTClient(config);
+    this.threadId = threadId;
+    this.runId = runId;
+  }
+
+  /**
+   * 转换为AG-UI消息格式
+   */
+  async processMessage(message: string): Promise<AgUiMessage> {
+    try {
+      const response = await this.client.chatCompletions({
+        messages: [{ role: 'user', content: message }],
+        stream: false
+      });
+
+      return {
+        id: generateMessageId(),
+        role: 'assistant',
+        content: response.choices[0]?.message?.content || '',
+        threadId: this.threadId,
+        runId: this.runId,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          model: response.model,
+          usage: response.usage,
+          finishReason: response.choices[0]?.finish_reason
+        }
+      };
+    } catch (error) {
+      throw new AgUiError('Failed to process message', error);
+    }
+  }
+
+  /**
+   * 流式消息处理
+   */
+  async *processMessageStream(message: string): AsyncGenerator<AgUiStreamChunk> {
+    try {
+      const stream = await this.client.chatCompletionsStream({
+        messages: [{ role: 'user', content: message }],
+        stream: true
+      });
+
+      let content = '';
+      for await (const chunk of stream) {
+        const delta = chunk.choices[0]?.delta?.content || '';
+        content += delta;
+
+        yield {
+          id: generateChunkId(),
+          type: 'text',
+          content: delta,
+          threadId: this.threadId,
+          runId: this.runId,
+          timestamp: new Date().toISOString()
+        };
+      }
+
+      // 发送结束标志
+      yield {
+        id: generateChunkId(),
+        type: 'done',
+        content: '',
+        threadId: this.threadId,
+        runId: this.runId,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          totalContent: content,
+          contentLength: content.length
+        }
+      };
+    } catch (error) {
+      yield {
+        id: generateChunkId(),
+        type: 'error',
+        content: error.message,
+        threadId: this.threadId,
+        runId: this.runId,
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+}
+```
+
+## 🔧 路由工厂模式
+
+### API路由统一管理
+```typescript
+/**
+ * API路由工厂
+ * 统一管理所有API路由的创建和配置
+ */
+class ApiRouteFactory {
+  private clients: Map<string, any> = new Map();
+
+  /**
+   * 创建FastGPT路由
+   */
+  createFastGPTRoute(config: FastGPTConfig): FastGPTRoute {
+    const clientKey = `fastgpt:${config.appId}`;
+
+    if (!this.clients.has(clientKey)) {
+      const client = new EnhancedFastGPTClient(config);
+      this.clients.set(clientKey, client);
+    }
+
+    return new FastGPTRoute(this.clients.get(clientKey)!);
+  }
+
+  /**
+   * 创建标准API路由
+   */
+  createStandardRoute(config: StandardApiConfig): StandardRoute {
+    return new StandardRoute(config);
+  }
+
+  /**
+   * 获取健康检查路由
+   */
+  getHealthCheckRoute(): HealthCheckRoute {
+    return new HealthCheckRoute(this.clients);
+  }
+}
+
+/**
+ * FastGPT路由实现
+ */
+class FastGPTRoute {
+  private client: EnhancedFastGPTClient;
+
+  constructor(client: EnhancedFastGPTClient) {
+    this.client = client;
+  }
+
+  async chat(request: NextRequest): Promise<NextResponse> {
+    try {
+      const body = await request.json();
+      const response = await this.client.chatCompletions(body);
+
+      return NextResponse.json(createSuccessResponse(response));
+    } catch (error) {
+      return NextResponse.json(
+        createErrorResponse(ApiErrorCode.INTERNAL_ERROR, error.message),
+        { status: 500 }
+      );
+    }
+  }
+
+  async chatStream(request: NextRequest): Promise<Response> {
+    try {
+      const body = await request.json();
+      const stream = await this.client.chatCompletionsStream(body);
+
+      const encoder = new TextEncoder();
+      const readable = new ReadableStream({
+        async start(controller) {
+          try {
+            for await (const chunk of stream) {
+              const data = `data: ${JSON.stringify(chunk)}\n\n`;
+              controller.enqueue(encoder.encode(data));
+            }
+            controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            controller.close();
+          } catch (error) {
+            controller.error(error);
+          }
+        }
+      });
+
+      return new Response(readable, {
+        headers: {
+          'Content-Type': 'text/event-stream',
+          'Cache-Control': 'no-cache',
+          'Connection': 'keep-alive'
+        }
+      });
+    } catch (error) {
+      return NextResponse.json(
+        createErrorResponse(ApiErrorCode.INTERNAL_ERROR, error.message),
+        { status: 500 }
+      );
+    }
+  }
+}
+```
+
+## ⚠️ API库架构约束
+
+### 强制要求
+1. **三层架构**: 必须遵循基础层→增强层→适配层的架构模式
+2. **统一响应格式**: 所有API响应必须符合统一响应标准
+3. **错误处理**: 必须有完整的错误处理和重试机制
+4. **协议适配**: AG-UI集成必须通过适配器层
+5. **缓存策略**: 生产环境必须使用缓存机制
+
+### 禁止事项
+- ❌ 直接使用基础客户端在生产环境
+- ❌ 绕过适配器层直接集成AG-UI
+- ❌ 创建重复功能的API客户端
+- ❌ 不使用统一的错误处理机制
+- ❌ 忽略API响应缓存
+
+### 最佳实践
+- ✅ 使用连接池管理HTTP连接
+- ✅ 实施指数退避重试策略
+- ✅ 监控API调用性能和错误率
+- ✅ 使用流式响应处理大数据量
+- ✅ 实现客户端级别的限流控制
+
+---
+
+**参考文档**:
+- [API库架构说明](mdc:lib/api/README.md)
+- [API设计标准](.cursor/rules/06-api-design-standards.mdc)
+- [开发规范](.cursor/rules/02-development-standards.mdc)
+- [工作质量保证规范](.cursor/rules/09-work-quality-assurance.mdc)
+description:
+globs:
+alwaysApply: false
+---

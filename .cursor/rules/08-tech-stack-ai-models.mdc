@@ -1,0 +1,774 @@
+---
+alwaysApply: true
+---
+
+# ZK-Agent 技术栈与AI模型管理规范
+
+## 📋 核心技术栈标准
+
+基于 [技术选型标准](.kiro/steering/tech.md) 和 [模型管理文档](.kiro/steering/model-management.md)，确保技术栈统一性和可维护性。
+
+### 前端技术栈（强制要求）
+- **框架**: Next.js 15.2.4 with App Router（必需）
+- **UI协议**: AG-UI协议 + CopilotKit统一前端框架
+- **UI组件**: Radix UI + shadcn/ui 组件库
+- **样式**: Tailwind CSS + 设计令牌系统
+- **状态管理**: React Query（服务端状态）+ React Context（客户端状态）
+- **身份认证**: NextAuth.js 4.24.11
+- **类型系统**: TypeScript 5.8.3 严格模式（禁止使用 `any`）
+
+### 后端技术栈（渐进式微服务架构）
+- **运行时**: Node.js 18+（主要）+ Python 3.11+（AI服务）
+- **数据库**: PostgreSQL + Prisma ORM（关系型数据）
+- **缓存**: Redis + ioredis客户端（缓存 + 消息队列）
+- **向量数据库**: Qdrant/Weaviate（知识库检索）
+- **文件存储**: MinIO/S3（CAD文件、海报等）
+- **分析数据库**: ClickHouse（使用统计、性能指标）
+- **API**: Next.js API Routes + FastAPI（Python）
+- **实时通信**: WebSockets集群 + Redis Streams
+- **消息队列**: Redis Streams（轻量级）/ Apache Kafka（高吞吐量）
+
+### AI与机器学习栈
+- **FastGPT集成**: 通过API密钥和AppID对接FastGPT平台智能体
+- **多智能体框架**: AutoGen, CrewAI, LangGraph
+- **模型提供商**: OpenAI, Anthropic, Cohere, Azure OpenAI
+- **生成式UI**: CopilotKit + AG-UI协议统一对话式操作控制
+- **自研智能体**: CAD解读智能体, 海报生成智能体
+- **知识库检索**: FastGPT知识库检索接口集成 + 向量搜索
+- **流式处理**: 服务器发送事件实现实时AI响应
+- **模型管理**: 统一模型池 + 负载均衡 + 成本优化
+- **AI安全**: 输入输出过滤 + 提示注入防护 + 访问控制
+
+## 🚀 强制代码规范
+
+### 导入规则（强制执行）
+```typescript
+// ✅ 正确 - 使用绝对导入
+import { Button } from '@/components/ui/button'
+import { ChatService } from '@/lib/services/chat-service'
+
+// ❌ 错误 - 禁止相对导入
+import { Button } from '../../../components/ui/button'
+```
+
+### 文件命名规范
+- **组件文件**: `PascalCase.tsx`（如: `ChatInterface.tsx`）
+- **工具文件**: `kebab-case.ts`（如: `api-client.ts`）
+- **页面文件**: `page.tsx`, `layout.tsx`, `loading.tsx`
+- **类型文件**: `kebab-case.ts`（如: `user-types.ts`）
+
+### 组件架构标准
+```typescript
+// ✅ 服务端组件（默认）- 用于数据获取
+export default async function ServerComponent() {
+  const data = await fetchData()
+  return <div>{data}</div>
+}
+
+// ✅ 客户端组件 - 仅在需要交互时使用
+'use client'
+import { useState } from 'react'
+
+export default function ClientComponent() {
+  const [state, setState] = useState()
+  return <button onClick={() => setState(!state)}>切换</button>
+}
+```
+
+### 数据库操作规范
+```typescript
+// ✅ 单一操作
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+  include: { sessions: true }
+})
+
+// ✅ 多表操作必须使用事务
+await prisma.$transaction([
+  prisma.user.update({ where: { id }, data: { name } }),
+  prisma.session.create({ data: { userId: id } })
+])
+```
+
+## 🤖 AI模型管理架构
+
+### 模型管理概述
+ZK-Agent平台采用统一的AI模型管理架构，所有智能体（除FastGPT直接对接外）都通过管理员配置的模型池获取AI能力。
+
+### 核心组件架构
+```typescript
+interface ModelManagementArchitecture {
+  modelConfigCenter: {
+    purpose: "管理员统一配置各种AI模型";
+    features: ["模型注册", "配置管理", "版本控制"];
+  };
+
+  agentModelBinding: {
+    purpose: "每个智能体可配置使用的模型";
+    features: ["模型绑定", "能力匹配", "配置继承"];
+  };
+
+  modelCallProxy: {
+    purpose: "统一的模型调用接口";
+    features: ["协议适配", "请求路由", "响应处理"];
+  };
+
+  loadBalancer: {
+    purpose: "多模型实例的负载分配";
+    features: ["负载均衡", "健康检查", "故障转移"];
+  };
+}
+```
+
+### 目录结构标准
+```
+app/admin/models/
+├── page.tsx                    # 模型管理主页面
+├── layout.tsx                  # 布局组件
+├── providers/                  # 模型提供商管理
+├── configurations/             # 模型配置
+├── monitoring/                 # 模型监控
+└── testing/                    # 模型测试
+
+lib/models/
+├── providers/                  # 模型提供商适配器
+│   ├── openai-provider.ts     # OpenAI适配器
+│   ├── anthropic-provider.ts  # Anthropic适配器
+│   ├── azure-provider.ts      # Azure OpenAI适配器
+│   └── base-provider.ts       # 基础提供商接口
+├── manager/                    # 模型管理器
+│   ├── model-manager.ts       # 模型管理器
+│   ├── load-balancer.ts       # 负载均衡器
+│   └── health-checker.ts      # 健康检查
+└── types/                      # 模型相关类型
+```
+
+## 🎯 支持的模型类型
+
+### 文本生成模型
+- **OpenAI**: GPT-4, GPT-3.5-turbo, GPT-4-turbo
+- **Anthropic**: Claude-3, Claude-2, Claude-instant
+- **Cohere**: Command, Command-light
+- **Azure OpenAI**: 企业级GPT模型
+- **本地模型**: Llama, Mistral, 其他开源模型
+
+### 多模态模型
+- **语音识别**: OpenAI Whisper, Azure Speech, Google Speech-to-Text
+- **语音合成**: OpenAI TTS, Azure Speech, ElevenLabs
+- **图像生成**: DALL-E 3, Midjourney, Stable Diffusion
+
+## 💾 模型配置数据结构
+
+### 模型配置表结构
+```sql
+-- AI模型配置表
+CREATE TABLE ai_models (
+  id VARCHAR PRIMARY KEY,
+  name VARCHAR NOT NULL,              -- 模型名称
+  provider VARCHAR NOT NULL,          -- 提供商 (openai, anthropic, cohere等)
+  model_type VARCHAR NOT NULL,        -- 模型类型
+  version VARCHAR,                    -- 模型版本
+  endpoint VARCHAR,                   -- API端点
+  api_key VARCHAR,                    -- API密钥 (加密存储)
+  max_tokens INTEGER,                 -- 最大token数
+  temperature FLOAT,                  -- 默认温度
+  config JSONB,                       -- 模型特定配置
+  is_active BOOLEAN DEFAULT true,     -- 是否启用
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 智能体模型绑定表
+CREATE TABLE agent_model_bindings (
+  id VARCHAR PRIMARY KEY,
+  agent_id VARCHAR NOT NULL,          -- 智能体ID
+  model_id VARCHAR NOT NULL,          -- 模型ID
+  is_primary BOOLEAN DEFAULT false,   -- 是否为主模型
+  fallback_order INTEGER,             -- 备用顺序
+  custom_config JSONB,                -- 自定义配置
+  FOREIGN KEY (model_id) REFERENCES ai_models(id)
+);
+```
+
+### TypeScript类型定义
+```typescript
+// 模型提供商类型
+export type ModelProvider = 'openai' | 'anthropic' | 'cohere' | 'azure' | 'local';
+
+// 模型类型枚举
+export type ModelType =
+  | 'text-generation'
+  | 'speech-recognition'
+  | 'speech-synthesis'
+  | 'image-generation'
+  | 'embedding';
+
+// 模型配置接口
+export interface ModelConfig {
+  id: string;
+  name: string;
+  provider: ModelProvider;
+  modelType: ModelType;
+  version?: string;
+  endpoint?: string;
+  apiKey: string;
+  maxTokens?: number;
+  temperature?: number;
+  config?: Record<string, any>;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 模型调用请求接口
+export interface ModelCallRequest {
+  modelId: string;
+  prompt: string;
+  parameters?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    stream?: boolean;
+  };
+  metadata?: {
+    userId?: string;
+    agentId?: string;
+    sessionId?: string;
+  };
+}
+```
+
+## 🔧 模型管理器实现
+
+### 基础模型管理器
+```typescript
+/**
+ * AI模型管理器
+ *
+ * 负责统一管理所有AI模型的配置、调用和监控
+ */
+export class ModelManager {
+  private models: Map<string, ModelConfig> = new Map();
+  private providers: Map<ModelProvider, BaseProvider> = new Map();
+  private loadBalancer: LoadBalancer;
+  private healthChecker: HealthChecker;
+
+  constructor() {
+    this.loadBalancer = new LoadBalancer();
+    this.healthChecker = new HealthChecker();
+    this.initializeProviders();
+  }
+
+  /**
+   * 初始化模型提供商
+   */
+  private initializeProviders(): void {
+    this.providers.set('openai', new OpenAIProvider());
+    this.providers.set('anthropic', new AnthropicProvider());
+    this.providers.set('azure', new AzureProvider());
+    this.providers.set('cohere', new CohereProvider());
+  }
+
+  /**
+   * 注册模型
+   *
+   * @param config 模型配置
+   */
+  async registerModel(config: ModelConfig): Promise<void> {
+    // 验证模型配置
+    await this.validateModelConfig(config);
+
+    // 测试模型连接
+    await this.testModelConnection(config);
+
+    // 注册模型
+    this.models.set(config.id, config);
+
+    // 启动健康检查
+    this.healthChecker.addModel(config.id);
+
+    console.log(`模型 ${config.name} 注册成功`);
+  }
+
+  /**
+   * 调用模型
+   *
+   * @param request 调用请求
+   * @returns 模型响应
+   */
+  async callModel(request: ModelCallRequest): Promise<ModelResponse> {
+    const model = this.models.get(request.modelId);
+    if (!model) {
+      throw new Error(`模型 ${request.modelId} 不存在`);
+    }
+
+    const provider = this.providers.get(model.provider);
+    if (!provider) {
+      throw new Error(`提供商 ${model.provider} 不支持`);
+    }
+
+    // 负载均衡选择实例
+    const instance = await this.loadBalancer.selectInstance(model.id);
+
+    try {
+      // 调用模型
+      const response = await provider.call(model, request, instance);
+
+      // 记录使用统计
+      await this.recordUsage(model.id, request, response);
+
+      return response;
+    } catch (error) {
+      // 处理错误和故障转移
+      await this.handleError(model.id, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 验证模型配置
+   */
+  private async validateModelConfig(config: ModelConfig): Promise<void> {
+    if (!config.name || !config.provider || !config.modelType) {
+      throw new Error('模型配置缺少必要字段');
+    }
+
+    if (!this.providers.has(config.provider)) {
+      throw new Error(`不支持的提供商: ${config.provider}`);
+    }
+  }
+
+  /**
+   * 测试模型连接
+   */
+  private async testModelConnection(config: ModelConfig): Promise<void> {
+    const provider = this.providers.get(config.provider)!;
+    await provider.testConnection(config);
+  }
+
+  /**
+   * 记录使用统计
+   */
+  private async recordUsage(
+    modelId: string,
+    request: ModelCallRequest,
+    response: ModelResponse
+  ): Promise<void> {
+    // 实现使用统计记录逻辑
+  }
+
+  /**
+   * 处理错误
+   */
+  private async handleError(modelId: string, error: Error): Promise<void> {
+    // 实现错误处理和故障转移逻辑
+  }
+}
+```
+
+## ⚠️ 技术约束与禁止项
+
+### 强制要求
+1. **禁止使用any类型**: TypeScript必须严格模式
+2. **禁止相对导入**: 统一使用@/前缀的绝对导入
+3. **禁止直接数据库操作**: 必须通过Prisma ORM
+4. **禁止跳过模型管理**: 所有AI调用必须通过模型管理器
+
+### 最佳实践
+1. **优先服务端组件**: 减少客户端JavaScript包大小
+2. **使用事务**: 多表操作必须原子性
+3. **模型降级**: 配置模型故障转移策略
+4. **缓存策略**: 合理使用Redis缓存提升性能
+
+---
+
+**参考文档**:
+- [技术选型标准](.kiro/steering/tech.md)
+- [模型管理文档](.kiro/steering/model-management.md)
+- [项目架构规范](.cursor/rules/01-project-architecture.mdc)
+- [开发规范](.cursor/rules/02-development-standards.mdc)
+# ZK-Agent 技术栈与AI模型管理规范
+
+## 📋 核心技术栈标准
+
+基于 [技术选型标准](.kiro/steering/tech.md) 和 [模型管理文档](.kiro/steering/model-management.md)，确保技术栈统一性和可维护性。
+
+### 前端技术栈（强制要求）
+- **框架**: Next.js 15.2.4 with App Router（必需）
+- **UI协议**: AG-UI协议 + CopilotKit统一前端框架
+- **UI组件**: Radix UI + shadcn/ui 组件库
+- **样式**: Tailwind CSS + 设计令牌系统
+- **状态管理**: React Query（服务端状态）+ React Context（客户端状态）
+- **身份认证**: NextAuth.js 4.24.11
+- **类型系统**: TypeScript 5.8.3 严格模式（禁止使用 `any`）
+
+### 后端技术栈（渐进式微服务架构）
+- **运行时**: Node.js 18+（主要）+ Python 3.11+（AI服务）
+- **数据库**: PostgreSQL + Prisma ORM（关系型数据）
+- **缓存**: Redis + ioredis客户端（缓存 + 消息队列）
+- **向量数据库**: Qdrant/Weaviate（知识库检索）
+- **文件存储**: MinIO/S3（CAD文件、海报等）
+- **分析数据库**: ClickHouse（使用统计、性能指标）
+- **API**: Next.js API Routes + FastAPI（Python）
+- **实时通信**: WebSockets集群 + Redis Streams
+- **消息队列**: Redis Streams（轻量级）/ Apache Kafka（高吞吐量）
+
+### AI与机器学习栈
+- **FastGPT集成**: 通过API密钥和AppID对接FastGPT平台智能体
+- **多智能体框架**: AutoGen, CrewAI, LangGraph
+- **模型提供商**: OpenAI, Anthropic, Cohere, Azure OpenAI
+- **生成式UI**: CopilotKit + AG-UI协议统一对话式操作控制
+- **自研智能体**: CAD解读智能体, 海报生成智能体
+- **知识库检索**: FastGPT知识库检索接口集成 + 向量搜索
+- **流式处理**: 服务器发送事件实现实时AI响应
+- **模型管理**: 统一模型池 + 负载均衡 + 成本优化
+- **AI安全**: 输入输出过滤 + 提示注入防护 + 访问控制
+
+## 🚀 强制代码规范
+
+### 导入规则（强制执行）
+```typescript
+// ✅ 正确 - 使用绝对导入
+import { Button } from '@/components/ui/button'
+import { ChatService } from '@/lib/services/chat-service'
+
+// ❌ 错误 - 禁止相对导入
+import { Button } from '../../../components/ui/button'
+```
+
+### 文件命名规范
+- **组件文件**: `PascalCase.tsx`（如: `ChatInterface.tsx`）
+- **工具文件**: `kebab-case.ts`（如: `api-client.ts`）
+- **页面文件**: `page.tsx`, `layout.tsx`, `loading.tsx`
+- **类型文件**: `kebab-case.ts`（如: `user-types.ts`）
+
+### 组件架构标准
+```typescript
+// ✅ 服务端组件（默认）- 用于数据获取
+export default async function ServerComponent() {
+  const data = await fetchData()
+  return <div>{data}</div>
+}
+
+// ✅ 客户端组件 - 仅在需要交互时使用
+'use client'
+import { useState } from 'react'
+
+export default function ClientComponent() {
+  const [state, setState] = useState()
+  return <button onClick={() => setState(!state)}>切换</button>
+}
+```
+
+### 数据库操作规范
+```typescript
+// ✅ 单一操作
+const user = await prisma.user.findUnique({
+  where: { id: userId },
+  include: { sessions: true }
+})
+
+// ✅ 多表操作必须使用事务
+await prisma.$transaction([
+  prisma.user.update({ where: { id }, data: { name } }),
+  prisma.session.create({ data: { userId: id } })
+])
+```
+
+## 🤖 AI模型管理架构
+
+### 模型管理概述
+ZK-Agent平台采用统一的AI模型管理架构，所有智能体（除FastGPT直接对接外）都通过管理员配置的模型池获取AI能力。
+
+### 核心组件架构
+```typescript
+interface ModelManagementArchitecture {
+  modelConfigCenter: {
+    purpose: "管理员统一配置各种AI模型";
+    features: ["模型注册", "配置管理", "版本控制"];
+  };
+
+  agentModelBinding: {
+    purpose: "每个智能体可配置使用的模型";
+    features: ["模型绑定", "能力匹配", "配置继承"];
+  };
+
+  modelCallProxy: {
+    purpose: "统一的模型调用接口";
+    features: ["协议适配", "请求路由", "响应处理"];
+  };
+
+  loadBalancer: {
+    purpose: "多模型实例的负载分配";
+    features: ["负载均衡", "健康检查", "故障转移"];
+  };
+}
+```
+
+### 目录结构标准
+```
+app/admin/models/
+├── page.tsx                    # 模型管理主页面
+├── layout.tsx                  # 布局组件
+├── providers/                  # 模型提供商管理
+├── configurations/             # 模型配置
+├── monitoring/                 # 模型监控
+└── testing/                    # 模型测试
+
+lib/models/
+├── providers/                  # 模型提供商适配器
+│   ├── openai-provider.ts     # OpenAI适配器
+│   ├── anthropic-provider.ts  # Anthropic适配器
+│   ├── azure-provider.ts      # Azure OpenAI适配器
+│   └── base-provider.ts       # 基础提供商接口
+├── manager/                    # 模型管理器
+│   ├── model-manager.ts       # 模型管理器
+│   ├── load-balancer.ts       # 负载均衡器
+│   └── health-checker.ts      # 健康检查
+└── types/                      # 模型相关类型
+```
+
+## 🎯 支持的模型类型
+
+### 文本生成模型
+- **OpenAI**: GPT-4, GPT-3.5-turbo, GPT-4-turbo
+- **Anthropic**: Claude-3, Claude-2, Claude-instant
+- **Cohere**: Command, Command-light
+- **Azure OpenAI**: 企业级GPT模型
+- **本地模型**: Llama, Mistral, 其他开源模型
+
+### 多模态模型
+- **语音识别**: OpenAI Whisper, Azure Speech, Google Speech-to-Text
+- **语音合成**: OpenAI TTS, Azure Speech, ElevenLabs
+- **图像生成**: DALL-E 3, Midjourney, Stable Diffusion
+
+## 💾 模型配置数据结构
+
+### 模型配置表结构
+```sql
+-- AI模型配置表
+CREATE TABLE ai_models (
+  id VARCHAR PRIMARY KEY,
+  name VARCHAR NOT NULL,              -- 模型名称
+  provider VARCHAR NOT NULL,          -- 提供商 (openai, anthropic, cohere等)
+  model_type VARCHAR NOT NULL,        -- 模型类型
+  version VARCHAR,                    -- 模型版本
+  endpoint VARCHAR,                   -- API端点
+  api_key VARCHAR,                    -- API密钥 (加密存储)
+  max_tokens INTEGER,                 -- 最大token数
+  temperature FLOAT,                  -- 默认温度
+  config JSONB,                       -- 模型特定配置
+  is_active BOOLEAN DEFAULT true,     -- 是否启用
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- 智能体模型绑定表
+CREATE TABLE agent_model_bindings (
+  id VARCHAR PRIMARY KEY,
+  agent_id VARCHAR NOT NULL,          -- 智能体ID
+  model_id VARCHAR NOT NULL,          -- 模型ID
+  is_primary BOOLEAN DEFAULT false,   -- 是否为主模型
+  fallback_order INTEGER,             -- 备用顺序
+  custom_config JSONB,                -- 自定义配置
+  FOREIGN KEY (model_id) REFERENCES ai_models(id)
+);
+```
+
+### TypeScript类型定义
+```typescript
+// 模型提供商类型
+export type ModelProvider = 'openai' | 'anthropic' | 'cohere' | 'azure' | 'local';
+
+// 模型类型枚举
+export type ModelType =
+  | 'text-generation'
+  | 'speech-recognition'
+  | 'speech-synthesis'
+  | 'image-generation'
+  | 'embedding';
+
+// 模型配置接口
+export interface ModelConfig {
+  id: string;
+  name: string;
+  provider: ModelProvider;
+  modelType: ModelType;
+  version?: string;
+  endpoint?: string;
+  apiKey: string;
+  maxTokens?: number;
+  temperature?: number;
+  config?: Record<string, any>;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// 模型调用请求接口
+export interface ModelCallRequest {
+  modelId: string;
+  prompt: string;
+  parameters?: {
+    temperature?: number;
+    maxTokens?: number;
+    topP?: number;
+    stream?: boolean;
+  };
+  metadata?: {
+    userId?: string;
+    agentId?: string;
+    sessionId?: string;
+  };
+}
+```
+
+## 🔧 模型管理器实现
+
+### 基础模型管理器
+```typescript
+/**
+ * AI模型管理器
+ *
+ * 负责统一管理所有AI模型的配置、调用和监控
+ */
+export class ModelManager {
+  private models: Map<string, ModelConfig> = new Map();
+  private providers: Map<ModelProvider, BaseProvider> = new Map();
+  private loadBalancer: LoadBalancer;
+  private healthChecker: HealthChecker;
+
+  constructor() {
+    this.loadBalancer = new LoadBalancer();
+    this.healthChecker = new HealthChecker();
+    this.initializeProviders();
+  }
+
+  /**
+   * 初始化模型提供商
+   */
+  private initializeProviders(): void {
+    this.providers.set('openai', new OpenAIProvider());
+    this.providers.set('anthropic', new AnthropicProvider());
+    this.providers.set('azure', new AzureProvider());
+    this.providers.set('cohere', new CohereProvider());
+  }
+
+  /**
+   * 注册模型
+   *
+   * @param config 模型配置
+   */
+  async registerModel(config: ModelConfig): Promise<void> {
+    // 验证模型配置
+    await this.validateModelConfig(config);
+
+    // 测试模型连接
+    await this.testModelConnection(config);
+
+    // 注册模型
+    this.models.set(config.id, config);
+
+    // 启动健康检查
+    this.healthChecker.addModel(config.id);
+
+    console.log(`模型 ${config.name} 注册成功`);
+  }
+
+  /**
+   * 调用模型
+   *
+   * @param request 调用请求
+   * @returns 模型响应
+   */
+  async callModel(request: ModelCallRequest): Promise<ModelResponse> {
+    const model = this.models.get(request.modelId);
+    if (!model) {
+      throw new Error(`模型 ${request.modelId} 不存在`);
+    }
+
+    const provider = this.providers.get(model.provider);
+    if (!provider) {
+      throw new Error(`提供商 ${model.provider} 不支持`);
+    }
+
+    // 负载均衡选择实例
+    const instance = await this.loadBalancer.selectInstance(model.id);
+
+    try {
+      // 调用模型
+      const response = await provider.call(model, request, instance);
+
+      // 记录使用统计
+      await this.recordUsage(model.id, request, response);
+
+      return response;
+    } catch (error) {
+      // 处理错误和故障转移
+      await this.handleError(model.id, error);
+      throw error;
+    }
+  }
+
+  /**
+   * 验证模型配置
+   */
+  private async validateModelConfig(config: ModelConfig): Promise<void> {
+    if (!config.name || !config.provider || !config.modelType) {
+      throw new Error('模型配置缺少必要字段');
+    }
+
+    if (!this.providers.has(config.provider)) {
+      throw new Error(`不支持的提供商: ${config.provider}`);
+    }
+  }
+
+  /**
+   * 测试模型连接
+   */
+  private async testModelConnection(config: ModelConfig): Promise<void> {
+    const provider = this.providers.get(config.provider)!;
+    await provider.testConnection(config);
+  }
+
+  /**
+   * 记录使用统计
+   */
+  private async recordUsage(
+    modelId: string,
+    request: ModelCallRequest,
+    response: ModelResponse
+  ): Promise<void> {
+    // 实现使用统计记录逻辑
+  }
+
+  /**
+   * 处理错误
+   */
+  private async handleError(modelId: string, error: Error): Promise<void> {
+    // 实现错误处理和故障转移逻辑
+  }
+}
+```
+
+## ⚠️ 技术约束与禁止项
+
+### 强制要求
+1. **禁止使用any类型**: TypeScript必须严格模式
+2. **禁止相对导入**: 统一使用@/前缀的绝对导入
+3. **禁止直接数据库操作**: 必须通过Prisma ORM
+4. **禁止跳过模型管理**: 所有AI调用必须通过模型管理器
+
+### 最佳实践
+1. **优先服务端组件**: 减少客户端JavaScript包大小
+2. **使用事务**: 多表操作必须原子性
+3. **模型降级**: 配置模型故障转移策略
+4. **缓存策略**: 合理使用Redis缓存提升性能
+
+---
+
+**参考文档**:
+- [技术选型标准](.kiro/steering/tech.md)
+- [模型管理文档](.kiro/steering/model-management.md)
+- [项目架构规范](.cursor/rules/01-project-architecture.mdc)
+- [开发规范](.cursor/rules/02-development-standards.mdc)

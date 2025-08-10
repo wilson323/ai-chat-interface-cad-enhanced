@@ -138,7 +138,8 @@ export class AdvancedCADParser {
       
       // 如果需要，生成装配结构
       if (this.options.extractAssemblyStructure && !result.assemblyStructure) {
-        result.assemblyStructure = this.buildAssemblyStructure(result.components);
+        const components = result.components ?? [];
+        result.assemblyStructure = this.buildAssemblyStructure(components);
       }
       
       // 记录解析持续时间
@@ -153,7 +154,7 @@ export class AdvancedCADParser {
       const complexityScore = this.calculateComplexityScore(result);
       cadMetrics.record('complexity_score', complexityScore, 'count', {
         fileType,
-        componentCount: result.components.length.toString()
+        componentCount: String((result.components ?? []).length)
       });
       
       // 设置复杂度分数
@@ -219,10 +220,13 @@ export class AdvancedCADParser {
     const materials = this.generateSampleMaterials();
     
     // 组装结果
+    const fileId = new Date().getTime().toString();
     return {
-      fileId: new Date().getTime().toString(),
+      fileId,
+      id: fileId,
       fileName,
       fileType: 'step',
+      fileSize: buffer.byteLength,
       components,
       layers,
       entities,
@@ -273,31 +277,26 @@ export class AdvancedCADParser {
     const layers = ['默认层', '主要几何', '辅助几何', '标注'];
     
     // 计算实体数量
-    const entities: CADEntityMap = {
-      'CURVE': 35,
-      'SURFACE': 22,
-      'POINT': 48,
-      'LINE': 80,
-      'ARC': 12,
-      'SPLINE': 16,
-      'COMPOSITE_CURVE': 5
-    };
+    const entities: CADEntityMap = { 'EDGE': 120, 'FACE': 45, 'VERTEX': 65 } as any;
     
     // 生成材质列表
     const materials = this.generateSampleMaterials();
     
     // 组装结果
+    const fileId = new Date().getTime().toString();
     return {
-      fileId: new Date().getTime().toString(),
+      fileId,
+      id: fileId,
       fileName,
       fileType: 'iges',
+      fileSize: buffer.byteLength,
       components,
       layers,
       entities,
       materials,
       dimensions: {
         width: 200,
-        height: 120,
+        height: 150,
         depth: 80,
         unit: 'mm'
       },
@@ -307,8 +306,8 @@ export class AdvancedCADParser {
         creationDate: new Date().toISOString(),
         description: '使用高级解析器的IGES文件解析结果',
         boundingBox: {
-          min: [-100, -60, -40],
-          max: [100, 60, 40]
+          min: [-100, -75, -40],
+          max: [100, 75, 40]
         },
         units: 'mm'
       }
@@ -952,14 +951,243 @@ async function processIFC(fileData: File | ArrayBuffer, options: ParserOptions):
   return createResultFromIFCAnalysis(fileData, result, options);
 }
 
-// 辅助函数
+// 辅助：统一构造完整的 CADAnalysisResult 结构
+function createResultFromGeometry(
+  fileData: File | ArrayBuffer,
+  fileType: string,
+  geometry: THREE.BufferGeometry,
+  options: ParserOptions
+): CADAnalysisResult {
+  const fileName = fileData instanceof File ? fileData.name : `unknown.${fileType}`;
+  const fileSize = fileData instanceof File ? fileData.size : (fileData as ArrayBuffer).byteLength;
+  const fileId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return {
+    fileId,
+    id: fileId,
+    fileName,
+    fileType,
+    fileSize,
+    url: fileData instanceof File ? URL.createObjectURL(fileData) : '',
+    entities: { meshes: 1 },
+    layers: ['默认'],
+    dimensions: { width: 0, height: 0, unit: 'mm' },
+    metadata: {
+      vertices: geometry.attributes?.position?.count ?? 0,
+      boundingBox: geometry.boundingBox ? {
+        min: [geometry.boundingBox.min.x, geometry.boundingBox.min.y, geometry.boundingBox.min.z],
+        max: [geometry.boundingBox.max.x, geometry.boundingBox.max.y, geometry.boundingBox.max.z]
+      } : undefined
+    },
+    components: [],
+    materials: []
+  };
+}
+
+async function loadObject(loader: any, fileData: File | ArrayBuffer): Promise<THREE.Object3D> {
+  return new Promise((resolve, reject) => {
+    try {
+      if (fileData instanceof File) {
+        const url = URL.createObjectURL(fileData);
+        loader.load(
+          url,
+          (object: THREE.Object3D) => {
+            URL.revokeObjectURL(url);
+            resolve(object);
+          },
+          undefined,
+          (error: any) => {
+            URL.revokeObjectURL(url);
+            reject(error);
+          }
+        );
+      } else {
+        // 某些加载器不支持直接 parse 二进制对象，退回基础结果
+        reject(new Error('Loader does not support ArrayBuffer parse for this format'));
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function createResultFromObject(
+  fileData: File | ArrayBuffer,
+  fileType: string,
+  object: THREE.Object3D,
+  options: ParserOptions
+): CADAnalysisResult {
+  const box = new THREE.Box3().setFromObject(object);
+  const geometryInfo = { min: [box.min.x, box.min.y, box.min.z], max: [box.max.x, box.max.y, box.max.z] };
+  const fileName = fileData instanceof File ? fileData.name : `unknown.${fileType}`;
+  const fileSize = fileData instanceof File ? fileData.size : (fileData as ArrayBuffer).byteLength;
+  const fileId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return {
+    fileId,
+    id: fileId,
+    fileName,
+    fileType,
+    fileSize,
+    url: fileData instanceof File ? URL.createObjectURL(fileData) : '',
+    entities: { meshes: 1 },
+    layers: ['默认'],
+    dimensions: { width: 0, height: 0, unit: 'mm' },
+    metadata: { boundingBox: geometryInfo },
+    components: [],
+    materials: []
+  };
+}
+
+async function loadGLTF(loader: GLTFLoader, fileData: File | ArrayBuffer): Promise<any> {
+  return new Promise((resolve, reject) => {
+    try {
+      if (fileData instanceof File) {
+        const url = URL.createObjectURL(fileData);
+        loader.load(
+          url,
+          (gltf: any) => {
+            URL.revokeObjectURL(url);
+            resolve(gltf);
+          },
+          undefined,
+          (error: any) => {
+            URL.revokeObjectURL(url);
+            reject(error);
+          }
+        );
+      } else {
+        reject(new Error('GLTFLoader does not support ArrayBuffer parse directly in this context'));
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function createResultFromGLTF(
+  fileData: File | ArrayBuffer,
+  fileType: string,
+  gltf: any,
+  options: ParserOptions
+): CADAnalysisResult {
+  const scene: THREE.Scene = gltf.scene;
+  const box = new THREE.Box3().setFromObject(scene);
+  const fileName = fileData instanceof File ? fileData.name : `unknown.${fileType}`;
+  const fileSize = fileData instanceof File ? fileData.size : (fileData as ArrayBuffer).byteLength;
+  const fileId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return {
+    fileId,
+    id: fileId,
+    fileName,
+    fileType,
+    fileSize,
+    url: fileData instanceof File ? URL.createObjectURL(fileData) : '',
+    entities: { meshes: 1 },
+    layers: ['默认'],
+    dimensions: { width: 0, height: 0, unit: 'mm' },
+    metadata: {
+      boundingBox: { min: [box.min.x, box.min.y, box.min.z], max: [box.max.x, box.max.y, box.max.z] }
+    },
+    components: [],
+    materials: []
+  };
+}
+
+async function loadCollada(loader: ColladaLoader, fileData: File | ArrayBuffer): Promise<any> {
+  return new Promise((resolve, reject) => {
+    try {
+      if (fileData instanceof File) {
+        const url = URL.createObjectURL(fileData);
+        loader.load(
+          url,
+          (collada: any) => {
+            URL.revokeObjectURL(url);
+            resolve(collada);
+          },
+          undefined,
+          (error: any) => {
+            URL.revokeObjectURL(url);
+            reject(error);
+          }
+        );
+      } else {
+        reject(new Error('ColladaLoader does not support ArrayBuffer parse directly'));
+      }
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function createResultFromCollada(
+  fileData: File | ArrayBuffer,
+  fileType: string,
+  collada: any,
+  options: ParserOptions
+): CADAnalysisResult {
+  const scene: THREE.Scene = collada.scene;
+  const box = new THREE.Box3().setFromObject(scene);
+  const fileName = fileData instanceof File ? fileData.name : `unknown.${fileType}`;
+  const fileSize = fileData instanceof File ? fileData.size : (fileData as ArrayBuffer).byteLength;
+  const fileId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return {
+    fileId,
+    id: fileId,
+    fileName,
+    fileType,
+    fileSize,
+    url: fileData instanceof File ? URL.createObjectURL(fileData) : '',
+    entities: { meshes: 1 },
+    layers: ['默认'],
+    dimensions: { width: 0, height: 0, unit: 'mm' },
+    metadata: {
+      boundingBox: { min: [box.min.x, box.min.y, box.min.z], max: [box.max.x, box.max.y, box.max.z] }
+    },
+    components: [],
+    materials: []
+  };
+}
+
+function analyzeIFCScene(scene: THREE.Scene): any {
+  const box = new THREE.Box3().setFromObject(scene);
+  return {
+    boundingBox: { min: [box.min.x, box.min.y, box.min.z], max: [box.max.x, box.max.y, box.max.z] },
+    elementCount: scene.children.length
+  };
+}
+
+function createResultFromIFCAnalysis(
+  fileData: File | ArrayBuffer,
+  analysis: any,
+  options: ParserOptions
+): CADAnalysisResult {
+  const fileType = 'ifc';
+  const fileName = fileData instanceof File ? fileData.name : `unknown.${fileType}`;
+  const fileSize = fileData instanceof File ? fileData.size : (fileData as ArrayBuffer).byteLength;
+  const fileId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return {
+    fileId,
+    id: fileId,
+    fileName,
+    fileType,
+    fileSize,
+    url: fileData instanceof File ? URL.createObjectURL(fileData) : '',
+    entities: { meshes: analysis.elementCount ?? 0 },
+    layers: ['默认'],
+    dimensions: { width: 0, height: 0, unit: 'mm' },
+    metadata: { boundingBox: analysis.boundingBox },
+    components: [],
+    materials: []
+  };
+}
+
+// 修正：基础结果必须含 fileId/fileSize
 function createBaseResult(fileData: File | ArrayBuffer, fileType: string, options: ParserOptions): CADAnalysisResult {
   const id = Date.now().toString();
   const fileName = fileData instanceof File ? fileData.name : `unknown.${fileType}`;
   const fileSize = fileData instanceof File ? fileData.size : (fileData as ArrayBuffer).byteLength;
   const url = fileData instanceof File ? URL.createObjectURL(fileData) : '';
-  
   return {
+    fileId: id,
     id,
     fileName,
     fileType,
@@ -987,11 +1215,10 @@ function createBaseResult(fileData: File | ArrayBuffer, fileType: string, option
       software: '未知',
       version: '未知',
     },
+    components: [],
+    materials: [],
     devices: [],
-    wiring: {
-      totalLength: 0,
-      details: [],
-    },
+    wiring: { totalLength: 0, details: [] },
     risks: [],
     aiInsights: {
       summary: `这是一个${fileType.toUpperCase()}格式的3D文件，需要专业CAD软件查看完整内容。`,
@@ -1006,7 +1233,8 @@ async function loadGeometry(loader: any, fileData: File | ArrayBuffer): Promise<
     try {
       if (fileData instanceof File) {
         const url = URL.createObjectURL(fileData);
-        loader.load(url, 
+        loader.load(
+          url,
           (geometry: THREE.BufferGeometry) => {
             URL.revokeObjectURL(url);
             resolve(geometry);

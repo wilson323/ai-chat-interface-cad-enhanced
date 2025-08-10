@@ -1,0 +1,1070 @@
+---
+alwaysApply: true
+---
+# ZK-Agent FastGPT集成规范
+
+## 📋 FastGPT集成概述
+
+基于 [FastGPT集成技术指导](.kiro/steering/fastgpt-integration.md) 和 [API设计标准](.cursor/rules/06-api-design-standards.mdc)，ZK-Agent平台通过FastGPT平台API集成外部智能体。
+
+### 核心集成原则
+
+#### 1. 数据存储原则（性能优化边界）
+- **本地缓存**: 智能体配置信息（名称、描述、开场白、头像、全局变量等）
+  - **优化目的**: 减少FastGPT平台请求压力，提升用户体验
+  - **使用场景**: 用户开始新会话时无需请求FastGPT接口获取配置
+- **远程存储**: 对话记录、会话历史、点赞点彩记录、用户交互数据等**全部**保留在FastGPT平台
+- **零动态数据**: 本系统**不存储**任何FastGPT智能体的对话记录、用户交互记录
+- **实时获取**: 所有对话历史、点赞等数据通过FastGPT接口实时获取
+- **直接操作**: 所有用户交互操作（点赞、收藏等）直接调用FastGPT接口
+
+#### 2. API调用原则
+- **代理模式**: 本系统作为FastGPT平台的代理
+- **透明传输**: 用户请求透明传输到FastGPT平台
+- **流式响应**: 支持FastGPT的流式响应传输
+
+## 🏗️ 技术架构
+
+### 管理端配置流程（配置缓存优化）
+```
+管理员配置 → 输入密钥和AppID → 调用FastGPT初始化API → 获取智能体配置信息 → 本地缓存配置（减少后续请求）
+                                                     ↓
+                                        包含：开场白、全局变量、智能体描述、头像等静态配置
+```
+
+### 用户对话流程（配置缓存+动态表单）
+```
+用户登录 → 选择智能体 → 读取本地缓存配置（开场白、全局变量定义）
+                                ↓
+                        检查必填全局变量
+                                ↓
+                    有必填变量？ → 显示全局变量表单 → 用户填写/选择 → 验证表单
+                                ↓                                         ↓
+                        无必填变量                                    验证通过
+                                ↓                                         ↓
+                        创建新会话（配置+用户输入的变量值+FastGPT API）
+                                                        ↓
+                                                发送消息到FastGPT
+                                                        ↓
+                                                接收流式响应 → 展示给用户
+                                ↓
+对话历史查看 ← 实时获取历史记录（FastGPT API）
+                                ↓
+点赞/收藏操作 ← 直接调用FastGPT API（无本地存储）
+```
+
+### 用户交互操作流程（直接代理）
+```
+用户点赞 → 直接调用FastGPT点赞API → 返回结果给用户
+用户收藏 → 直接调用FastGPT收藏API → 返回结果给用户
+查看历史 → 直接调用FastGPT历史API → 返回数据给用户
+```
+
+### 目录结构标准
+```
+components/fastgpt/
+├── agent-selector.tsx          # 智能体选择器
+├── chat-interface.tsx          # 对话界面
+├── config-panel.tsx            # 配置面板
+├── stream-handler.tsx          # 流式响应处理
+└── admin/
+    ├── agent-manager.tsx       # 智能体管理
+    ├── api-config.tsx          # API配置
+    └── sync-monitor.tsx        # 同步监控
+
+lib/api/
+├── fastgpt-client.ts           # 基础客户端
+├── enhanced-fastgpt-client.ts  # 增强客户端
+└── fastgpt-ag-ui-adapter.ts    # AG-UI协议适配
+
+contexts/
+└── FastGPTContext.tsx          # 全局状态管理
+
+app/api/fastgpt/
+├── agents/                     # 智能体API
+├── chat/                       # 对话API
+├── config/                     # 配置API
+└── sync/                       # 同步API
+```
+
+## 🔌 API客户端架构
+
+### 基础客户端实现
+```typescript
+/**
+ * FastGPT基础客户端
+ *
+ * 提供与FastGPT平台的基础API交互功能
+ */
+export class FastGPTClient {
+  private apiKey: string;
+  private baseUrl: string;
+  private timeout: number;
+
+  constructor(config: FastGPTConfig) {
+    this.apiKey = config.apiKey;
+    this.baseUrl = config.baseUrl || 'https://api.fastgpt.in';
+    this.timeout = config.timeout || 30000;
+  }
+
+  /**
+   * 获取智能体列表
+   *
+   * @returns Promise<FastGPTAgent[]> - 智能体列表
+   *
+   * @example
+   * ```typescript
+   * const client = new FastGPTClient({ apiKey: 'your-api-key' });
+   * const agents = await client.getAgents();
+   * ```
+   */
+  async getAgents(): Promise<FastGPTAgent[]> {
+    try {
+      const response = await this.request('/api/core/app/list', {
+        method: 'GET',
+        headers: this.getHeaders()
+      });
+
+      return response.data.map(this.transformAgentData);
+    } catch (error) {
+      throw new FastGPTAPIError(`获取智能体列表失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 创建新会话（支持全局变量）
+   *
+   * @param appId - 智能体应用ID
+   * @param globalVariables - 全局变量值
+   * @returns Promise<SessionCreateResponse> - 会话创建响应
+   */
+  async createSession(
+    appId: string,
+    globalVariables?: Record<string, any>
+  ): Promise<SessionCreateResponse> {
+    try {
+      const payload = {
+        appId,
+        variables: globalVariables || {}
+      };
+
+      const response = await this.request('/api/v1/chat/session', {
+        method: 'POST',
+        headers: this.getHeaders(),
+        body: JSON.stringify(payload)
+      });
+
+      return {
+        sessionId: response.sessionId,
+        success: true,
+        message: '会话创建成功'
+      };
+    } catch (error) {
+      throw new FastGPTAPIError(`会话创建失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 发送对话消息
+   *
+   * @param appId - 智能体应用ID
+   * @param message - 用户消息
+   * @param sessionId - 会话ID
+   * @param stream - 是否流式响应
+   * @returns Promise<FastGPTChatResponse> - 对话响应
+   */
+  async chatCompletions(
+    appId: string,
+    message: string,
+    sessionId?: string,
+    stream: boolean = false
+  ): Promise<FastGPTChatResponse> {
+    try {
+      const payload = {
+        appId,
+        stream,
+        detail: false,
+        messages: [
+          {
+            content: message,
+            role: 'user'
+          }
+        ],
+        ...(sessionId && { chatId: sessionId })
+      };
+
+      if (stream) {
+        return this.handleStreamResponse(payload);
+      } else {
+        const response = await this.request('/api/v1/chat/completions', {
+          method: 'POST',
+          headers: this.getHeaders(),
+          body: JSON.stringify(payload)
+        });
+
+        return this.transformChatResponse(response);
+      }
+    } catch (error) {
+      throw new FastGPTAPIError(`对话请求失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 处理流式响应
+   */
+  private async *handleStreamResponse(payload: any): AsyncGenerator<FastGPTStreamChunk> {
+    const response = await fetch(`${this.baseUrl}/api/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        ...this.getHeaders(),
+        'Accept': 'text/event-stream'
+      },
+      body: JSON.stringify({ ...payload, stream: true })
+    });
+
+    if (!response.ok) {
+      throw new FastGPTAPIError(`Stream request failed: ${response.statusText}`);
+    }
+
+    const reader = response.body?.getReader();
+    if (!reader) {
+      throw new FastGPTAPIError('无法获取响应流');
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = new TextDecoder().decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            if (data === '[DONE]') return;
+
+            try {
+              const parsed = JSON.parse(data);
+              yield this.transformStreamChunk(parsed);
+            } catch (e) {
+              // 忽略解析错误
+            }
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
+  /**
+   * 获取请求头
+   */
+  private getHeaders(): Record<string, string> {
+    return {
+      'Authorization': `Bearer ${this.apiKey}`,
+      'Content-Type': 'application/json',
+      'User-Agent': 'ZK-Agent/1.0'
+    };
+  }
+}
+```
+
+### 增强客户端实现
+```typescript
+/**
+ * 增强版FastGPT客户端
+ *
+ * 在基础客户端基础上增加缓存、重试、事件机制等功能
+ */
+export class EnhancedFastGPTClient extends FastGPTClient {
+  private cache: Map<string, any> = new Map();
+  private eventEmitter: EventEmitter = new EventEmitter();
+  private retryConfig: RetryConfig;
+
+  constructor(config: EnhancedFastGPTConfig) {
+    super(config);
+    this.retryConfig = {
+      maxRetries: config.maxRetries || 3,
+      retryDelay: config.retryDelay || 1000,
+      exponentialBackoff: config.exponentialBackoff || true
+    };
+  }
+
+  /**
+   * 带缓存的对话请求
+   *
+   * @param appId - 智能体应用ID
+   * @param message - 用户消息
+   * @param cacheKey - 缓存键
+   * @param ttl - 缓存有效期（毫秒）
+   * @returns Promise<FastGPTChatResponse> - 对话响应
+   */
+  async chatCompletionsWithCache(
+    appId: string,
+    message: string,
+    cacheKey?: string,
+    ttl: number = 300000 // 5分钟默认缓存
+  ): Promise<FastGPTChatResponse> {
+    const key = cacheKey || `${appId}:${message}`;
+
+    // 检查缓存
+    const cached = this.getFromCache(key);
+    if (cached) {
+      this.eventEmitter.emit('cache_hit', { key, data: cached });
+      return cached;
+    }
+
+    // 发送请求并缓存结果
+    const response = await this.chatCompletions(appId, message);
+    this.setCache(key, response, ttl);
+
+    this.eventEmitter.emit('cache_miss', { key, data: response });
+    return response;
+  }
+
+  /**
+   * 带重试的请求
+   */
+  async requestWithRetry<T>(
+    url: string,
+    options: RequestInit,
+    retries: number = this.retryConfig.maxRetries
+  ): Promise<T> {
+    try {
+      return await this.request(url, options);
+    } catch (error) {
+      if (retries > 0 && this.shouldRetry(error)) {
+        const delay = this.calculateRetryDelay(this.retryConfig.maxRetries - retries);
+
+        this.eventEmitter.emit('retry', {
+          url,
+          error: error.message,
+          remainingRetries: retries - 1,
+          delay
+        });
+
+        await this.sleep(delay);
+        return this.requestWithRetry(url, options, retries - 1);
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * 创建新会话（支持全局变量和缓存配置）
+   *
+   * @param appId - 智能体应用ID
+   * @param userVariables - 用户输入的全局变量值
+   * @param cachedConfig - 本地缓存的智能体配置
+   * @returns Promise<SessionCreateResponse> - 会话创建响应
+   */
+  async createSessionWithVariables(
+    appId: string,
+    userVariables: Record<string, any>,
+    cachedConfig: CachedAgentConfig
+  ): Promise<SessionCreateResponse> {
+    try {
+      // 构建全局变量参数
+      const formHandler = new GlobalVariableFormHandler(cachedConfig);
+      const sessionVariables = formHandler.buildSessionVariables(userVariables);
+
+      // 调用基础客户端创建会话
+      return await this.createSession(appId, sessionVariables);
+    } catch (error) {
+      throw new FastGPTAPIError(`会话创建失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 验证全局变量输入
+   *
+   * @param cachedConfig - 智能体配置
+   * @param userInputs - 用户输入
+   * @returns ValidationResult - 验证结果
+   */
+  validateGlobalVariables(
+    cachedConfig: CachedAgentConfig,
+    userInputs: Record<string, any>
+  ): ValidationResult {
+    const formHandler = new GlobalVariableFormHandler(cachedConfig);
+    return formHandler.validateInputs(userInputs);
+  }
+
+  /**
+   * 事件监听器
+   */
+  on(event: string, listener: Function): void {
+    this.eventEmitter.on(event, listener);
+  }
+
+  /**
+   * 移除事件监听器
+   */
+  off(event: string, listener: Function): void {
+    this.eventEmitter.off(event, listener);
+  }
+}
+```
+
+## 🔄 AG-UI协议适配
+
+### FastGPT-AG-UI适配器
+```typescript
+/**
+ * FastGPT与AG-UI协议适配器
+ *
+ * 将FastGPT的对话流转换为AG-UI标准协议
+ */
+export class FastGptAgUiAdapter {
+  private client: EnhancedFastGPTClient;
+  private threadId: string;
+  private runId: string;
+
+  constructor(
+    client: EnhancedFastGPTClient,
+    threadId: string,
+    runId: string
+  ) {
+    this.client = client;
+    this.threadId = threadId;
+    this.runId = runId;
+  }
+
+  /**
+   * 转换为AG-UI消息格式
+   */
+  async convertToAgUiMessage(
+    appId: string,
+    userMessage: string
+  ): Promise<AgUiMessage> {
+    try {
+      // 发送到FastGPT
+      const response = await this.client.chatCompletions(appId, userMessage, this.threadId);
+
+      // 转换为AG-UI格式
+      return {
+        id: generateMessageId(),
+        threadId: this.threadId,
+        runId: this.runId,
+        role: 'assistant',
+        content: response.choices[0].message.content,
+        timestamp: new Date().toISOString(),
+        metadata: {
+          source: 'fastgpt',
+          appId,
+          usage: response.usage
+        }
+      };
+    } catch (error) {
+      throw new AgUiAdapterError(`消息转换失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 处理流式响应转换
+   */
+  async *convertStreamToAgUi(
+    appId: string,
+    userMessage: string
+  ): AsyncGenerator<AgUiStreamEvent> {
+    try {
+      const stream = this.client.chatCompletionsStream(appId, userMessage, this.threadId);
+
+      for await (const chunk of stream) {
+        yield {
+          event: 'thread.message.delta',
+          data: {
+            id: generateMessageId(),
+            threadId: this.threadId,
+            runId: this.runId,
+            delta: {
+              content: [{
+                type: 'text',
+                text: { value: chunk.choices[0].delta.content || '' }
+              }]
+            }
+          }
+        };
+      }
+
+      // 发送完成事件
+      yield {
+        event: 'thread.message.completed',
+        data: {
+          id: generateMessageId(),
+          threadId: this.threadId,
+          runId: this.runId,
+          status: 'completed'
+        }
+      };
+    } catch (error) {
+      yield {
+        event: 'thread.run.failed',
+        data: {
+          id: this.runId,
+          threadId: this.threadId,
+          status: 'failed',
+          last_error: {
+            code: 'fastgpt_error',
+            message: error.message
+          }
+        }
+      };
+    }
+  }
+}
+```
+
+## 🎯 配置缓存策略（性能优化）
+
+### 设计原理
+本系统采用"**配置本地化，数据远程化**"的架构设计：
+
+#### 配置信息本地缓存
+- **优化目的**: 减少FastGPT平台请求压力，提升用户体验
+- **缓存内容**: 智能体静态配置（开场白、全局变量、描述、头像等）
+- **使用场景**: 用户开始新会话时，直接使用本地缓存配置，无需请求FastGPT接口
+
+#### 数据代理架构
+- **动态数据**: 对话记录、点赞记录、用户交互等实时通过FastGPT API获取
+- **操作代理**: 所有用户操作直接调用FastGPT API，本系统不存储
+
+### 本地缓存配置模型
+```typescript
+interface CachedAgentConfig {
+  id: string;
+  name: string;
+  description: string;
+  avatar: string;
+  openingMessage: string;    // 开场白 - 会话创建时直接使用，无需API请求
+  globalVariables: GlobalVariableConfig[];  // 全局变量配置 - 包含表单定义
+  systemPrompt?: string;     // 系统提示词
+  welcomeText?: string;      // 欢迎文本
+  lastUpdated: string;       // 最后更新时间
+  fastgptAppId: string;      // FastGPT应用ID
+  cacheExpiry: string;       // 缓存过期时间
+}
+
+interface GlobalVariableConfig {
+  key: string;              // 变量键名
+  label: string;            // 显示标签
+  type: 'string' | 'number' | 'boolean' | 'select' | 'textarea';  // 输入类型
+  required: boolean;        // 是否必填
+  defaultValue?: any;       // 默认值
+  placeholder?: string;     // 输入提示
+  options?: SelectOption[]; // 选择项（type为select时）
+  validation?: {            // 验证规则
+    min?: number;
+    max?: number;
+    pattern?: string;
+    message?: string;
+  };
+}
+
+interface SelectOption {
+  label: string;
+  value: string | number;
+}
+```
+
+### 缓存生命周期管理
+- **初始化**: 智能体配置时一次性获取并缓存所有静态配置
+- **更新策略**: 定期同步更新，但不影响实时会话性能
+- **失效机制**: 缓存过期时重新从FastGPT获取最新配置
+- **性能收益**: 每次用户创建新会话减少1-2次FastGPT API调用
+
+### 全局变量表单处理组件
+```typescript
+/**
+ * 全局变量表单处理器
+ *
+ * 根据FastGPT智能体的全局变量配置动态生成表单
+ * 支持必填验证和多种输入类型
+ */
+export class GlobalVariableFormHandler {
+  private agentConfig: CachedAgentConfig;
+
+  constructor(agentConfig: CachedAgentConfig) {
+    this.agentConfig = agentConfig;
+  }
+
+  /**
+   * 检查是否有必填的全局变量
+   *
+   * @returns boolean - 是否需要显示表单
+   */
+  hasRequiredVariables(): boolean {
+    return this.agentConfig.globalVariables.some(variable => variable.required);
+  }
+
+  /**
+   * 获取必填变量列表
+   *
+   * @returns GlobalVariableConfig[] - 必填变量配置
+   */
+  getRequiredVariables(): GlobalVariableConfig[] {
+    return this.agentConfig.globalVariables.filter(variable => variable.required);
+  }
+
+  /**
+   * 验证用户输入的变量值
+   *
+   * @param userInputs - 用户输入的变量值
+   * @returns ValidationResult - 验证结果
+   */
+  validateInputs(userInputs: Record<string, any>): ValidationResult {
+    const errors: ValidationError[] = [];
+
+    for (const variable of this.agentConfig.globalVariables) {
+      if (variable.required && !userInputs[variable.key]) {
+        errors.push({
+          field: variable.key,
+          message: `${variable.label}是必填项`
+        });
+        continue;
+      }
+
+      const value = userInputs[variable.key];
+      if (value !== undefined && variable.validation) {
+        const validationError = this.validateValue(variable, value);
+        if (validationError) {
+          errors.push(validationError);
+        }
+      }
+    }
+
+    return {
+      isValid: errors.length === 0,
+      errors
+    };
+  }
+
+  /**
+   * 构建创建会话的变量参数
+   *
+   * @param userInputs - 用户输入
+   * @returns Record<string, any> - 处理后的变量参数
+   */
+  buildSessionVariables(userInputs: Record<string, any>): Record<string, any> {
+    const sessionVariables: Record<string, any> = {};
+
+    for (const variable of this.agentConfig.globalVariables) {
+      const userValue = userInputs[variable.key];
+
+      if (userValue !== undefined) {
+        sessionVariables[variable.key] = userValue;
+      } else if (variable.defaultValue !== undefined) {
+        sessionVariables[variable.key] = variable.defaultValue;
+      }
+    }
+
+    return sessionVariables;
+  }
+
+  /**
+   * 单个值验证
+   */
+  private validateValue(variable: GlobalVariableConfig, value: any): ValidationError | null {
+    const { validation } = variable;
+    if (!validation) return null;
+
+    // 字符串长度验证
+    if (variable.type === 'string' || variable.type === 'textarea') {
+      if (validation.min && value.length < validation.min) {
+        return {
+          field: variable.key,
+          message: validation.message || `${variable.label}长度不能少于${validation.min}个字符`
+        };
+      }
+      if (validation.max && value.length > validation.max) {
+        return {
+          field: variable.key,
+          message: validation.message || `${variable.label}长度不能超过${validation.max}个字符`
+        };
+      }
+    }
+
+    // 数字范围验证
+    if (variable.type === 'number') {
+      const numValue = Number(value);
+      if (validation.min !== undefined && numValue < validation.min) {
+        return {
+          field: variable.key,
+          message: validation.message || `${variable.label}不能小于${validation.min}`
+        };
+      }
+      if (validation.max !== undefined && numValue > validation.max) {
+        return {
+          field: variable.key,
+          message: validation.message || `${variable.label}不能大于${validation.max}`
+        };
+      }
+    }
+
+    // 正则表达式验证
+    if (validation.pattern && !new RegExp(validation.pattern).test(value)) {
+      return {
+        field: variable.key,
+        message: validation.message || `${variable.label}格式不正确`
+      };
+    }
+
+    return null;
+  }
+}
+
+interface ValidationResult {
+  isValid: boolean;
+  errors: ValidationError[];
+}
+
+interface ValidationError {
+  field: string;
+  message: string;
+}
+```
+
+## 📊 数据同步管理
+
+### 智能体同步器
+```typescript
+/**
+ * FastGPT智能体同步管理器
+ */
+export class FastGPTSyncManager {
+  private client: EnhancedFastGPTClient;
+  private database: Database;
+  private syncInterval: number;
+
+  constructor(
+    client: EnhancedFastGPTClient,
+    database: Database,
+    syncInterval: number = 3600000 // 1小时
+  ) {
+    this.client = client;
+    this.database = database;
+    this.syncInterval = syncInterval;
+  }
+
+  /**
+   * 同步智能体信息
+   */
+  async syncAgents(): Promise<SyncResult> {
+    try {
+      // 从FastGPT获取最新智能体列表
+      const remoteAgents = await this.client.getAgents();
+
+      // 获取本地智能体列表
+      const localAgents = await this.database.fastgptAgents.findMany();
+
+      // 执行同步操作
+      const syncResult = await this.performSync(remoteAgents, localAgents);
+
+      // 记录同步日志
+      await this.logSyncResult(syncResult);
+
+      return syncResult;
+    } catch (error) {
+      throw new SyncError(`智能体同步失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 启动定时同步
+   */
+  startPeriodicSync(): void {
+    setInterval(async () => {
+      try {
+        await this.syncAgents();
+        console.log('智能体定时同步完成');
+      } catch (error) {
+        console.error('定时同步失败:', error);
+      }
+    }, this.syncInterval);
+  }
+
+  /**
+   * 执行同步操作
+   */
+  private async performSync(
+    remoteAgents: FastGPTAgent[],
+    localAgents: LocalFastGPTAgent[]
+  ): Promise<SyncResult> {
+    const result: SyncResult = {
+      created: 0,
+      updated: 0,
+      deleted: 0,
+      unchanged: 0,
+      errors: []
+    };
+
+    // 创建或更新远程智能体
+    for (const remoteAgent of remoteAgents) {
+      try {
+        const localAgent = localAgents.find(l => l.appId === remoteAgent.appId);
+
+        if (!localAgent) {
+          // 创建新智能体
+          await this.database.fastgptAgents.create({
+            data: this.transformToLocalAgent(remoteAgent)
+          });
+          result.created++;
+        } else if (this.needsUpdate(localAgent, remoteAgent)) {
+          // 更新现有智能体
+          await this.database.fastgptAgents.update({
+            where: { appId: remoteAgent.appId },
+            data: this.transformToLocalAgent(remoteAgent)
+          });
+          result.updated++;
+        } else {
+          result.unchanged++;
+        }
+      } catch (error) {
+        result.errors.push({
+          appId: remoteAgent.appId,
+          error: error.message
+        });
+      }
+    }
+
+    // 删除本地存在但远程不存在的智能体
+    const remoteAppIds = remoteAgents.map(a => a.appId);
+    const agentsToDelete = localAgents.filter(l => !remoteAppIds.includes(l.appId));
+
+    for (const agent of agentsToDelete) {
+      try {
+        await this.database.fastgptAgents.delete({
+          where: { appId: agent.appId }
+        });
+        result.deleted++;
+      } catch (error) {
+        result.errors.push({
+          appId: agent.appId,
+          error: error.message
+        });
+      }
+    }
+
+    return result;
+  }
+}
+```
+
+## 📝 类型定义
+
+### 接口定义
+```typescript
+interface SessionCreateResponse {
+  sessionId: string;
+  success: boolean;
+  message: string;
+}
+
+interface FastGPTChatResponse {
+  content: string;
+  sessionId?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
+}
+
+interface FastGPTStreamChunk {
+  id: string;
+  choices: Array<{
+    delta: {
+      content: string;
+    };
+    finish_reason?: string;
+  }>;
+}
+
+interface FastGPTAPIError extends Error {
+  status?: number;
+  code?: string;
+}
+```
+
+## ⚠️ 集成约束
+
+### 前端组件示例（全局变量表单）
+```typescript
+/**
+ * FastGPT全局变量表单组件
+ */
+import React, { useState } from 'react';
+import { GlobalVariableFormHandler, CachedAgentConfig } from '@/lib/api/fastgpt-client';
+
+interface GlobalVariableFormProps {
+  agentConfig: CachedAgentConfig;
+  onSubmit: (variables: Record<string, any>) => void;
+  onCancel: () => void;
+}
+
+export function GlobalVariableForm({ agentConfig, onSubmit, onCancel }: GlobalVariableFormProps) {
+  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const formHandler = new GlobalVariableFormHandler(agentConfig);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // 验证输入
+    const validation = formHandler.validateInputs(formData);
+    if (!validation.isValid) {
+      const errorMap = validation.errors.reduce((acc, error) => {
+        acc[error.field] = error.message;
+        return acc;
+      }, {} as Record<string, string>);
+      setErrors(errorMap);
+      return;
+    }
+
+    // 清除错误并提交
+    setErrors({});
+    onSubmit(formData);
+  };
+
+  const handleInputChange = (key: string, value: any) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    // 清除该字段的错误
+    if (errors[key]) {
+      setErrors(prev => ({ ...prev, [key]: '' }));
+    }
+  };
+
+  // 渲染输入字段
+  const renderField = (variable: GlobalVariableConfig) => {
+    const value = formData[variable.key] || variable.defaultValue || '';
+    const error = errors[variable.key];
+
+    switch (variable.type) {
+      case 'string':
+        return (
+          <input
+            type="text"
+            value={value}
+            placeholder={variable.placeholder}
+            onChange={(e) => handleInputChange(variable.key, e.target.value)}
+            className={`form-input ${error ? 'error' : ''}`}
+          />
+        );
+
+      case 'textarea':
+        return (
+          <textarea
+            value={value}
+            placeholder={variable.placeholder}
+            onChange={(e) => handleInputChange(variable.key, e.target.value)}
+            className={`form-textarea ${error ? 'error' : ''}`}
+          />
+        );
+
+      case 'number':
+        return (
+          <input
+            type="number"
+            value={value}
+            min={variable.validation?.min}
+            max={variable.validation?.max}
+            onChange={(e) => handleInputChange(variable.key, Number(e.target.value))}
+            className={`form-input ${error ? 'error' : ''}`}
+          />
+        );
+
+      case 'select':
+        return (
+          <select
+            value={value}
+            onChange={(e) => handleInputChange(variable.key, e.target.value)}
+            className={`form-select ${error ? 'error' : ''}`}
+          >
+            <option value="">请选择...</option>
+            {variable.options?.map(option => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        );
+
+      case 'boolean':
+        return (
+          <input
+            type="checkbox"
+            checked={value}
+            onChange={(e) => handleInputChange(variable.key, e.target.checked)}
+            className="form-checkbox"
+          />
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="global-variable-form">
+      <div className="form-header">
+        <h3>配置智能体参数</h3>
+        <p>请填写以下必填参数以开始对话</p>
+      </div>
+
+      <div className="form-fields">
+        {agentConfig.globalVariables
+          .filter(v => v.required)
+          .map(variable => (
+            <div key={variable.key} className="form-field">
+              <label className="field-label">
+                {variable.label}
+                {variable.required && <span className="required">*</span>}
+              </label>
+              {renderField(variable)}
+              {errors[variable.key] && (
+                <span className="field-error">{errors[variable.key]}</span>
+              )}
+            </div>
+          ))}
+      </div>
+
+      <div className="form-actions">
+        <button type="button" onClick={onCancel} className="btn-cancel">
+          取消
+        </button>
+        <button type="submit" className="btn-submit">
+          开始对话
+        </button>
+      </div>
+    </form>
+  );
+}
+```
+
+### 强制要求
+1. **配置缓存**: 本地缓存智能体配置（开场白、全局变量定义）以减少FastGPT平台压力
+2. **全局变量表单**: 必填全局变量必须通过表单收集用户输入
+3. **零动态数据**: 严格**禁止存储**FastGPT智能体的对话记录、用户交互、点赞点彩等数据
+4. **实时获取**: 所有对话历史、用户交互记录必须通过FastGPT API实时获取
+5. **直接操作**: 所有用户操作（点赞、收藏、评论等）必须直接调用FastGPT API，不得本地缓存
+6. **API代理模式**: 所有FastGPT调用必须通过代理，不允许前端直接调用
+7. **数据边界**: 本地仅存储智能体基础元数据（名称、描述、配置等）
+8. **流式支持**: 必须支持FastGPT的流式响应
+9. **错误处理**: 必须有完善的错误恢复和重试机制
+10. **同步机制**: 必须实现智能体元数据的定期同步和增量同步
+
+### 最佳实践
+1. **缓存策略**: 合理使用缓存减少API调用
+2. **监控告警**: 监控API调用频率和错误率
+3. **配置管理**: 统一管理API密钥和配置信息
+4. **版本兼容**: 保持与FastGPT API版本的兼容性
+
+---
+
+**参考文档**:
+- [FastGPT集成技术指导](.kiro/steering/fastgpt-integration.md)
+- [API设计标准](.cursor/rules/06-api-design-standards.mdc)
+- [API库架构规范](.cursor/rules/10-api-library-architecture.mdc)
+- [技术栈和AI模型管理规范](.cursor/rules/08-tech-stack-ai-models.mdc)

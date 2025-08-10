@@ -1,0 +1,327 @@
+---
+alwaysApply: true
+---
+
+# ZK-Agent 项目核心架构规范
+
+## 📋 架构设计原则
+
+本项目基于渐进式微服务架构演进策略，参考 [统一架构设计](.kiro/steering/unified-architecture.md) 和 [架构优化计划](mdc:ARCHITECTURE_OPTIMIZATION_PLAN.md)。
+
+### 核心设计理念
+- **云原生微服务架构**: 基于Kubernetes + Docker的容器化部署
+- **事件驱动架构**: 采用消息队列和事件总线，实现松耦合的智能体协作
+- **数据驱动设计**: 统一的数据湖架构，支持多模态数据处理
+- **安全优先原则**: 零信任安全模型，多层安全防护
+
+### 技术栈统一标准
+```typescript
+interface TechStack {
+  frontend: {
+    framework: "Next.js 14+ with App Router";
+    language: "TypeScript (严格模式)";
+    stateManagement: "Zustand + React Context";
+    styling: "Tailwind CSS + shadcn/ui";
+    testing: "Vitest + Playwright";
+  };
+
+  backend: {
+    framework: "Python FastAPI 3.11+";
+    database: "PostgreSQL (主) + Redis (缓存/队列)";
+    vectorDB: "Qdrant (推荐) + Pinecone (备选)";
+    objectStorage: "MinIO (自建) + AWS S3 (云端)";
+    messageQueue: "Redis Streams + RabbitMQ";
+  };
+
+  infrastructure: {
+    containerization: "Docker + Docker Compose";
+    orchestration: "Kubernetes (生产环境)";
+    monitoring: "Prometheus + Grafana + Jaeger";
+    cicd: "GitHub Actions + ArgoCD";
+  };
+}
+```
+
+## 🏗️ 三大智能体子系统架构
+
+### 1. FastGPT智能体子系统
+- **定义**: 通过FastGPT平台API集成的外部智能体系统
+- **架构特性**: 高并发API代理服务、流式响应处理、连接池复用、零存储架构
+- **数据边界**: 本系统**不存储**对话记录、用户交互、点赞等数据，全部实时通过FastGPT API获取
+- **集成方式**: 统一通过 [FastGPT客户端](mdc:lib/api/fastgpt-client.ts) 进行调用
+
+### 2. 多智能体协作子系统
+- **定义**: 基于AutoGen、CrewAI、LangGraph的自研协作平台
+- **核心功能**: 软件需求分析、解决方案生成、PPT自动生成
+- **架构特性**: 复杂工作流编排、实时状态同步、事件驱动协作
+
+### 3. 自研智能体子系统
+- **包含**: CAD解读智能体 + 海报生成智能体
+- **技术特性**: CopilotKit + AG-UI协议集成、计算密集型优化
+- **架构特性**: GPU加速支持、内存池管理、流式文件处理
+
+## 🗄️ 多数据库策略
+
+### 数据库分工
+```typescript
+interface DatabaseStrategy {
+  postgresql: {
+    purpose: "用户数据、智能体配置、会话元数据";
+    features: ["ACID事务", "JSONB支持", "全文搜索"];
+    optimization: ["连接池", "读写分离", "分区表"];
+  };
+
+  redis: {
+    purpose: "缓存、会话状态、消息队列";
+    features: ["高性能读写", "发布订阅", "Redis Streams"];
+    cluster: "Redis 7.0 Cluster";
+  };
+
+  vectorDB: {
+    purpose: "知识库检索、语义搜索";
+    implementation: "Qdrant 集群";
+    features: ["向量相似度搜索", "混合搜索", "实时索引"];
+  };
+
+  objectStorage: {
+    purpose: "CAD文件、生成海报、模型文件";
+    implementation: "MinIO 集群 + S3 备份";
+    features: ["版本控制", "生命周期管理", "CDN集成"];
+  };
+}
+```
+
+## 🚀 架构演进路线图
+
+### 第一阶段：架构优化（当前）
+- ✅ Redis消息队列集成
+- ✅ 多级缓存体系
+- ✅ Worker Threads优化
+- ✅ 核心服务容器化
+
+### 第二阶段：服务拆分（Q2）
+- 🔄 智能体服务独立部署
+- 🔄 API网关统一入口
+- 🔄 服务发现与治理
+
+### 第三阶段：云原生演进（Q3-Q4）
+- 📋 Kubernetes编排
+- 📋 Istio服务网格
+- 📋 全链路监控
+
+## 📐 模块设计规范
+
+### 目录结构标准
+```
+app/                 # Next.js App Router页面
+├── (routes)/        # 页面路由
+├── api/            # API路由
+├── components/     # 页面级组件
+└── globals.css     # 全局样式
+
+components/         # 共享组件库
+├── ui/            # 基础UI组件
+├── [feature]/     # 功能模块组件
+└── common/        # 通用组件
+
+lib/               # 核心业务逻辑
+├── api/           # API客户端
+├── database/      # 数据库操作
+├── services/      # 业务服务
+├── utils/         # 工具函数
+└── types/         # 类型定义
+
+backend/           # Python后端
+├── app/           # FastAPI应用
+├── services/      # 业务服务
+├── models/        # 数据模型
+└── utils/         # 工具函数
+```
+
+### 服务边界定义
+- **用户服务**: 认证、授权、用户管理
+- **智能体服务**: 智能体管理、对话引擎
+- **文件服务**: 文件上传、处理、存储
+- **通知服务**: 实时通知、消息推送
+
+## ⚠️ 架构约束
+
+### 强制要求
+1. **禁止使用SQLite**: 生产环境统一使用PostgreSQL
+2. **API协议统一**: 所有AI模型调用必须遵循OpenAI协议适配
+3. **容器化优先**: 所有服务必须支持Docker容器化部署
+4. **测试覆盖**: 核心服务测试覆盖率 ≥90%
+
+### 最佳实践
+1. **微服务拆分**: 按业务域拆分，避免过度拆分
+2. **数据一致性**: 使用分布式事务模式（Saga/TCC）
+3. **性能优化**: 合理使用缓存，避免N+1查询
+4. **监控可观测**: 所有服务集成监控和链路追踪
+
+---
+
+**参考文档**:
+- [统一架构设计](.kiro/steering/unified-architecture.md)
+- [架构优化计划](mdc:ARCHITECTURE_OPTIMIZATION_PLAN.md)
+- [技术选型标准](.kiro/steering/tech.md)
+# ZK-Agent 项目核心架构规范
+
+## 📋 架构设计原则
+
+本项目基于渐进式微服务架构演进策略，参考 [统一架构设计](.kiro/steering/unified-architecture.md) 和 [架构优化计划](mdc:ARCHITECTURE_OPTIMIZATION_PLAN.md)。
+
+### 核心设计理念
+- **云原生微服务架构**: 基于Kubernetes + Docker的容器化部署
+- **事件驱动架构**: 采用消息队列和事件总线，实现松耦合的智能体协作
+- **数据驱动设计**: 统一的数据湖架构，支持多模态数据处理
+- **安全优先原则**: 零信任安全模型，多层安全防护
+
+### 技术栈统一标准
+```typescript
+interface TechStack {
+  frontend: {
+    framework: "Next.js 14+ with App Router";
+    language: "TypeScript (严格模式)";
+    stateManagement: "Zustand + React Context";
+    styling: "Tailwind CSS + shadcn/ui";
+    testing: "Vitest + Playwright";
+  };
+
+  backend: {
+    framework: "Python FastAPI 3.11+";
+    database: "PostgreSQL (主) + Redis (缓存/队列)";
+    vectorDB: "Qdrant (推荐) + Pinecone (备选)";
+    objectStorage: "MinIO (自建) + AWS S3 (云端)";
+    messageQueue: "Redis Streams + RabbitMQ";
+  };
+
+  infrastructure: {
+    containerization: "Docker + Docker Compose";
+    orchestration: "Kubernetes (生产环境)";
+    monitoring: "Prometheus + Grafana + Jaeger";
+    cicd: "GitHub Actions + ArgoCD";
+  };
+}
+```
+
+## 🏗️ 三大智能体子系统架构
+
+### 1. FastGPT智能体子系统
+- **定义**: 通过FastGPT平台API集成的外部智能体系统
+- **架构特性**: 高并发API代理服务、流式响应处理、连接池复用
+- **集成方式**: 统一通过 [FastGPT客户端](mdc:lib/api/fastgpt-client.ts) 进行调用
+
+### 2. 多智能体协作子系统
+- **定义**: 基于AutoGen、CrewAI、LangGraph的自研协作平台
+- **核心功能**: 软件需求分析、解决方案生成、PPT自动生成
+- **架构特性**: 复杂工作流编排、实时状态同步、事件驱动协作
+
+### 3. 自研智能体子系统
+- **包含**: CAD解读智能体 + 海报生成智能体
+- **技术特性**: CopilotKit + AG-UI协议集成、计算密集型优化
+- **架构特性**: GPU加速支持、内存池管理、流式文件处理
+
+## 🗄️ 多数据库策略
+
+### 数据库分工
+```typescript
+interface DatabaseStrategy {
+  postgresql: {
+    purpose: "用户数据、智能体配置、会话元数据";
+    features: ["ACID事务", "JSONB支持", "全文搜索"];
+    optimization: ["连接池", "读写分离", "分区表"];
+  };
+
+  redis: {
+    purpose: "缓存、会话状态、消息队列";
+    features: ["高性能读写", "发布订阅", "Redis Streams"];
+    cluster: "Redis 7.0 Cluster";
+  };
+
+  vectorDB: {
+    purpose: "知识库检索、语义搜索";
+    implementation: "Qdrant 集群";
+    features: ["向量相似度搜索", "混合搜索", "实时索引"];
+  };
+
+  objectStorage: {
+    purpose: "CAD文件、生成海报、模型文件";
+    implementation: "MinIO 集群 + S3 备份";
+    features: ["版本控制", "生命周期管理", "CDN集成"];
+  };
+}
+```
+
+## 🚀 架构演进路线图
+
+### 第一阶段：架构优化（当前）
+- ✅ Redis消息队列集成
+- ✅ 多级缓存体系
+- ✅ Worker Threads优化
+- ✅ 核心服务容器化
+
+### 第二阶段：服务拆分（Q2）
+- 🔄 智能体服务独立部署
+- 🔄 API网关统一入口
+- 🔄 服务发现与治理
+
+### 第三阶段：云原生演进（Q3-Q4）
+- 📋 Kubernetes编排
+- 📋 Istio服务网格
+- 📋 全链路监控
+
+## 📐 模块设计规范
+
+### 目录结构标准
+```
+app/                 # Next.js App Router页面
+├── (routes)/        # 页面路由
+├── api/            # API路由
+├── components/     # 页面级组件
+└── globals.css     # 全局样式
+
+components/         # 共享组件库
+├── ui/            # 基础UI组件
+├── [feature]/     # 功能模块组件
+└── common/        # 通用组件
+
+lib/               # 核心业务逻辑
+├── api/           # API客户端
+├── database/      # 数据库操作
+├── services/      # 业务服务
+├── utils/         # 工具函数
+└── types/         # 类型定义
+
+backend/           # Python后端
+├── app/           # FastAPI应用
+├── services/      # 业务服务
+├── models/        # 数据模型
+└── utils/         # 工具函数
+```
+
+### 服务边界定义
+- **用户服务**: 认证、授权、用户管理
+- **智能体服务**: 智能体管理、对话引擎
+- **文件服务**: 文件上传、处理、存储
+- **通知服务**: 实时通知、消息推送
+
+## ⚠️ 架构约束
+
+### 强制要求
+1. **禁止使用SQLite**: 生产环境统一使用PostgreSQL
+2. **API协议统一**: 所有AI模型调用必须遵循OpenAI协议适配
+3. **容器化优先**: 所有服务必须支持Docker容器化部署
+4. **测试覆盖**: 核心服务测试覆盖率 ≥90%
+
+### 最佳实践
+1. **微服务拆分**: 按业务域拆分，避免过度拆分
+2. **数据一致性**: 使用分布式事务模式（Saga/TCC）
+3. **性能优化**: 合理使用缓存，避免N+1查询
+4. **监控可观测**: 所有服务集成监控和链路追踪
+
+---
+
+**参考文档**:
+- [统一架构设计](.kiro/steering/unified-architecture.md)
+- [架构优化计划](mdc:ARCHITECTURE_OPTIMIZATION_PLAN.md)
+- [技术选型标准](.kiro/steering/tech.md)

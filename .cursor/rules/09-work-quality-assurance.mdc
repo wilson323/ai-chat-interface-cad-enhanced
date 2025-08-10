@@ -1,0 +1,483 @@
+---
+alwaysApply: true
+---
+# ZK-Agent 工作质量保证规范
+
+## 📋 质量保证核心原则
+
+基于 [工作质量保证钩子](.kiro/hooks/work-quality-assurance.kiro.hook) 和 [工作后质量验证钩子](.kiro/hooks/post-work-quality-validation.kiro.hook)，确保每次开发工作都符合生产级别标准。
+
+### 核心理念
+- **预防优于修复**: 工作前全面分析，提前识别风险
+- **持续质量监控**: 工作过程中实时质量检查
+- **完整验证闭环**: 工作后全面验证，确保交付质量
+- **知识持续积累**: 经验教训记录，避免重复问题
+- **生产就绪标准**: 每次工作都按生产级别要求执行
+
+### 全局一致性要求
+- **技术栈一致性**: 严格遵循 [技术栈和AI模型管理规范](.cursor/rules/08-tech-stack-ai-models.mdc)
+- **架构一致性**: 符合 [项目架构规范](.cursor/rules/01-project-architecture.mdc)
+- **代码质量一致性**: 遵循 [开发规范](.cursor/rules/02-development-standards.mdc)
+- **测试一致性**: 执行 [测试标准](.cursor/rules/04-testing-standards.mdc)
+- **API一致性**: 符合 [API设计标准](.cursor/rules/06-api-design-standards.mdc)
+
+## 🚀 工作前质量保证分析
+
+### 阶段1：MCP工具可用性分析
+```typescript
+interface MCPToolsAnalysis {
+  // 强制使用的MCP工具（符合MCP工具集成规范）
+  requiredTools: {
+    serena: boolean;              // 代码质量管理
+    mentor: boolean;              // 架构指导与代码审查
+    memory: boolean;              // 知识管理和经验存储
+    sequentialThinking: boolean;  // 逻辑分析和问题分解
+    context7: boolean;            // 技术文档检索
+    taskManager: boolean;         // 任务调度与管理
+  };
+
+  // 工具功能验证
+  toolFunctions: {
+    serena: {
+      codeReview: boolean;        // serena.code_review()
+      styleCheck: boolean;        // serena.style_check()
+      testCoverage: boolean;      // serena.test_coverage()
+      securityScan: boolean;      // serena.security_scan()
+    };
+    mentor: {
+      architectureReview: boolean; // mentor.architecture_review()
+      codeAudit: boolean;         // mentor.code_review()
+      qualityCheck: boolean;      // mentor.quality_check()
+    };
+  };
+}
+```
+
+### 阶段2：技术栈一致性检查
+```typescript
+interface TechStackConsistencyCheck {
+  // 前端技术栈验证（基于技术栈规范）
+  frontend: {
+    framework: "Next.js 15.2.4";     // 强制要求
+    typescript: "5.8.3-strict";      // 严格模式，禁止any
+    uiFramework: "AG-UI + CopilotKit"; // 统一前端框架
+    stateManagement: "React Query + Context"; // 状态管理
+    uiComponents: "Radix UI + shadcn/ui";    // UI组件库
+    styling: "Tailwind CSS";          // 样式系统
+  };
+
+  // 后端技术栈验证
+  backend: {
+    runtime: "Node.js 18+ | Python 3.11+";
+    database: "PostgreSQL + Prisma";  // 禁止SQLite
+    cache: "Redis + ioredis";
+    vectorDB: "Qdrant/Weaviate";
+    messageQueue: "Redis Streams";
+    api: "Next.js API Routes + FastAPI";
+  };
+
+  // AI技术栈验证
+  aiStack: {
+    fastgptIntegration: boolean;      // FastGPT集成
+    multiAgentFramework: "AutoGen/CrewAI/LangGraph";
+    modelManagement: "统一模型池";    // AI模型管理
+    aiSecurity: "输入输出过滤";       // AI安全
+  };
+}
+```
+
+### 阶段3：代码质量预检查
+```typescript
+interface CodeQualityPreCheck {
+  // 代码风格一致性（遵循开发规范）
+  codeStyle: {
+    typescript: {
+      strictMode: boolean;            // 必须启用严格模式
+      noAnyType: boolean;             // 禁止使用any类型
+      absoluteImports: boolean;       // 强制绝对导入 @/
+      componentNaming: "PascalCase";  // 组件命名规范
+      utilsNaming: "kebab-case";      // 工具文件命名
+    };
+
+    python: {
+      pep8Compliance: boolean;        // PEP 8合规
+      typeAnnotations: boolean;       // 类型注解
+      asyncPatterns: boolean;         // 异步编程
+      docstringStyle: "Google";       // 文档字符串风格
+    };
+  };
+
+  // 架构模式检查（遵循架构规范）
+  architecturePatterns: {
+    microservicesReady: boolean;      // 微服务就绪
+    eventDriven: boolean;             // 事件驱动架构
+    cloudNative: boolean;             // 云原生设计
+    securityFirst: boolean;           // 安全优先
+  };
+
+  // 数据库操作规范
+  databaseOperations: {
+    prismaOnly: boolean;              // 仅使用Prisma ORM
+    transactionUsage: boolean;        // 多表操作使用事务
+    postgresqlOnly: boolean;          // 仅使用PostgreSQL
+    noSqliteUsage: boolean;           // 禁止SQLite
+  };
+}
+```
+
+### 阶段4：测试覆盖率预分析
+```typescript
+interface TestCoveragePreAnalysis {
+  // 测试框架一致性（遵循测试标准）
+  testingFrameworks: {
+    frontend: "Vitest";               // 前端统一测试框架
+    e2e: "Playwright";                // E2E测试框架
+    backend: "pytest";                // Python测试框架
+    noJest: boolean;                  // 禁止Jest
+    noMocha: boolean;                 // 禁止Mocha
+  };
+
+  // 覆盖率要求
+  coverageRequirements: {
+    unitTests: 80;                    // 单元测试≥80%
+    integrationTests: 60;             // 集成测试≥60%
+    criticalPaths: 90;                // 关键路径≥90%
+    e2eTests: 50;                     // E2E测试≥50%
+  };
+
+  // 测试质量指标
+  qualityGates: {
+    codeQuality: 90;                  // 代码质量≥90%
+    testReliability: 95;              // 测试可靠性≥95%
+    performanceRegression: 5;         // 性能回归≤5%
+  };
+}
+```
+
+## 🔍 工作过程质量监控
+
+### 实时代码质量检查
+```typescript
+class RealTimeQualityMonitor {
+  /**
+   * 实时代码质量检查
+   * 符合开发规范的零异常原则
+   */
+  async monitorCodeQuality(files: string[]): Promise<QualityReport> {
+    // 使用Serena MCP工具进行实时检查
+    const styleCheck = await serena.style_check(files);
+    const complexityCheck = await serena.complexity_check(files);
+    const duplicateCheck = await serena.duplicate_check(files);
+    const securityScan = await serena.security_scan(files);
+
+    // 使用Mentor进行架构验证
+    const architectureReview = await mentor.architecture_review(files);
+    const designPatternCheck = await mentor.design_pattern_check(files);
+
+    return {
+      styleCompliance: styleCheck.passed,
+      complexityScore: complexityCheck.averageComplexity,
+      duplicateIssues: duplicateCheck.duplicates.length,
+      securityIssues: securityScan.vulnerabilities.length,
+      architectureCompliance: architectureReview.compliant,
+      overallScore: this.calculateQualityScore({
+        styleCheck,
+        complexityCheck,
+        duplicateCheck,
+        securityScan,
+        architectureReview
+      })
+    };
+  }
+
+  /**
+   * API设计一致性检查
+   * 确保符合API设计标准
+   */
+  async validateApiDesign(apiFiles: string[]): Promise<ApiComplianceReport> {
+    return {
+      restfulCompliance: await this.checkRestfulPatterns(apiFiles),
+      openApiCompliance: await this.validateOpenApiSpecs(apiFiles),
+      authenticationPattern: await this.validateJWTUsage(apiFiles),
+      responseFormat: await this.validateUnifiedResponse(apiFiles),
+      errorHandling: await this.validateErrorCodes(apiFiles),
+      versionControl: await this.validateApiVersioning(apiFiles)
+    };
+  }
+}
+```
+
+### 技术债务实时监控
+```typescript
+interface TechnicalDebtMonitoring {
+  // 债务分类（符合质量标准）
+  debtCategories: {
+    codeComplexity: number;           // 代码复杂度债务
+    testCoverage: number;             // 测试覆盖率债务
+    documentation: number;            // 文档完整性债务
+    performance: number;              // 性能优化债务
+    security: number;                 // 安全漏洞债务
+    architecture: number;             // 架构一致性债务
+  };
+
+  // 债务阈值（生产级别标准）
+  debtThresholds: {
+    critical: 0;                      // 严重债务不允许
+    high: 2;                          // 高级债务最多2个
+    medium: 5;                        // 中级债务最多5个
+    low: 10;                          // 低级债务最多10个
+  };
+
+  // 自动修复建议
+  autoFixSuggestions: {
+    refactoringTargets: string[];     // 重构目标
+    optimizationOpportunities: string[]; // 优化机会
+    securityImprovements: string[];   // 安全改进
+    performanceBoosts: string[];      // 性能提升
+  };
+}
+```
+
+## ✅ 工作后质量验证
+
+### 完整性验证清单
+```typescript
+interface PostWorkValidationChecklist {
+  // 功能完整性验证
+  functionalVerification: {
+    allRequirementsMet: boolean;      // 所有需求都已实现
+    edgeCasesHandled: boolean;        // 边界情况已处理
+    errorHandlingComplete: boolean;   // 错误处理完整
+    userExperienceOptimal: boolean;   // 用户体验优化
+  };
+
+  // 代码质量验证
+  codeQualityVerification: {
+    typeScriptStrict: boolean;        // TypeScript严格模式
+    pythonPep8: boolean;              // Python PEP 8合规
+    noMockData: boolean;              // 无模拟数据
+    noSimulatedServices: boolean;     // 无模拟服务
+    realEnvironmentTested: boolean;   // 真实环境测试
+  };
+
+  // 性能验证
+  performanceVerification: {
+    apiResponseTime: number;          // API响应时间<200ms
+    pageLoadTime: number;             // 页面加载<2s
+    concurrentUsers: number;          // 支持1000+并发
+    resourceUtilization: {            // 资源利用率
+      memory: number;                 // 内存<80%
+      cpu: number;                    // CPU<70%
+    };
+  };
+
+  // 安全验证
+  securityVerification: {
+    authenticationSecure: boolean;    // 认证安全
+    authorizationProper: boolean;     // 授权正确
+    inputValidation: boolean;         // 输入验证
+    outputSanitization: boolean;      // 输出清理
+    sensitiveDataProtected: boolean;  // 敏感数据保护
+  };
+
+  // 部署就绪验证
+  deploymentReadiness: {
+    dockerContainerized: boolean;     // Docker容器化
+    ubuntuCompatible: boolean;        // Ubuntu兼容
+    kubernetesReady: boolean;         // Kubernetes就绪
+    cicdPipelinePassed: boolean;      // CI/CD流水线通过
+    monitoringConfigured: boolean;    // 监控配置
+  };
+}
+```
+
+### 自动化验证流程
+```typescript
+class AutomatedValidationPipeline {
+  /**
+   * 执行完整的自动化验证
+   * 遵循CI/CD标准的质量门禁
+   */
+  async executeFullValidation(workResult: WorkResult): Promise<ValidationReport> {
+    console.log("🔍 开始执行生产级别质量验证...");
+
+    // 阶段1：代码质量验证
+    const codeQuality = await this.validateCodeQuality(workResult.files);
+
+    // 阶段2：测试执行和覆盖率验证
+    const testResults = await this.executeTestSuite(workResult.files);
+
+    // 阶段3：安全扫描验证
+    const securityResults = await this.performSecurityScan(workResult.files);
+
+    // 阶段4：性能基准验证
+    const performanceResults = await this.runPerformanceBenchmarks(workResult);
+
+    // 阶段5：部署兼容性验证
+    const deploymentResults = await this.validateDeploymentReadiness(workResult);
+
+    // 综合评估
+    const overallScore = this.calculateOverallScore({
+      codeQuality,
+      testResults,
+      securityResults,
+      performanceResults,
+      deploymentResults
+    });
+
+    // 质量门禁检查
+    const qualityGatePassed = overallScore >= 90;
+
+    if (!qualityGatePassed) {
+      throw new Error(`质量门禁未通过，总分: ${overallScore}/100`);
+    }
+
+    console.log("✅ 所有质量验证通过，达到生产级别标准");
+
+    return {
+      passed: qualityGatePassed,
+      overallScore,
+      codeQuality,
+      testResults,
+      securityResults,
+      performanceResults,
+      deploymentResults,
+      recommendations: this.generateImprovementRecommendations({
+        codeQuality,
+        testResults,
+        securityResults,
+        performanceResults,
+        deploymentResults
+      })
+    };
+  }
+
+  /**
+   * Linux Ubuntu环境兼容性验证
+   */
+  async validateUbuntuCompatibility(deploymentConfig: any): Promise<boolean> {
+    const checks = [
+      await this.checkUbuntuPackages(deploymentConfig),
+      await this.validateSystemdServices(deploymentConfig),
+      await this.checkFilePermissions(deploymentConfig),
+      await this.validateNetworkConfig(deploymentConfig),
+      await this.checkResourceLimits(deploymentConfig)
+    ];
+
+    return checks.every(check => check.passed);
+  }
+}
+```
+
+## 📊 质量度量和报告
+
+### 质量指标仪表盘
+```typescript
+interface QualityMetricsDashboard {
+  // 核心质量指标
+  coreMetrics: {
+    codeQualityScore: number;         // 代码质量评分 >90
+    testCoverageRate: number;         // 测试覆盖率 >85%
+    architectureHealthIndex: number;  // 架构健康指数 >95%
+    performanceRegression: number;    // 性能回归 <5%
+    securityVulnerabilities: number;  // 安全漏洞 = 0 高危
+    technicalDebtScore: number;       // 技术债务评分
+  };
+
+  // 趋势分析
+  trendAnalysis: {
+    qualityTrend: "improving" | "stable" | "declining";
+    performanceTrend: "improving" | "stable" | "declining";
+    securityTrend: "improving" | "stable" | "declining";
+    debtTrend: "decreasing" | "stable" | "increasing";
+  };
+
+  // 改进建议
+  improvementActions: {
+    immediate: string[];              // 立即行动项
+    shortTerm: string[];              // 短期改进项
+    longTerm: string[];               // 长期优化项
+  };
+}
+```
+
+## 🧠 知识管理和经验积累
+
+### 经验存储规范
+```typescript
+interface ExperienceStorage {
+  /**
+   * 使用Memory MCP工具存储工作经验
+   */
+  storeWorkExperience: {
+    designDecisions: {              // 设计决策记录
+      context: string;              // 决策上下文
+      alternatives: string[];       // 备选方案
+      chosen: string;               // 选择方案
+      reasoning: string;            // 决策理由
+      outcomes: string;             // 结果评估
+    };
+
+    problemSolutions: {             // 问题解决方案
+      problem: string;              // 问题描述
+      rootCause: string;            // 根本原因
+      solution: string;             // 解决方案
+      prevention: string;           // 预防措施
+      effectiveness: number;        // 有效性评分
+    };
+
+    bestPractices: {                // 最佳实践
+      pattern: string;              // 实践模式
+      applicableScenarios: string[]; // 适用场景
+      benefits: string[];           // 收益
+      limitations: string[];        // 限制
+      examples: string[];           // 示例
+    };
+
+    lessonsLearned: {               // 经验教训
+      situation: string;            // 情况描述
+      mistake: string;              // 错误做法
+      correction: string;           // 纠正措施
+      impact: string;               // 影响评估
+      avoidanceStrategy: string;    // 避免策略
+    };
+  };
+}
+```
+
+## ⚠️ 质量保证约束
+
+### 强制要求
+1. **零异常原则**: 所有代码必须有完善的异常处理
+2. **类型安全**: TypeScript严格模式，Python类型注解
+3. **真实环境**: 禁止使用模拟数据和模拟服务
+4. **MCP工具使用**: 必须充分使用所有可用MCP工具
+5. **全栈一致性**: 前后端必须遵循统一技术栈
+
+### 质量门禁
+- **代码质量**: ≥90分
+- **测试覆盖率**: ≥85%
+- **架构健康指数**: ≥95%
+- **性能回归**: ≤5%
+- **安全漏洞**: 0个高危
+
+### 禁止事项
+- ❌ 跳过MCP工具使用
+- ❌ 使用模拟数据或服务
+- ❌ 违反技术栈规范
+- ❌ 忽略测试覆盖率要求
+- ❌ 不执行安全扫描
+- ❌ 不记录工作经验
+
+---
+
+**参考文档**:
+- [工作质量保证钩子](.kiro/hooks/work-quality-assurance.kiro.hook)
+- [工作后质量验证钩子](.kiro/hooks/post-work-quality-validation.kiro.hook)
+- [项目架构规范](.cursor/rules/01-project-architecture.mdc)
+- [开发规范](.cursor/rules/02-development-standards.mdc)
+- [MCP工具集成规范](.cursor/rules/03-mcp-tools-integration.mdc)
+- [测试标准](.cursor/rules/04-testing-standards.mdc)
+- [API设计标准](.cursor/rules/06-api-design-standards.mdc)
+- [CI/CD标准](.cursor/rules/07-cicd-standards.mdc)
+- [技术栈和AI模型管理规范](.cursor/rules/08-tech-stack-ai-models.mdc)

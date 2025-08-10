@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef } from "react"
 import type { CADAnalysisResult } from "@/lib/types/cad"
 import { captureException } from "@/lib/utils/error"
-import { UserFriendlyError } from "@/lib/errors/UserFriendlyError"
+import { UserFriendlyError } from "@/lib/utils/error"
 import { useCache } from '@/lib/cache'
 
 /**
@@ -127,14 +127,7 @@ export function useCadAnalyzer() {
     } catch (error) {
       // 增强错误处理
       const errorMessage = error instanceof Error ? error.message : '未知错误'
-      captureException(new CADAnalysisError({
-        message: `CAD分析失败: ${errorMessage}`,
-        fileInfo: {
-          name: file.name,
-          size: file.size,
-          type: file.type
-        }
-      }))
+      captureException(new Error(`CAD分析失败: ${errorMessage}`))
       throw new UserFriendlyError('文件分析失败，请检查文件格式后重试')
     } finally {
       setIsAnalyzing(false)

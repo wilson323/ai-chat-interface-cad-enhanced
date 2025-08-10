@@ -18,7 +18,12 @@
     "health:check": "curl -f http://171.43.138.237:8005/api/health || echo 'Service not available'",
     "performance:check": "curl -f http://171.43.138.237:8005/api/ag-ui/performance || echo 'Performance API not available'",
     "deps:check": "npm ls --depth=0",
-    "deps:audit": "npm audit --audit-level=moderate"
+    "deps:audit": "npm audit --audit-level=moderate",
+    "constraints:check": "powershell -ExecutionPolicy Bypass -File .kiro/hooks/scripts/validate-constraints.ps1 -ProjectPath . -TargetPath .kiro/hooks",
+    "constraints:fix": "powershell -ExecutionPolicy Bypass -File .kiro/hooks/scripts/validate-constraints.ps1 -ProjectPath . -TargetPath .kiro/hooks -Fix",
+    "constraints:verbose": "powershell -ExecutionPolicy Bypass -File .kiro/hooks/scripts/validate-constraints.ps1 -ProjectPath . -TargetPath .kiro/hooks -Verbose",
+    "hooks:deploy": "powershell -ExecutionPolicy Bypass -File .kiro/hooks/scripts/deploy-hooks.ps1 -ProjectPath . -Verify",
+    "hooks:validate": "npm run constraints:check && npm run type-check && npm run lint"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "1.3.1",

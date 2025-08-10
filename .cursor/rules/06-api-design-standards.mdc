@@ -1,0 +1,633 @@
+---
+alwaysApply: true
+---
+# ZK-Agent API设计与接口规范
+
+## 📋 API设计原则
+
+基于 [API文档](mdc:docs/API.md) 和 [FastGPT集成规范](.kiro/steering/fastgpt-integration.md)，确保API的一致性和可维护性。
+
+### 核心设计原则
+- **RESTful风格**: 严格遵循REST架构原则
+- **OpenAPI规范**: 所有API必须使用OpenAPI 3.0规范描述
+- **版本控制**: 支持API版本管理和向后兼容
+- **统一响应**: 所有API使用统一的响应格式
+- **错误处理**: 标准化错误码和错误信息
+
+### 技术要求
+- **认证方式**: JWT + Bearer Token
+- **内容类型**: application/json (默认)
+- **字符编码**: UTF-8
+- **压缩支持**: gzip, deflate
+- **CORS配置**: 配置合适的跨域策略
+
+## 🔗 统一响应格式
+
+### 成功响应标准
+```typescript
+// ✅ 标准成功响应格式
+interface SuccessResponse<T> {
+  success: true;
+  data: T;
+  message?: string;
+  timestamp: string;
+  requestId: string;
+  version: string;
+}
+
+// 示例实现
+export function createSuccessResponse<T>(
+  data: T,
+  message?: string,
+  requestId?: string
+): SuccessResponse<T> {
+  return {
+    success: true,
+    data,
+    message,
+    timestamp: new Date().toISOString(),
+    requestId: requestId || generateRequestId(),
+    version: process.env.API_VERSION || '1.0.0'
+  };
+}
+```
+
+### 错误响应标准
+```typescript
+// ✅ 标准错误响应格式
+interface ErrorResponse {
+  success: false;
+  error: {
+    code: string;
+    message: string;
+    details?: any;
+    field?: string;
+    timestamp: string;
+  };
+  requestId: string;
+  version: string;
+}
+
+// 错误码定义
+export enum ApiErrorCode {
+  // 4xx 客户端错误
+  VALIDATION_ERROR = 'VALIDATION_ERROR',
+  UNAUTHORIZED = 'UNAUTHORIZED',
+  FORBIDDEN = 'FORBIDDEN',
+  NOT_FOUND = 'NOT_FOUND',
+  CONFLICT = 'CONFLICT',
+  RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
+
+  // 5xx 服务器错误
+  INTERNAL_ERROR = 'INTERNAL_ERROR',
+  SERVICE_UNAVAILABLE = 'SERVICE_UNAVAILABLE',
+  DATABASE_ERROR = 'DATABASE_ERROR',
+  THIRD_PARTY_ERROR = 'THIRD_PARTY_ERROR',
+
+  // 业务错误
+  AGENT_NOT_FOUND = 'AGENT_NOT_FOUND',
+  AGENT_BUSY = 'AGENT_BUSY',
+  INVALID_AGENT_CONFIG = 'INVALID_AGENT_CONFIG',
+  CHAT_SESSION_EXPIRED = 'CHAT_SESSION_EXPIRED'
+}
+
+// 示例实现
+export function createErrorResponse(
+  code: ApiErrorCode,
+  message: string,
+  details?: any,
+  field?: string,
+  requestId?: string
+): ErrorResponse {
+  return {
+    success: false,
+    error: {
+      code,
+      message,
+      details,
+      field,
+      timestamp: new Date().toISOString()
+    },
+    requestId: requestId || generateRequestId(),
+    version: process.env.API_VERSION || '1.0.0'
+  };
+}
+```
+
+## 🔐 认证与授权规范
+
+### JWT认证实现
+```typescript
+// ✅ JWT认证中间件
+import jwt from 'jsonwebtoken';
+import { Request, Response, NextFunction } from 'express';
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    email: string;
+    role: string;
+    permissions: string[];
+  };
+}
+
+/**
+ * JWT认证中间件
+ */
+export function authenticateToken(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json(
+        createErrorResponse(
+          ApiErrorCode.UNAUTHORIZED,
+          '缺少或无效的Authorization头部',
+          null,
+          'authorization',
+          req.headers['x-request-id'] as string
+        )
+      );
+    }
+
+    const token = authHeader.substring(7); // 移除 'Bearer ' 前缀
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as any;
+
+    req.user = {
+      id: decoded.userId,
+      email: decoded.email,
+      role: decoded.role,
+      permissions: decoded.permissions || []
+    };
+
+    next();
+  } catch (error) {
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json(
+        createErrorResponse(
+          ApiErrorCode.UNAUTHORIZED,
+          'JWT令牌无效或已过期',
+          error.message,
+          'token',
+          req.headers['x-request-id'] as string
+        )
+      );
+    }
+
+    next(error);
+  }
+}
+
+/**
+ * 权限检查中间件
+ */
+export function requirePermission(permission: string) {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    if (!req.user) {
+      return res.status(401).json(
+        createErrorResponse(
+          ApiErrorCode.UNAUTHORIZED,
+          '用户未认证',
+          null,
+          null,
+          req.headers['x-request-id'] as string
+        )
+      );
+    }
+
+    if (!req.user.permissions.includes(permission)) {
+      return res.status(403).json(
+        createErrorResponse(
+          ApiErrorCode.FORBIDDEN,
+          `缺少权限: ${permission}`,
+          { requiredPermission: permission },
+          'permissions',
+          req.headers['x-request-id'] as string
+        )
+      );
+    }
+
+    next();
+  };
+}
+```
+
+### API Key认证（可选）
+```typescript
+// ✅ API Key认证中间件
+export function authenticateApiKey(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const apiKey = req.headers['x-api-key'] as string;
+
+    if (!apiKey) {
+      return res.status(401).json(
+        createErrorResponse(
+          ApiErrorCode.UNAUTHORIZED,
+          '缺少API密钥',
+          null,
+          'x-api-key'
+        )
+      );
+    }
+
+    // 验证API密钥（从数据库或缓存中查询）
+    const isValidKey = await validateApiKey(apiKey);
+    if (!isValidKey) {
+      return res.status(401).json(
+        createErrorResponse(
+          ApiErrorCode.UNAUTHORIZED,
+          'API密钥无效',
+          null,
+          'x-api-key'
+        )
+      );
+    }
+
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+```
+
+## 📊 分页与查询规范
+
+### 标准分页实现
+```typescript
+// ✅ 分页查询接口
+interface PaginationQuery {
+  page?: number;        // 页码，从1开始
+  limit?: number;       // 每页数量，默认20，最大100
+  sort?: string;        // 排序字段
+  order?: 'asc' | 'desc'; // 排序方向
+}
+
+interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasNext: boolean;
+    hasPrev: boolean;
+  };
+}
+
+/**
+ * 分页查询工具类
+ */
+export class PaginationUtils {
+  /**
+   * 标准化分页参数
+   */
+  static normalizePagination(query: PaginationQuery) {
+    const page = Math.max(1, Number(query.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(query.limit) || 20));
+    const offset = (page - 1) * limit;
+
+    return { page, limit, offset };
+  }
+
+  /**
+   * 创建分页响应
+   */
+  static createPaginatedResponse<T>(
+    data: T[],
+    total: number,
+    page: number,
+    limit: number
+  ): PaginatedResponse<T> {
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+        hasNext: page < totalPages,
+        hasPrev: page > 1
+      }
+    };
+  }
+}
+
+// 使用示例
+export async function getUsersHandler(
+  req: Request,
+  res: Response
+): Promise<void> {
+  try {
+    const { page, limit, offset } = PaginationUtils.normalizePagination(req.query);
+
+    const [users, total] = await Promise.all([
+      userService.getUsers({ offset, limit }),
+      userService.getUserCount()
+    ]);
+
+    const response = PaginationUtils.createPaginatedResponse(
+      users,
+      total,
+      page,
+      limit
+    );
+
+    res.json(createSuccessResponse(response));
+  } catch (error) {
+    next(error);
+  }
+}
+```
+
+## 🚀 FastGPT集成API规范
+
+### FastGPT统一客户端使用
+```typescript
+// ✅ FastGPT API集成规范
+import { FastGPTClient } from '@/lib/api/fastgpt-client';
+import { EnhancedFastGPTClient } from '@/lib/api/enhanced-fastgpt-client';
+
+/**
+ * FastGPT聊天接口
+ */
+export async function fastgptChatHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { appId, message, sessionId, stream = false } = req.body;
+
+    // 输入验证
+    if (!appId || !message) {
+      return res.status(400).json(
+        createErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          '缺少必需参数: appId 和 message',
+          { requiredFields: ['appId', 'message'] }
+        )
+      );
+    }
+
+    // 使用增强客户端进行调用
+    const client = new EnhancedFastGPTClient();
+
+    if (stream) {
+      // 流式响应
+      const chatStream = await client.chatCompletionsStream({
+        appId,
+        messages: [{ role: 'user', content: message }],
+        sessionId,
+        userId: req.user!.id
+      });
+
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+
+      for await (const chunk of chatStream) {
+        if (chunk.data) {
+          res.write(`data: ${JSON.stringify(chunk.data)}\n\n`);
+        }
+      }
+
+      res.write('data: [DONE]\n\n');
+      res.end();
+    } else {
+      // 非流式响应
+      const result = await client.chatCompletions({
+        appId,
+        messages: [{ role: 'user', content: message }],
+        sessionId,
+        userId: req.user!.id
+      });
+
+      res.json(createSuccessResponse({
+        content: result.content,
+        sessionId: result.sessionId,
+        usage: result.usage
+      }));
+    }
+  } catch (error) {
+    next(error);
+  }
+}
+
+/**
+ * 智能体管理接口
+ */
+export async function createAgentHandler(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { name, description, config, appId } = req.body;
+
+    // 数据验证
+    const validation = validateAgentConfig({ name, description, config, appId });
+    if (!validation.valid) {
+      return res.status(400).json(
+        createErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          '智能体配置验证失败',
+          validation.errors
+        )
+      );
+    }
+
+    // 创建智能体
+    const agent = await agentService.createAgent({
+      name,
+      description,
+      config,
+      appId,
+      userId: req.user!.id
+    });
+
+    res.status(201).json(createSuccessResponse(agent, '智能体创建成功'));
+  } catch (error) {
+    next(error);
+  }
+}
+```
+
+## 📝 数据验证规范
+
+### 输入验证中间件
+```typescript
+// ✅ 数据验证中间件
+import Joi from 'joi';
+
+/**
+ * 创建验证中间件
+ */
+export function validateRequest(schema: {
+  body?: Joi.ObjectSchema;
+  query?: Joi.ObjectSchema;
+  params?: Joi.ObjectSchema;
+}) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const errors: string[] = [];
+
+    // 验证请求体
+    if (schema.body) {
+      const { error } = schema.body.validate(req.body);
+      if (error) {
+        errors.push(...error.details.map(detail => detail.message));
+      }
+    }
+
+    // 验证查询参数
+    if (schema.query) {
+      const { error } = schema.query.validate(req.query);
+      if (error) {
+        errors.push(...error.details.map(detail => detail.message));
+      }
+    }
+
+    // 验证路径参数
+    if (schema.params) {
+      const { error } = schema.params.validate(req.params);
+      if (error) {
+        errors.push(...error.details.map(detail => detail.message));
+      }
+    }
+
+    if (errors.length > 0) {
+      return res.status(400).json(
+        createErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          '请求数据验证失败',
+          errors
+        )
+      );
+    }
+
+    next();
+  };
+}
+
+// 验证模式定义
+export const AgentSchemas = {
+  create: Joi.object({
+    name: Joi.string().min(1).max(100).required(),
+    description: Joi.string().max(500).optional(),
+    config: Joi.object({
+      model: Joi.string().required(),
+      temperature: Joi.number().min(0).max(1).default(0.7),
+      maxTokens: Joi.number().min(1).max(4000).default(2000)
+    }).required(),
+    appId: Joi.string().required()
+  }),
+
+  update: Joi.object({
+    name: Joi.string().min(1).max(100).optional(),
+    description: Joi.string().max(500).optional(),
+    config: Joi.object({
+      model: Joi.string().optional(),
+      temperature: Joi.number().min(0).max(1).optional(),
+      maxTokens: Joi.number().min(1).max(4000).optional()
+    }).optional()
+  }),
+
+  chat: Joi.object({
+    appId: Joi.string().required(),
+    message: Joi.string().min(1).max(10000).required(),
+    sessionId: Joi.string().optional(),
+    stream: Joi.boolean().default(false)
+  })
+};
+```
+
+## 🔄 版本控制与兼容性
+
+### API版本管理
+```typescript
+// ✅ API版本控制
+export enum ApiVersion {
+  V1 = 'v1',
+  V2 = 'v2'
+}
+
+/**
+ * 版本控制中间件
+ */
+export function versionControl(supportedVersions: ApiVersion[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    // 从URL路径或Header中获取版本
+    const versionFromPath = req.path.match(/^\/api\/(v\d+)\//)?.[1] as ApiVersion;
+    const versionFromHeader = req.headers['api-version'] as ApiVersion;
+
+    const requestedVersion = versionFromPath || versionFromHeader || ApiVersion.V1;
+
+    if (!supportedVersions.includes(requestedVersion)) {
+      return res.status(400).json(
+        createErrorResponse(
+          ApiErrorCode.VALIDATION_ERROR,
+          `不支持的API版本: ${requestedVersion}`,
+          { supportedVersions }
+        )
+      );
+    }
+
+    req.apiVersion = requestedVersion;
+    next();
+  };
+}
+
+// 版本化的路由处理
+export function createVersionedHandler(handlers: Partial<Record<ApiVersion, Function>>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const handler = handlers[req.apiVersion];
+    if (!handler) {
+      return res.status(501).json(
+        createErrorResponse(
+          ApiErrorCode.SERVICE_UNAVAILABLE,
+          `版本 ${req.apiVersion} 不支持此功能`
+        )
+      );
+    }
+
+    return handler(req, res, next);
+  };
+}
+```
+
+## ⚠️ API安全要求
+
+### 安全最佳实践
+- ✅ 所有API端点必须通过认证
+- ✅ 敏感操作需要额外权限验证
+- ✅ 实施请求频率限制
+- ✅ 记录所有API访问日志
+- ✅ 输入数据必须经过验证和清理
+- ✅ 使用HTTPS传输敏感数据
+- ✅ 实施CORS安全策略
+
+### 禁止事项
+- ❌ 在URL中传递敏感信息
+- ❌ 返回详细的系统错误信息
+- ❌ 跳过输入验证
+- ❌ 使用弱密码策略
+- ❌ 忽略API版本兼容性
+
+---
+
+**参考文档**:
+- [API文档](mdc:docs/API.md)
+- [FastGPT集成规范](.kiro/steering/fastgpt-integration.md)
+- [安全规范文档](mdc:lib/security/README.md)
+description:
+globs:
+alwaysApply: false
+---

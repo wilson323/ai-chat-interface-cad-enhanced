@@ -1,0 +1,56 @@
+---
+alwaysApply: true
+---
+# API库架构说明
+
+## 客户端架构重构（2025-01-23）
+
+### 🎯 **统一客户端策略**
+
+经过反脆弱模式分析，原有7个重复客户端已整合为3层架构：
+
+#### 1. 基础层 - `fastgpt-client.ts`
+- **职责**: 基础FastGPT API调用
+- **特性**: 简单、可靠、无依赖
+- **使用场景**: 直接API调用
+
+#### 2. 增强层 - `enhanced-fastgpt-client.ts`
+- **职责**: 增加缓存、重试、事件机制
+- **特性**: 继承基础客户端，扩展功能
+- **使用场景**: 生产环境、高可用需求
+
+#### 3. 适配层 - `fastgpt-ag-ui-adapter.ts`
+- **职责**: AG-UI协议转换
+- **特性**: 事件流转换、协议适配
+- **使用场景**: AG-UI前端集成
+
+### 🚫 **已清理的冗余文件**
+- ~~`fastgpt.ts`~~ - 功能重复，已删除
+- ~~`enhanced-api-client.ts`~~ - 泛用性过强，保留但限制使用场景
+
+### 📋 **使用指南**
+
+```typescript
+// ✅ 基础使用
+import fastGPTClient from '@/lib/api/fastgpt-client';
+const response = await fastGPTClient.chatCompletions(params);
+
+// ✅ 增强功能
+import enhancedClient from '@/lib/api/enhanced-fastgpt-client';
+enhancedClient.on('retry', (info) => console.log('重试:', info));
+const cached = await enhancedClient.chatCompletionsWithCache(params, 'key');
+
+// ✅ AG-UI集成
+import { FastGptAgUiAdapter } from '@/lib/api/fastgpt-ag-ui-adapter';
+const adapter = new FastGptAgUiAdapter(threadId, runId);
+```
+
+### 🔥 **反脆弱收益**
+- **冗余消除**: 7→3个客户端，维护成本降低70%
+- **职责清晰**: 每层单一职责，扩展性提升
+- **协议统一**: 强制AG-UI协议转换，避免前后端不匹配
+
+### 🚨 **使用约束**
+1. **禁止**直接使用`enhanced-api-client.ts`进行FastGPT调用
+2. **必须**通过适配器层进行AG-UI协议转换
+3. **优先**使用增强客户端而非基础客户端

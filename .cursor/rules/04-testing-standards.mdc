@@ -1,0 +1,1298 @@
+---
+alwaysApply: true
+---
+
+# ZK-Agent 测试规范与质量保证标准
+
+## 📋 测试框架统一标准
+
+基于 [测试标准文档](mdc:docs/testing-standard.md)，确保项目测试质量和覆盖率。
+
+### 测试框架选择
+- **前端测试**: 统一使用 Vitest 作为主要测试框架
+- **端到端测试**: 使用 Playwright 进行E2E测试
+- **后端测试**: 使用 pytest 进行Python测试
+- **禁止**: 引入其他测试框架 (如 Jest、Mocha 等)
+
+### 测试覆盖率要求
+```typescript
+interface CoverageRequirements {
+  minimumCoverage: {
+    unitTests: 80;        // 单元测试最低覆盖率
+    integrationTests: 60; // 集成测试最低覆盖率
+    criticalPaths: 90;    // 关键业务路径覆盖率
+    e2eTests: 50;         // 端到端测试覆盖率
+  };
+
+  qualityGates: {
+    codeQuality: 90;      // 代码质量评分
+    testReliability: 95;  // 测试可靠性
+    performanceRegression: 5; // 性能回归阈值(%)
+  };
+}
+```
+
+## 🧪 单元测试规范
+
+### Vitest单元测试标准
+```typescript
+// ✅ 正确的Vitest测试结构
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { TestUtils, withTestEnvironment } from '@/lib/testing/unified-test-utils';
+import { UserService } from '@/lib/services/user-service';
+import type { UserProfile, CreateUserRequest } from '@/types/user';
+
+describe('UserService', () => {
+  let userService: UserService;
+  let mockDatabase: any;
+
+  beforeAll(async () => {
+    // 初始化测试环境
+    TestUtils.initialize();
+    mockDatabase = TestUtils.createMockDatabase();
+    userService = new UserService(mockDatabase);
+  });
+
+  afterAll(async () => {
+    // 清理测试环境
+    await TestUtils.cleanup();
+  });
+
+  describe('createUser', () => {
+    it('应该成功创建用户并返回用户信息', async () => {
+      // Given - 准备测试数据
+      const createRequest: CreateUserRequest = {
+        name: '张三',
+        email: 'zhangsan@example.com',
+        password: 'securePassword123'
+      };
+
+      const expectedUser: UserProfile = {
+        id: 'user-123',
+        name: '张三',
+        email: 'zhangsan@example.com',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // 模拟数据库行为
+      mockDatabase.users.create.mockResolvedValue(expectedUser);
+
+      // When - 执行测试
+      const result = await userService.createUser(createRequest);
+
+      // Then - 验证结果
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(expectedUser);
+      expect(result.data.email).toBe(createRequest.email);
+      expect(mockDatabase.users.create).toHaveBeenCalledWith({
+        name: createRequest.name,
+        email: createRequest.email,
+        passwordHash: expect.any(String)
+      });
+    });
+
+    it('应该处理邮箱已存在的错误情况', async () => {
+      // Given
+      const duplicateRequest: CreateUserRequest = {
+        name: '李四',
+        email: 'duplicate@example.com',
+        password: 'password123'
+      };
+
+      mockDatabase.users.create.mockRejectedValue(
+        new Error('Email already exists')
+      );
+
+      // When & Then
+      const result = await userService.createUser(duplicateRequest);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('邮箱已存在');
+    });
+
+    it('应该验证输入参数并拒绝无效数据', async () => {
+      // Given - 无效的用户数据
+      const invalidRequest = {
+        name: '',
+        email: 'invalid-email',
+        password: '123' // 密码太短
+      } as CreateUserRequest;
+
+      // When & Then
+      await expect(userService.createUser(invalidRequest))
+        .rejects.toThrow('Invalid user data');
+    });
+  });
+
+  describe('getUserById', () => {
+    it('应该返回存在的用户信息', withTestEnvironment(async () => {
+      // Given
+      const userId = 'user-123';
+      const expectedUser: UserProfile = {
+        id: userId,
+        name: '张三',
+        email: 'zhangsan@example.com',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      mockDatabase.users.findById.mockResolvedValue(expectedUser);
+
+      // When
+      const result = await userService.getUserById(userId);
+
+      // Then
+      expect(result).toEqual(expectedUser);
+      expect(mockDatabase.users.findById).toHaveBeenCalledWith(userId);
+    }));
+
+    it('应该在用户不存在时返回null', async () => {
+      // Given
+      const nonExistentUserId = 'non-existent';
+      mockDatabase.users.findById.mockResolvedValue(null);
+
+      // When
+      const result = await userService.getUserById(nonExistentUserId);
+
+      // Then
+      expect(result).toBeNull();
+    });
+  });
+});
+```
+
+### Python单元测试标准
+```python
+# ✅ 正确的pytest测试结构
+import pytest
+import asyncio
+from unittest.mock import Mock, patch, AsyncMock
+from typing import Dict, Any, List
+
+from app.services.ai_service import AIService
+from app.models.agent import Agent, AgentConfig
+from app.exceptions import AIServiceError, ValidationError
+from tests.fixtures import sample_agent_config, mock_llm_client
+
+
+class TestAIService:
+    """AI服务测试类
+
+    测试AI服务的核心功能，包括智能体创建、对话处理、错误处理等。
+    """
+
+    @pytest.fixture
+    def ai_service(self) -> AIService:
+        """创建AI服务实例"""
+        return AIService()
+
+    @pytest.fixture
+    def mock_agent(self) -> Agent:
+        """创建模拟智能体"""
+        return Agent(
+            id="agent-123",
+            name="测试智能体",
+            config=AgentConfig(
+                model="gpt-4",
+                temperature=0.7,
+                max_tokens=2000
+            )
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_agent_success(
+        self,
+        ai_service: AIService,
+        sample_agent_config: AgentConfig
+    ):
+        """测试成功创建智能体"""
+        # Given
+        with patch.object(ai_service.db, 'save_agent') as mock_save:
+            mock_save.return_value = "agent-123"
+
+            # When
+            result = await ai_service.create_agent(sample_agent_config)
+
+            # Then
+            assert result.success is True
+            assert result.agent_id == "agent-123"
+            assert result.agent.name == sample_agent_config.name
+            mock_save.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_agent_validation_error(self, ai_service: AIService):
+        """测试智能体创建时的验证错误"""
+        # Given - 无效配置
+        invalid_config = AgentConfig(
+            name="",  # 空名称
+            model="invalid-model",  # 无效模型
+            temperature=-1.0  # 无效温度
+        )
+
+        # When & Then
+        with pytest.raises(ValidationError) as exc_info:
+            await ai_service.create_agent(invalid_config)
+
+        assert "名称不能为空" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_chat_with_agent_success(
+        self,
+        ai_service: AIService,
+        mock_agent: Agent,
+        mock_llm_client: AsyncMock
+    ):
+        """测试与智能体成功对话"""
+        # Given
+        message = "你好，请介绍一下自己"
+        expected_response = "你好！我是一个AI助手，可以帮助您解决各种问题。"
+
+        mock_llm_client.chat_completion.return_value = {
+            "choices": [{"message": {"content": expected_response}}]
+        }
+
+        with patch.object(ai_service, 'llm_client', mock_llm_client):
+            # When
+            response = await ai_service.chat_with_agent(
+                agent_id=mock_agent.id,
+                message=message,
+                session_id="session-123"
+            )
+
+            # Then
+            assert response.success is True
+            assert response.content == expected_response
+            assert response.session_id == "session-123"
+            mock_llm_client.chat_completion.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_chat_with_nonexistent_agent(self, ai_service: AIService):
+        """测试与不存在的智能体对话"""
+        # Given
+        nonexistent_agent_id = "nonexistent-agent"
+
+        with patch.object(ai_service.db, 'get_agent') as mock_get:
+            mock_get.return_value = None
+
+            # When & Then
+            with pytest.raises(AIServiceError) as exc_info:
+                await ai_service.chat_with_agent(
+                    agent_id=nonexistent_agent_id,
+                    message="测试消息",
+                    session_id="session-123"
+                )
+
+            assert "智能体不存在" in str(exc_info.value)
+
+    @pytest.mark.parametrize("temperature,expected_valid", [
+        (0.0, True),
+        (0.5, True),
+        (1.0, True),
+        (-0.1, False),
+        (1.1, False),
+        (2.0, False)
+    ])
+    def test_validate_temperature(
+        self,
+        ai_service: AIService,
+        temperature: float,
+        expected_valid: bool
+    ):
+        """测试温度参数验证"""
+        # When
+        is_valid = ai_service._validate_temperature(temperature)
+
+        # Then
+        assert is_valid == expected_valid
+
+    @pytest.mark.performance
+    async def test_concurrent_chat_performance(
+        self,
+        ai_service: AIService,
+        mock_agent: Agent
+    ):
+        """测试并发对话性能"""
+        # Given
+        concurrent_count = 50
+        message = "性能测试消息"
+
+        with patch.object(ai_service, 'chat_with_agent') as mock_chat:
+            mock_chat.return_value = AsyncMock(
+                success=True,
+                content="响应消息",
+                latency=0.1
+            )
+
+            # When
+            start_time = asyncio.get_event_loop().time()
+            tasks = [
+                ai_service.chat_with_agent(
+                    agent_id=mock_agent.id,
+                    message=f"{message}-{i}",
+                    session_id=f"session-{i}"
+                )
+                for i in range(concurrent_count)
+            ]
+
+            results = await asyncio.gather(*tasks)
+            end_time = asyncio.get_event_loop().time()
+
+            # Then
+            assert len(results) == concurrent_count
+            assert all(result.success for result in results)
+
+            total_time = end_time - start_time
+            assert total_time < 5.0  # 50个并发请求应在5秒内完成
+```
+
+## 🔗 集成测试规范
+
+### API集成测试标准
+```typescript
+// ✅ API集成测试示例
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { IntegrationTestUtils } from '@/lib/testing/integration-utils';
+import { TestServer } from '@/lib/testing/test-server';
+import { ApiClient } from '@/lib/api/api-client';
+
+describe('用户管理 API 集成测试', () => {
+  let testServer: TestServer;
+  let apiClient: ApiClient;
+  let testUtils: IntegrationTestUtils;
+
+  beforeAll(async () => {
+    // 启动测试服务器
+    testServer = new TestServer();
+    await testServer.start();
+
+    // 初始化测试工具
+    testUtils = new IntegrationTestUtils();
+    await testUtils.setupTestDatabase();
+
+    // 创建API客户端
+    apiClient = new ApiClient({
+      baseUrl: testServer.getBaseUrl(),
+      timeout: 5000
+    });
+  });
+
+  afterAll(async () => {
+    await testUtils.cleanupTestDatabase();
+    await testServer.stop();
+  });
+
+  describe('POST /api/users', () => {
+    it('应该成功创建用户并返回用户信息', async () => {
+      // Given
+      const userData = {
+        name: '集成测试用户',
+        email: 'integration@test.com',
+        password: 'SecurePassword123!'
+      };
+
+      // When
+      const response = await apiClient.post('/api/users', userData);
+
+      // Then
+      expect(response.status).toBe(201);
+      expect(response.data.success).toBe(true);
+      expect(response.data.data).toMatchObject({
+        name: userData.name,
+        email: userData.email,
+        id: expect.any(String),
+        createdAt: expect.any(String)
+      });
+      expect(response.data.data).not.toHaveProperty('password');
+    });
+
+    it('应该拒绝重复的邮箱地址', async () => {
+      // Given - 先创建一个用户
+      const userData = {
+        name: '用户1',
+        email: 'duplicate@test.com',
+        password: 'Password123!'
+      };
+
+      await apiClient.post('/api/users', userData);
+
+      // When - 尝试创建相同邮箱的用户
+      const duplicateData = {
+        ...userData,
+        name: '用户2'
+      };
+
+      // Then
+      await expect(apiClient.post('/api/users', duplicateData))
+        .rejects.toMatchObject({
+          response: {
+            status: 409,
+            data: {
+              success: false,
+              error: expect.stringContaining('邮箱已存在')
+            }
+          }
+        });
+    });
+  });
+
+  describe('GET /api/users/:id', () => {
+    it('应该返回存在的用户信息', async () => {
+      // Given - 先创建一个用户
+      const createResponse = await apiClient.post('/api/users', {
+        name: '查询测试用户',
+        email: 'query@test.com',
+        password: 'Password123!'
+      });
+
+      const userId = createResponse.data.data.id;
+
+      // When
+      const response = await apiClient.get(`/api/users/${userId}`);
+
+      // Then
+      expect(response.status).toBe(200);
+      expect(response.data.success).toBe(true);
+      expect(response.data.data).toMatchObject({
+        id: userId,
+        name: '查询测试用户',
+        email: 'query@test.com'
+      });
+    });
+
+    it('应该在用户不存在时返回404', async () => {
+      // Given
+      const nonExistentId = 'non-existent-user-id';
+
+      // When & Then
+      await expect(apiClient.get(`/api/users/${nonExistentId}`))
+        .rejects.toMatchObject({
+          response: {
+            status: 404,
+            data: {
+              success: false,
+              error: expect.stringContaining('用户不存在')
+            }
+          }
+        });
+    });
+  });
+});
+```
+
+## 🎭 端到端测试规范
+
+### Playwright E2E测试标准
+```typescript
+// ✅ Playwright端到端测试示例
+import { test, expect } from '@playwright/test';
+import { LoginPage } from '@/e2e/pages/login-page';
+import { DashboardPage } from '@/e2e/pages/dashboard-page';
+import { UserManagementPage } from '@/e2e/pages/user-management-page';
+
+test.describe('用户管理端到端测试', () => {
+  let loginPage: LoginPage;
+  let dashboardPage: DashboardPage;
+  let userManagementPage: UserManagementPage;
+
+  test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
+    dashboardPage = new DashboardPage(page);
+    userManagementPage = new UserManagementPage(page);
+
+    // 登录到系统
+    await loginPage.goto();
+    await loginPage.login('admin@test.com', 'AdminPassword123!');
+    await expect(page).toHaveTitle('ZK-Agent Dashboard');
+  });
+
+  test('应该能够创建新用户', async ({ page }) => {
+    // Given - 导航到用户管理页面
+    await dashboardPage.navigateToUserManagement();
+    await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
+
+    // When - 创建新用户
+    await userManagementPage.clickCreateUser();
+    await userManagementPage.fillUserForm({
+      name: 'E2E测试用户',
+      email: 'e2e@test.com',
+      password: 'E2EPassword123!',
+      role: 'user'
+    });
+    await userManagementPage.submitUserForm();
+
+    // Then - 验证用户创建成功
+    await expect(page.getByText('用户创建成功')).toBeVisible();
+    await expect(page.getByText('E2E测试用户')).toBeVisible();
+    await expect(page.getByText('e2e@test.com')).toBeVisible();
+  });
+
+  test('应该能够编辑用户信息', async ({ page }) => {
+    // Given - 确保有用户存在
+    await dashboardPage.navigateToUserManagement();
+
+    // 如果没有用户，先创建一个
+    const userCount = await page.locator('[data-testid="user-row"]').count();
+    if (userCount === 0) {
+      await userManagementPage.createTestUser({
+        name: '待编辑用户',
+        email: 'edit@test.com',
+        password: 'Password123!'
+      });
+    }
+
+    // When - 编辑用户
+    await userManagementPage.editFirstUser();
+    await userManagementPage.updateUserName('已编辑的用户名');
+    await userManagementPage.submitUserForm();
+
+    // Then - 验证编辑成功
+    await expect(page.getByText('用户信息更新成功')).toBeVisible();
+    await expect(page.getByText('已编辑的用户名')).toBeVisible();
+  });
+
+  test('应该能够删除用户', async ({ page }) => {
+    // Given - 创建一个用于删除的用户
+    await dashboardPage.navigateToUserManagement();
+    await userManagementPage.createTestUser({
+      name: '待删除用户',
+      email: 'delete@test.com',
+      password: 'Password123!'
+    });
+
+    // When - 删除用户
+    await userManagementPage.deleteUser('待删除用户');
+
+    // 确认删除对话框
+    await page.getByRole('button', { name: '确认删除' }).click();
+
+    // Then - 验证删除成功
+    await expect(page.getByText('用户删除成功')).toBeVisible();
+    await expect(page.getByText('待删除用户')).not.toBeVisible();
+  });
+
+  test('应该处理用户创建时的验证错误', async ({ page }) => {
+    // Given
+    await dashboardPage.navigateToUserManagement();
+
+    // When - 尝试创建无效用户
+    await userManagementPage.clickCreateUser();
+    await userManagementPage.fillUserForm({
+      name: '',  // 空名称
+      email: 'invalid-email',  // 无效邮箱
+      password: '123',  // 密码太短
+      role: 'user'
+    });
+    await userManagementPage.submitUserForm();
+
+    // Then - 验证显示错误信息
+    await expect(page.getByText('用户名不能为空')).toBeVisible();
+    await expect(page.getByText('请输入有效的邮箱地址')).toBeVisible();
+    await expect(page.getByText('密码长度至少8个字符')).toBeVisible();
+  });
+});
+```
+
+## 📊 性能测试规范
+
+### 性能测试要求
+```typescript
+// ✅ 性能测试示例
+import { test, expect } from '@playwright/test';
+import { performance } from 'perf_hooks';
+
+test.describe('性能测试', () => {
+  test('页面加载性能', async ({ page }) => {
+    // When
+    const startTime = performance.now();
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    const endTime = performance.now();
+
+    // Then
+    const loadTime = endTime - startTime;
+    expect(loadTime).toBeLessThan(2000); // 页面加载时间应小于2秒
+  });
+
+  test('API响应性能', async ({ request }) => {
+    // When
+    const startTime = performance.now();
+    const response = await request.get('/api/users');
+    const endTime = performance.now();
+
+    // Then
+    const responseTime = endTime - startTime;
+    expect(response.status()).toBe(200);
+    expect(responseTime).toBeLessThan(200); // API响应时间应小于200ms
+  });
+});
+```
+
+## ⚠️ 测试质量要求
+
+### 禁止事项
+- ❌ 在测试中使用真实生产数据
+- ❌ 测试代码中包含硬编码的敏感信息
+- ❌ 编写没有断言的测试用例
+- ❌ 测试用例之间相互依赖
+- ❌ 使用 `console.log` 进行调试
+
+### 最佳实践
+- ✅ 使用描述性的测试用例名称
+- ✅ 遵循 AAA 模式（Arrange、Act、Assert）
+- ✅ 适当使用 Mock 和 Stub
+- ✅ 测试边界条件和异常情况
+- ✅ 保持测试的独立性和幂等性
+
+---
+
+**参考文档**:
+- [测试标准文档](mdc:docs/testing-standard.md)
+- [测试数据管理](mdc:docs/testing-data-management.md)
+# ZK-Agent 测试规范与质量保证标准
+
+## 📋 测试框架统一标准
+
+基于 [测试标准文档](mdc:docs/testing-standard.md)，确保项目测试质量和覆盖率。
+
+### 测试框架选择
+- **前端测试**: 统一使用 Vitest 作为主要测试框架
+- **端到端测试**: 使用 Playwright 进行E2E测试
+- **后端测试**: 使用 pytest 进行Python测试
+- **禁止**: 引入其他测试框架 (如 Jest、Mocha 等)
+
+### 测试覆盖率要求
+```typescript
+interface CoverageRequirements {
+  minimumCoverage: {
+    unitTests: 80;        // 单元测试最低覆盖率
+    integrationTests: 60; // 集成测试最低覆盖率
+    criticalPaths: 90;    // 关键业务路径覆盖率
+    e2eTests: 50;         // 端到端测试覆盖率
+  };
+
+  qualityGates: {
+    codeQuality: 90;      // 代码质量评分
+    testReliability: 95;  // 测试可靠性
+    performanceRegression: 5; // 性能回归阈值(%)
+  };
+}
+```
+
+## 🧪 单元测试规范
+
+### Vitest单元测试标准
+```typescript
+// ✅ 正确的Vitest测试结构
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { TestUtils, withTestEnvironment } from '@/lib/testing/test-utils';
+import { UserService } from '@/lib/services/user-service';
+import type { UserProfile, CreateUserRequest } from '@/types/user';
+
+describe('UserService', () => {
+  let userService: UserService;
+  let mockDatabase: any;
+
+  beforeAll(async () => {
+    // 初始化测试环境
+    TestUtils.initialize();
+    mockDatabase = TestUtils.createMockDatabase();
+    userService = new UserService(mockDatabase);
+  });
+
+  afterAll(async () => {
+    // 清理测试环境
+    await TestUtils.cleanup();
+  });
+
+  describe('createUser', () => {
+    it('应该成功创建用户并返回用户信息', async () => {
+      // Given - 准备测试数据
+      const createRequest: CreateUserRequest = {
+        name: '张三',
+        email: 'zhangsan@example.com',
+        password: 'securePassword123'
+      };
+
+      const expectedUser: UserProfile = {
+        id: 'user-123',
+        name: '张三',
+        email: 'zhangsan@example.com',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // 模拟数据库行为
+      mockDatabase.users.create.mockResolvedValue(expectedUser);
+
+      // When - 执行测试
+      const result = await userService.createUser(createRequest);
+
+      // Then - 验证结果
+      expect(result.success).toBe(true);
+      expect(result.data).toEqual(expectedUser);
+      expect(result.data.email).toBe(createRequest.email);
+      expect(mockDatabase.users.create).toHaveBeenCalledWith({
+        name: createRequest.name,
+        email: createRequest.email,
+        passwordHash: expect.any(String)
+      });
+    });
+
+    it('应该处理邮箱已存在的错误情况', async () => {
+      // Given
+      const duplicateRequest: CreateUserRequest = {
+        name: '李四',
+        email: 'duplicate@example.com',
+        password: 'password123'
+      };
+
+      mockDatabase.users.create.mockRejectedValue(
+        new Error('Email already exists')
+      );
+
+      // When & Then
+      const result = await userService.createUser(duplicateRequest);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('邮箱已存在');
+    });
+
+    it('应该验证输入参数并拒绝无效数据', async () => {
+      // Given - 无效的用户数据
+      const invalidRequest = {
+        name: '',
+        email: 'invalid-email',
+        password: '123' // 密码太短
+      } as CreateUserRequest;
+
+      // When & Then
+      await expect(userService.createUser(invalidRequest))
+        .rejects.toThrow('Invalid user data');
+    });
+  });
+
+  describe('getUserById', () => {
+    it('应该返回存在的用户信息', withTestEnvironment(async () => {
+      // Given
+      const userId = 'user-123';
+      const expectedUser: UserProfile = {
+        id: userId,
+        name: '张三',
+        email: 'zhangsan@example.com',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      mockDatabase.users.findById.mockResolvedValue(expectedUser);
+
+      // When
+      const result = await userService.getUserById(userId);
+
+      // Then
+      expect(result).toEqual(expectedUser);
+      expect(mockDatabase.users.findById).toHaveBeenCalledWith(userId);
+    }));
+
+    it('应该在用户不存在时返回null', async () => {
+      // Given
+      const nonExistentUserId = 'non-existent';
+      mockDatabase.users.findById.mockResolvedValue(null);
+
+      // When
+      const result = await userService.getUserById(nonExistentUserId);
+
+      // Then
+      expect(result).toBeNull();
+    });
+  });
+});
+```
+
+### Python单元测试标准
+```python
+# ✅ 正确的pytest测试结构
+import pytest
+import asyncio
+from unittest.mock import Mock, patch, AsyncMock
+from typing import Dict, Any, List
+
+from app.services.ai_service import AIService
+from app.models.agent import Agent, AgentConfig
+from app.exceptions import AIServiceError, ValidationError
+from tests.fixtures import sample_agent_config, mock_llm_client
+
+
+class TestAIService:
+    """AI服务测试类
+
+    测试AI服务的核心功能，包括智能体创建、对话处理、错误处理等。
+    """
+
+    @pytest.fixture
+    def ai_service(self) -> AIService:
+        """创建AI服务实例"""
+        return AIService()
+
+    @pytest.fixture
+    def mock_agent(self) -> Agent:
+        """创建模拟智能体"""
+        return Agent(
+            id="agent-123",
+            name="测试智能体",
+            config=AgentConfig(
+                model="gpt-4",
+                temperature=0.7,
+                max_tokens=2000
+            )
+        )
+
+    @pytest.mark.asyncio
+    async def test_create_agent_success(
+        self,
+        ai_service: AIService,
+        sample_agent_config: AgentConfig
+    ):
+        """测试成功创建智能体"""
+        # Given
+        with patch.object(ai_service.db, 'save_agent') as mock_save:
+            mock_save.return_value = "agent-123"
+
+            # When
+            result = await ai_service.create_agent(sample_agent_config)
+
+            # Then
+            assert result.success is True
+            assert result.agent_id == "agent-123"
+            assert result.agent.name == sample_agent_config.name
+            mock_save.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_create_agent_validation_error(self, ai_service: AIService):
+        """测试智能体创建时的验证错误"""
+        # Given - 无效配置
+        invalid_config = AgentConfig(
+            name="",  # 空名称
+            model="invalid-model",  # 无效模型
+            temperature=-1.0  # 无效温度
+        )
+
+        # When & Then
+        with pytest.raises(ValidationError) as exc_info:
+            await ai_service.create_agent(invalid_config)
+
+        assert "名称不能为空" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_chat_with_agent_success(
+        self,
+        ai_service: AIService,
+        mock_agent: Agent,
+        mock_llm_client: AsyncMock
+    ):
+        """测试与智能体成功对话"""
+        # Given
+        message = "你好，请介绍一下自己"
+        expected_response = "你好！我是一个AI助手，可以帮助您解决各种问题。"
+
+        mock_llm_client.chat_completion.return_value = {
+            "choices": [{"message": {"content": expected_response}}]
+        }
+
+        with patch.object(ai_service, 'llm_client', mock_llm_client):
+            # When
+            response = await ai_service.chat_with_agent(
+                agent_id=mock_agent.id,
+                message=message,
+                session_id="session-123"
+            )
+
+            # Then
+            assert response.success is True
+            assert response.content == expected_response
+            assert response.session_id == "session-123"
+            mock_llm_client.chat_completion.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_chat_with_nonexistent_agent(self, ai_service: AIService):
+        """测试与不存在的智能体对话"""
+        # Given
+        nonexistent_agent_id = "nonexistent-agent"
+
+        with patch.object(ai_service.db, 'get_agent') as mock_get:
+            mock_get.return_value = None
+
+            # When & Then
+            with pytest.raises(AIServiceError) as exc_info:
+                await ai_service.chat_with_agent(
+                    agent_id=nonexistent_agent_id,
+                    message="测试消息",
+                    session_id="session-123"
+                )
+
+            assert "智能体不存在" in str(exc_info.value)
+
+    @pytest.mark.parametrize("temperature,expected_valid", [
+        (0.0, True),
+        (0.5, True),
+        (1.0, True),
+        (-0.1, False),
+        (1.1, False),
+        (2.0, False)
+    ])
+    def test_validate_temperature(
+        self,
+        ai_service: AIService,
+        temperature: float,
+        expected_valid: bool
+    ):
+        """测试温度参数验证"""
+        # When
+        is_valid = ai_service._validate_temperature(temperature)
+
+        # Then
+        assert is_valid == expected_valid
+
+    @pytest.mark.performance
+    async def test_concurrent_chat_performance(
+        self,
+        ai_service: AIService,
+        mock_agent: Agent
+    ):
+        """测试并发对话性能"""
+        # Given
+        concurrent_count = 50
+        message = "性能测试消息"
+
+        with patch.object(ai_service, 'chat_with_agent') as mock_chat:
+            mock_chat.return_value = AsyncMock(
+                success=True,
+                content="响应消息",
+                latency=0.1
+            )
+
+            # When
+            start_time = asyncio.get_event_loop().time()
+            tasks = [
+                ai_service.chat_with_agent(
+                    agent_id=mock_agent.id,
+                    message=f"{message}-{i}",
+                    session_id=f"session-{i}"
+                )
+                for i in range(concurrent_count)
+            ]
+
+            results = await asyncio.gather(*tasks)
+            end_time = asyncio.get_event_loop().time()
+
+            # Then
+            assert len(results) == concurrent_count
+            assert all(result.success for result in results)
+
+            total_time = end_time - start_time
+            assert total_time < 5.0  # 50个并发请求应在5秒内完成
+```
+
+## 🔗 集成测试规范
+
+### API集成测试标准
+```typescript
+// ✅ API集成测试示例
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { IntegrationTestUtils } from '@/lib/testing/integration-utils';
+import { TestServer } from '@/lib/testing/test-server';
+import { ApiClient } from '@/lib/api/api-client';
+
+describe('用户管理 API 集成测试', () => {
+  let testServer: TestServer;
+  let apiClient: ApiClient;
+  let testUtils: IntegrationTestUtils;
+
+  beforeAll(async () => {
+    // 启动测试服务器
+    testServer = new TestServer();
+    await testServer.start();
+
+    // 初始化测试工具
+    testUtils = new IntegrationTestUtils();
+    await testUtils.setupTestDatabase();
+
+    // 创建API客户端
+    apiClient = new ApiClient({
+      baseUrl: testServer.getBaseUrl(),
+      timeout: 5000
+    });
+  });
+
+  afterAll(async () => {
+    await testUtils.cleanupTestDatabase();
+    await testServer.stop();
+  });
+
+  describe('POST /api/users', () => {
+    it('应该成功创建用户并返回用户信息', async () => {
+      // Given
+      const userData = {
+        name: '集成测试用户',
+        email: 'integration@test.com',
+        password: 'SecurePassword123!'
+      };
+
+      // When
+      const response = await apiClient.post('/api/users', userData);
+
+      // Then
+      expect(response.status).toBe(201);
+      expect(response.data.success).toBe(true);
+      expect(response.data.data).toMatchObject({
+        name: userData.name,
+        email: userData.email,
+        id: expect.any(String),
+        createdAt: expect.any(String)
+      });
+      expect(response.data.data).not.toHaveProperty('password');
+    });
+
+    it('应该拒绝重复的邮箱地址', async () => {
+      // Given - 先创建一个用户
+      const userData = {
+        name: '用户1',
+        email: 'duplicate@test.com',
+        password: 'Password123!'
+      };
+
+      await apiClient.post('/api/users', userData);
+
+      // When - 尝试创建相同邮箱的用户
+      const duplicateData = {
+        ...userData,
+        name: '用户2'
+      };
+
+      // Then
+      await expect(apiClient.post('/api/users', duplicateData))
+        .rejects.toMatchObject({
+          response: {
+            status: 409,
+            data: {
+              success: false,
+              error: expect.stringContaining('邮箱已存在')
+            }
+          }
+        });
+    });
+  });
+
+  describe('GET /api/users/:id', () => {
+    it('应该返回存在的用户信息', async () => {
+      // Given - 先创建一个用户
+      const createResponse = await apiClient.post('/api/users', {
+        name: '查询测试用户',
+        email: 'query@test.com',
+        password: 'Password123!'
+      });
+
+      const userId = createResponse.data.data.id;
+
+      // When
+      const response = await apiClient.get(`/api/users/${userId}`);
+
+      // Then
+      expect(response.status).toBe(200);
+      expect(response.data.success).toBe(true);
+      expect(response.data.data).toMatchObject({
+        id: userId,
+        name: '查询测试用户',
+        email: 'query@test.com'
+      });
+    });
+
+    it('应该在用户不存在时返回404', async () => {
+      // Given
+      const nonExistentId = 'non-existent-user-id';
+
+      // When & Then
+      await expect(apiClient.get(`/api/users/${nonExistentId}`))
+        .rejects.toMatchObject({
+          response: {
+            status: 404,
+            data: {
+              success: false,
+              error: expect.stringContaining('用户不存在')
+            }
+          }
+        });
+    });
+  });
+});
+```
+
+## 🎭 端到端测试规范
+
+### Playwright E2E测试标准
+```typescript
+// ✅ Playwright端到端测试示例
+import { test, expect } from '@playwright/test';
+import { LoginPage } from '@/e2e/pages/login-page';
+import { DashboardPage } from '@/e2e/pages/dashboard-page';
+import { UserManagementPage } from '@/e2e/pages/user-management-page';
+
+test.describe('用户管理端到端测试', () => {
+  let loginPage: LoginPage;
+  let dashboardPage: DashboardPage;
+  let userManagementPage: UserManagementPage;
+
+  test.beforeEach(async ({ page }) => {
+    loginPage = new LoginPage(page);
+    dashboardPage = new DashboardPage(page);
+    userManagementPage = new UserManagementPage(page);
+
+    // 登录到系统
+    await loginPage.goto();
+    await loginPage.login('admin@test.com', 'AdminPassword123!');
+    await expect(page).toHaveTitle('ZK-Agent Dashboard');
+  });
+
+  test('应该能够创建新用户', async ({ page }) => {
+    // Given - 导航到用户管理页面
+    await dashboardPage.navigateToUserManagement();
+    await expect(page.getByRole('heading', { name: '用户管理' })).toBeVisible();
+
+    // When - 创建新用户
+    await userManagementPage.clickCreateUser();
+    await userManagementPage.fillUserForm({
+      name: 'E2E测试用户',
+      email: 'e2e@test.com',
+      password: 'E2EPassword123!',
+      role: 'user'
+    });
+    await userManagementPage.submitUserForm();
+
+    // Then - 验证用户创建成功
+    await expect(page.getByText('用户创建成功')).toBeVisible();
+    await expect(page.getByText('E2E测试用户')).toBeVisible();
+    await expect(page.getByText('e2e@test.com')).toBeVisible();
+  });
+
+  test('应该能够编辑用户信息', async ({ page }) => {
+    // Given - 确保有用户存在
+    await dashboardPage.navigateToUserManagement();
+
+    // 如果没有用户，先创建一个
+    const userCount = await page.locator('[data-testid="user-row"]').count();
+    if (userCount === 0) {
+      await userManagementPage.createTestUser({
+        name: '待编辑用户',
+        email: 'edit@test.com',
+        password: 'Password123!'
+      });
+    }
+
+    // When - 编辑用户
+    await userManagementPage.editFirstUser();
+    await userManagementPage.updateUserName('已编辑的用户名');
+    await userManagementPage.submitUserForm();
+
+    // Then - 验证编辑成功
+    await expect(page.getByText('用户信息更新成功')).toBeVisible();
+    await expect(page.getByText('已编辑的用户名')).toBeVisible();
+  });
+
+  test('应该能够删除用户', async ({ page }) => {
+    // Given - 创建一个用于删除的用户
+    await dashboardPage.navigateToUserManagement();
+    await userManagementPage.createTestUser({
+      name: '待删除用户',
+      email: 'delete@test.com',
+      password: 'Password123!'
+    });
+
+    // When - 删除用户
+    await userManagementPage.deleteUser('待删除用户');
+
+    // 确认删除对话框
+    await page.getByRole('button', { name: '确认删除' }).click();
+
+    // Then - 验证删除成功
+    await expect(page.getByText('用户删除成功')).toBeVisible();
+    await expect(page.getByText('待删除用户')).not.toBeVisible();
+  });
+
+  test('应该处理用户创建时的验证错误', async ({ page }) => {
+    // Given
+    await dashboardPage.navigateToUserManagement();
+
+    // When - 尝试创建无效用户
+    await userManagementPage.clickCreateUser();
+    await userManagementPage.fillUserForm({
+      name: '',  // 空名称
+      email: 'invalid-email',  // 无效邮箱
+      password: '123',  // 密码太短
+      role: 'user'
+    });
+    await userManagementPage.submitUserForm();
+
+    // Then - 验证显示错误信息
+    await expect(page.getByText('用户名不能为空')).toBeVisible();
+    await expect(page.getByText('请输入有效的邮箱地址')).toBeVisible();
+    await expect(page.getByText('密码长度至少8个字符')).toBeVisible();
+  });
+});
+```
+
+## 📊 性能测试规范
+
+### 性能测试要求
+```typescript
+// ✅ 性能测试示例
+import { test, expect } from '@playwright/test';
+import { performance } from 'perf_hooks';
+
+test.describe('性能测试', () => {
+  test('页面加载性能', async ({ page }) => {
+    // When
+    const startTime = performance.now();
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    const endTime = performance.now();
+
+    // Then
+    const loadTime = endTime - startTime;
+    expect(loadTime).toBeLessThan(2000); // 页面加载时间应小于2秒
+  });
+
+  test('API响应性能', async ({ request }) => {
+    // When
+    const startTime = performance.now();
+    const response = await request.get('/api/users');
+    const endTime = performance.now();
+
+    // Then
+    const responseTime = endTime - startTime;
+    expect(response.status()).toBe(200);
+    expect(responseTime).toBeLessThan(200); // API响应时间应小于200ms
+  });
+});
+```
+
+## ⚠️ 测试质量要求
+
+### 禁止事项
+- ❌ 在测试中使用真实生产数据
+- ❌ 测试代码中包含硬编码的敏感信息
+- ❌ 编写没有断言的测试用例
+- ❌ 测试用例之间相互依赖
+- ❌ 使用 `console.log` 进行调试
+
+### 最佳实践
+- ✅ 使用描述性的测试用例名称
+- ✅ 遵循 AAA 模式（Arrange、Act、Assert）
+- ✅ 适当使用 Mock 和 Stub
+- ✅ 测试边界条件和异常情况
+- ✅ 保持测试的独立性和幂等性
+
+---
+
+**参考文档**:
+- [测试标准文档](mdc:docs/testing-standard.md)
+- [测试数据管理](mdc:docs/testing-data-management.md)
