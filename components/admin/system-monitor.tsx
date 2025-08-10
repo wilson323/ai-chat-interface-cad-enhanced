@@ -83,7 +83,7 @@ export function SystemMonitor() {
         system: systemStats,
       })
     } catch (err) {
-      setError(`获取统计信息失败: ${err.message}`)
+      setError(`获取统计信息失败: ${err instanceof Error ? err.message : String(err)}`)
       console.error("获取统计信息失败:", err)
     } finally {
       setLoading(false)
@@ -97,7 +97,7 @@ export function SystemMonitor() {
       await cacheManager.clear()
       await fetchStats()
     } catch (err) {
-      setError(`清除缓存失败: ${err.message}`)
+      setError(`清除缓存失败: ${err instanceof Error ? err.message : String(err)}`)
       console.error("清除缓存失败:", err)
     }
   }
@@ -109,7 +109,7 @@ export function SystemMonitor() {
       optimizer.resetCircuitBreaker()
       fetchStats()
     } catch (err) {
-      setError(`重置断路器失败: ${err.message}`)
+      setError(`重置断路器失败: ${err instanceof Error ? err.message : String(err)}`)
       console.error("重置断路器失败:", err)
     }
   }
@@ -125,7 +125,7 @@ export function SystemMonitor() {
       }
       fetchStats()
     } catch (err) {
-      setError(`切换预取服务失败: ${err.message}`)
+      setError(`切换预取服务失败: ${err instanceof Error ? err.message : String(err)}`)
       console.error("切换预取服务失败:", err)
     }
   }

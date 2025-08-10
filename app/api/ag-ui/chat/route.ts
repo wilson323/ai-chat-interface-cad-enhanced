@@ -4,6 +4,7 @@ import { rateLimiter } from '@/lib/rate-limiter'
 import { z } from 'zod'
 import { createOptimizedStreamWriter, globalStreamMonitor } from '@/lib/ag-ui/stream-optimizer'
 import type { AgUIEvent } from '@/lib/ag-ui/types'
+import { EventType } from '@/lib/ag-ui/types'
 
 /**
  * AG-UI聊天API路由 - 提供AG-UI协议支持，同时保持与后端代理的对接
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
 
     // 发送运行开始事件 - 使用直接写入确保立即发送
     const runStartedEvent: AgUIEvent = {
-      type: "RUN_STARTED",
+      type: EventType.RUN_STARTED,
       threadId,
       runId,
       timestamp: Date.now(),
@@ -100,7 +101,7 @@ export async function POST(req: NextRequest) {
 
     // 发送消息开始事件
     const messageStartEvent: AgUIEvent = {
-      type: "TEXT_MESSAGE_START",
+      type: EventType.TEXT_MESSAGE_START,
       messageId,
       role: "assistant",
       timestamp: Date.now(),
@@ -147,7 +148,7 @@ export async function POST(req: NextRequest) {
             // 处理文本内容 - 使用优化器的打字机效果
             if (delta.content) {
               const contentEvent: AgUIEvent = {
-                type: "TEXT_MESSAGE_CONTENT",
+                type: EventType.TEXT_MESSAGE_CONTENT,
                 messageId,
                 delta: delta.content,
                 timestamp: Date.now(),
@@ -163,7 +164,7 @@ export async function POST(req: NextRequest) {
               // 工具调用开始
               if (toolCall.function && toolCall.function.name) {
                 const toolStartEvent: AgUIEvent = {
-                  type: "TOOL_CALL_START",
+                  type: EventType.TOOL_CALL_START,
                   toolCallId,
                   toolCallName: toolCall.function.name,
                   parentMessageId: messageId,
@@ -175,7 +176,7 @@ export async function POST(req: NextRequest) {
               // 工具调用参数
               if (toolCall.function && toolCall.function.arguments) {
                 const toolArgsEvent: AgUIEvent = {
-                  type: "TOOL_CALL_ARGS",
+                  type: EventType.TOOL_CALL_ARGS,
                   toolCallId,
                   delta: toolCall.function.arguments,
                   timestamp: Date.now(),
@@ -185,7 +186,7 @@ export async function POST(req: NextRequest) {
 
               // 工具调用结束
               const toolEndEvent: AgUIEvent = {
-                type: "TOOL_CALL_END",
+                type: EventType.TOOL_CALL_END,
                 toolCallId,
                 timestamp: Date.now(),
               }
@@ -198,7 +199,7 @@ export async function POST(req: NextRequest) {
             switch (data.event) {
               case 'flowNodeStatus':
                 const stepEvent: AgUIEvent = {
-                  type: "STEP_STARTED",
+                  type: EventType.STEP_STARTED,
                   stepName: data.data?.name || 'unknown',
                   timestamp: Date.now(),
                 }
@@ -208,7 +209,7 @@ export async function POST(req: NextRequest) {
               case 'interactive':
                 // 处理交互节点
                 const interactiveEvent: AgUIEvent = {
-                  type: "CUSTOM",
+                  type: EventType.CUSTOM,
                   name: "interactive",
                   value: data.data,
                   timestamp: Date.now(),
@@ -220,7 +221,7 @@ export async function POST(req: NextRequest) {
 
           // 保持向后兼容 - 写入原始数据
           const rawEvent: AgUIEvent = {
-            type: "RAW",
+            type: EventType.RAW,
             event: data,
             source: "fastgpt",
             timestamp: Date.now(),
@@ -230,7 +231,7 @@ export async function POST(req: NextRequest) {
         } catch (error) {
           console.error("Error processing message:", error)
           const errorEvent: AgUIEvent = {
-            type: "RUN_ERROR",
+            type: EventType.RUN_ERROR,
             message: `Error processing message: ${error instanceof Error ? error.message : 'Unknown error'}`,
             code: 500,
             timestamp: Date.now(),
@@ -245,14 +246,14 @@ export async function POST(req: NextRequest) {
 
           // 发送消息结束和运行结束事件
           const messageEndEvent: AgUIEvent = {
-            type: "TEXT_MESSAGE_END",
+            type: EventType.TEXT_MESSAGE_END,
             messageId,
             timestamp: Date.now(),
           }
           await optimizer.writeEventDirect(messageEndEvent)
 
           const runFinishedEvent: AgUIEvent = {
-            type: "RUN_FINISHED",
+            type: EventType.RUN_FINISHED,
             threadId,
             runId,
             timestamp: Date.now(),
@@ -280,8 +281,8 @@ export async function POST(req: NextRequest) {
       onerror(error) {
         console.error("Error from FastGPT API:", error)
         const errorEvent: AgUIEvent = {
-          type: "RUN_ERROR",
-          message: error.message || "Unknown error from FastGPT API",
+          type: EventType.RUN_ERROR,
+          message: (error as any)?.message || "Unknown error from FastGPT API",
           code: 500,
           timestamp: Date.now(),
         }
@@ -296,8 +297,8 @@ export async function POST(req: NextRequest) {
     }).catch(async (error) => {
       console.error("Error fetching from FastGPT API:", error)
       const errorEvent: AgUIEvent = {
-        type: "RUN_ERROR",
-        message: error.message || "Failed to connect to FastGPT API",
+        type: EventType.RUN_ERROR,
+        message: (error as any)?.message || "Failed to connect to FastGPT API",
         code: 500,
         timestamp: Date.now(),
       }

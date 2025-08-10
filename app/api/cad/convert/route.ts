@@ -82,12 +82,12 @@ export async function POST(request: NextRequest) {
         await fs.unlink(convertedFilePath);
         
         // 返回转换后的文件
-        return new NextResponse(convertedFile, {
+        return new Response(convertedFile as any, {
           headers: {
-            'Content-Type': getContentType(targetFormat),
-            'Content-Disposition': `attachment; filename="${path.basename(file.name, path.extname(file.name))}.${targetFormat}"`
-          }
-        });
+            "Content-Type": targetFormat === 'pdf' ? 'application/pdf' : 'application/octet-stream',
+            "Content-Disposition": `attachment; filename="${file?.name || 'converted'}.${targetFormat}"`,
+          },
+        })
       } catch (error) {
         // 清理临时文件
         try {

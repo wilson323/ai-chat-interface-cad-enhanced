@@ -40,7 +40,7 @@ export function AgentForm({ initialData, onSubmit, onCancel, models, voiceModels
       textToSpeech: initialData?.config?.textToSpeech || false,
       apiKey: initialData?.config?.apiKey || "",
       baseUrl: initialData?.config?.baseUrl || "",
-      useProxy: initialData?.config?.useProxy === undefined ? true : initialData?.config?.useProxy,
+      useProxy: (initialData as any)?.config?.useProxy === undefined ? true : (initialData as any)?.config?.useProxy,
       avatarColor: initialData?.config?.avatarColor || "#6cb33f",
     },
   })
@@ -326,7 +326,7 @@ export function AgentForm({ initialData, onSubmit, onCancel, models, voiceModels
               <Switch
                 id="fileUpload"
                 checked={formData.config.fileUpload}
-                onCheckedChange={(checked) => handleSwitchChange("fileUpload", checked)}
+                onCheckedChange={(checked: boolean) => handleSwitchChange("fileUpload", checked)}
                 className="data-[state=checked]:bg-[#6cb33f]"
               />
               <Label htmlFor="fileUpload" className="cursor-pointer">
@@ -339,7 +339,7 @@ export function AgentForm({ initialData, onSubmit, onCancel, models, voiceModels
               <Switch
                 id="speechToText"
                 checked={formData.config.speechToText}
-                onCheckedChange={(checked) => handleSwitchChange("speechToText", checked)}
+                onCheckedChange={(checked: boolean) => handleSwitchChange("speechToText", checked)}
                 className="data-[state=checked]:bg-[#6cb33f]"
               />
               <Label htmlFor="speechToText" className="cursor-pointer">
@@ -352,7 +352,7 @@ export function AgentForm({ initialData, onSubmit, onCancel, models, voiceModels
               <Switch
                 id="textToSpeech"
                 checked={formData.config.textToSpeech}
-                onCheckedChange={(checked) => handleSwitchChange("textToSpeech", checked)}
+                onCheckedChange={(checked: boolean) => handleSwitchChange("textToSpeech", checked)}
                 className="data-[state=checked]:bg-[#6cb33f]"
               />
               <Label htmlFor="textToSpeech" className="cursor-pointer">
@@ -371,7 +371,7 @@ export function AgentForm({ initialData, onSubmit, onCancel, models, voiceModels
                 ) : (
                   <Select
                     value={formData.config.voiceId || ""}
-                    onValueChange={(value) => handleSwitchChange("voiceId", value)}
+                    onValueChange={(value: string) => handleSwitchChange("voiceId", value)}
                   >
                     <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
                       <SelectValue placeholder="Select a voice model" />
@@ -429,7 +429,7 @@ export function AgentForm({ initialData, onSubmit, onCancel, models, voiceModels
             <Switch
               id="useProxy"
               checked={formData.config.useProxy === undefined ? true : formData.config.useProxy}
-              onCheckedChange={(checked) => handleSwitchChange("useProxy", checked)}
+              onCheckedChange={(checked: boolean) => handleSwitchChange("useProxy", checked)}
               className="data-[state=checked]:bg-[#6cb33f]"
             />
             <Label htmlFor="useProxy" className="cursor-pointer">

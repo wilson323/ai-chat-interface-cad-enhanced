@@ -9,9 +9,10 @@ import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Separator } from "@/components/ui/separator"
 import { CADAnalysisViewer } from "@/components/cad/cad-analysis-viewer"
-import ThreeViewer from "@/components/cad/three-viewer"
+import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
 import { CADAnalysisResult } from "@/lib/types/cad"
-import { formatFileSize, formatDateTime } from "@/lib/utils"
+import { formatFileSize } from "@/lib/utils"
+import { LayerInfo } from "@/lib/types/cad"
 import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils"
 import { 
   Loader2, 
@@ -88,7 +89,7 @@ export default function SharedCADAnalysisPage() {
   // 复制分享链接
   const copyShareLink = async () => {
     try {
-      await navigator.clipboard.writeText(window.location.href)
+      await navigator.clipboard.writeText(typeof window !== 'undefined' ? window.location.href : '')
       setCopySuccess(true)
       
       toast({
@@ -205,11 +206,8 @@ export default function SharedCADAnalysisPage() {
                   {is3D ? (
                     // 3D模型查看器
                     <ThreeViewer
-                      modelUrl={`/api/cad/file/${fileId}`}
+                      fileUrl={`/api/cad/file/${fileId}`}
                       fileType={analysisResult.fileType}
-                      showGrid={true}
-                      showAxes={true}
-                      className="w-full h-[500px]"
                     />
                   ) : (
                     // 2D图纸查看器（目前显示缩略图，后续可优化为交互式2D查看器）
@@ -236,11 +234,11 @@ export default function SharedCADAnalysisPage() {
                     <p>文件名: {analysisResult.fileName}</p>
                     <p>文件大小: {formatFileSize(analysisResult.fileSize)}</p>
                     <p>
-                      尺寸: {analysisResult.dimensions.width} x {analysisResult.dimensions.height} {analysisResult.dimensions.unit}
-                      {analysisResult.dimensions.depth && ` x ${analysisResult.dimensions.depth} ${analysisResult.dimensions.unit}`}
+                      尺寸: {analysisResult.dimensions?.width} x {analysisResult.dimensions?.height} {analysisResult.dimensions?.unit}
+                      {analysisResult.dimensions?.depth && ` x ${analysisResult.dimensions?.depth} ${analysisResult.dimensions?.unit}`}
                     </p>
-                    <p>实体总数: {Object.values(analysisResult.entities).reduce((a, b) => a + b, 0)}</p>
-                    <p>图层数: {analysisResult.layers.length}</p>
+                    <p>实体总数: {Object.values(analysisResult.entities || {}).reduce((a: number, b: number) => a + b, 0)}</p>
+                    <p>图层数: {(analysisResult.layers || []).length}</p>
                   </div>
                 </CardContent>
               </TabsContent>
@@ -270,26 +268,26 @@ export default function SharedCADAnalysisPage() {
                 <div>
                   <h3 className="text-lg font-medium mb-2">图层信息</h3>
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                    {analysisResult.layers.map((layer, index) => (
+                    {(analysisResult.layers || []).map((layer: LayerInfo | string, index: number) => (
                       <div key={index} className="p-3 border rounded-md">
                         <div className="flex justify-between">
-                          <p className="font-medium">{layer.name}</p>
-                          <Badge variant="outline">{layer.entityCount}个实体</Badge>
+                          <p className="font-medium">{typeof layer === 'string' ? layer : layer.name}</p>
+                          <Badge variant="outline">{typeof layer === 'string' ? 0 : (layer.entityCount || 0)}个实体</Badge>
                         </div>
-                        {layer.color && (
+                        {typeof layer !== 'string' && layer.color && (
                           <div className="flex items-center mt-1">
                             <div 
                               className="w-3 h-3 rounded-full mr-2" 
-                              style={{ backgroundColor: layer.color }}
+                              style={{ backgroundColor: (layer as LayerInfo).color! }}
                             />
                             <span className="text-xs text-muted-foreground">
-                              {layer.color}
+                              {(layer as LayerInfo).color}
                             </span>
                           </div>
                         )}
-                        {layer.description && (
+                        {typeof layer !== 'string' && (layer as LayerInfo).description && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            {layer.description}
+                            {(layer as LayerInfo).description}
                           </p>
                         )}
                       </div>
@@ -303,21 +301,21 @@ export default function SharedCADAnalysisPage() {
                   <Card className="p-4">
                     <h3 className="font-medium mb-2">基本信息</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="text-muted-foreground">创建日期: </span>{formatDateTime(analysisResult.metadata.creationDate)}</p>
-                      <p><span className="text-muted-foreground">修改日期: </span>{formatDateTime(analysisResult.metadata.modificationDate)}</p>
-                      <p><span className="text-muted-foreground">作者: </span>{analysisResult.metadata.author || "未知"}</p>
-                      <p><span className="text-muted-foreground">软件: </span>{analysisResult.metadata.software || "未知"}</p>
-                      <p><span className="text-muted-foreground">版本: </span>{analysisResult.metadata.version || "未知"}</p>
+                      <p><span className="text-muted-foreground">创建日期: </span>{analysisResult.metadata?.creationDate ? new Date(analysisResult.metadata.creationDate).toLocaleString() : ''}</p>
+                      <p><span className="text-muted-foreground">修改日期: </span>{analysisResult.metadata?.modificationDate ? new Date(analysisResult.metadata.modificationDate).toLocaleString() : ''}</p>
+                      <p><span className="text-muted-foreground">作者: </span>{analysisResult.metadata?.author || "未知"}</p>
+                      <p><span className="text-muted-foreground">软件: </span>{analysisResult.metadata?.software || "未知"}</p>
+                      <p><span className="text-muted-foreground">版本: </span>{analysisResult.metadata?.version || "未知"}</p>
                     </div>
                   </Card>
                   
                   <Card className="p-4">
                     <h3 className="font-medium mb-2">高级属性</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="text-muted-foreground">单位: </span>{analysisResult.metadata.units || "未指定"}</p>
-                      <p><span className="text-muted-foreground">比例: </span>{analysisResult.metadata.scale || "未指定"}</p>
-                      <p><span className="text-muted-foreground">坐标系: </span>{analysisResult.metadata.coordinateSystem || "未指定"}</p>
-                      <p><span className="text-muted-foreground">投影: </span>{analysisResult.metadata.projection || "未指定"}</p>
+                      <p><span className="text-muted-foreground">单位: </span>{analysisResult.metadata?.units || "未指定"}</p>
+                      <p><span className="text-muted-foreground">比例: </span>{analysisResult.metadata?.scale || "未指定"}</p>
+                      <p><span className="text-muted-foreground">坐标系: </span>{analysisResult.metadata?.coordinateSystem || "未指定"}</p>
+                      <p><span className="text-muted-foreground">投影: </span>{analysisResult.metadata?.projection || "未指定"}</p>
                     </div>
                   </Card>
                 </div>
@@ -408,9 +406,7 @@ export default function SharedCADAnalysisPage() {
               <CardDescription>此分析的共享链接</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="p-3 border rounded-md break-all">
-                {window.location.href}
-              </div>
+              <div className="p-3 border rounded-md break-all">{typeof window !== 'undefined' ? window.location.href : ''}</div>
               <p className="mt-4 text-sm text-muted-foreground">
                 此链接允许任何人查看该CAD文件的分析结果，无需登录
               </p>

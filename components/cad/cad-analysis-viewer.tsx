@@ -28,11 +28,13 @@ import {
   Tag,
   Loader2,
   View3d,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Check
 } from "lucide-react"
 import { CADAnalysisResult } from "@/lib/types/cad"
-import { formatFileSize, formatDateTime } from "@/lib/utils"
+import { formatFileSize } from "@/lib/utils"
 import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils"
+import { LayerInfo } from "@/lib/types/cad"
 
 interface CADAnalysisViewerProps {
   analysisResult: CADAnalysisResult
@@ -317,7 +319,7 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                           <dt className="text-sm text-muted-foreground flex items-center w-20">
                             <Calendar className="mr-2 h-4 w-4" />创建
                           </dt>
-                          <dd>{formatDateTime(analysisResult.metadata.createdAt)}</dd>
+                          <dd>{analysisResult.metadata.createdAt}</dd>
                         </div>
                       )}
                       {analysisResult.metadata?.modifiedAt && (
@@ -325,7 +327,7 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                           <dt className="text-sm text-muted-foreground flex items-center w-20">
                             <Clock className="mr-2 h-4 w-4" />修改
                           </dt>
-                          <dd>{formatDateTime(analysisResult.metadata.modifiedAt)}</dd>
+                          <dd>{analysisResult.metadata.modifiedAt}</dd>
                         </div>
                       )}
                     </dl>
@@ -360,7 +362,7 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                         variant="secondary" 
                         size="icon" 
                         className="absolute top-2 right-2"
-                        onClick={() => setFullscreenImage(analysisResult.thumbnail)}
+                        onClick={() => setFullscreenImage(analysisResult.thumbnail || null)}
                       >
                         <Maximize2 className="h-4 w-4" />
                       </Button>
@@ -463,23 +465,22 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {analysisResult.layers.map((layer, index) => (
+                    {(analysisResult.layers || []).map((layer: LayerInfo | string, index: number) => (
                       <div key={index} className="flex items-center justify-between border-b pb-2 last:border-0">
                         <div className="flex items-center gap-2">
-                          <div 
-                            className="w-3 h-3 rounded-full" 
-                            style={{ backgroundColor: layer.color || '#888' }}
-                          />
-                          <span className="font-medium">{layer.name}</span>
+                          {typeof layer !== 'string' && (
+                            <span className="w-3 h-3 rounded-full" style={{ backgroundColor: (layer as LayerInfo).color || '#888' }} />
+                          )}
+                          <span className="font-medium">{typeof layer === 'string' ? layer : (layer as LayerInfo).name}</span>
                         </div>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline">
-                            {layer.visible === false ? '隐藏' : '可见'}
+                            {typeof layer !== 'string' ? ((layer as LayerInfo).visible === false ? '隐藏' : '可见') : ''}
                           </Badge>
-                          {layer.locked && <Badge variant="secondary">锁定</Badge>}
-                          {layer.entityCount && (
+                          {typeof layer !== 'string' && (layer as LayerInfo).locked && <Badge variant="secondary">锁定</Badge>}
+                          {typeof layer !== 'string' && (layer as LayerInfo).entityCount && (
                             <span className="text-sm text-muted-foreground">
-                              {layer.entityCount} 个实体
+                              {(layer as LayerInfo).entityCount} 个实体
                             </span>
                           )}
                         </div>

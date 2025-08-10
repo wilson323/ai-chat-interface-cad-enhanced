@@ -671,11 +671,10 @@ let batchProcessorInstance: BatchProcessor | null = null
 
 export function getBatchProcessor(config?: Partial<BatchProcessorConfig>): BatchProcessor {
   if (!batchProcessorInstance) {
-    batchProcessorInstance = new BatchProcessor(config)
+    batchProcessorInstance = BatchProcessor.getInstance(config)
   } else if (config) {
-    // 如果提供了新配置，销毁旧实例并创建新实例
-    batchProcessorInstance.dispose()
-    batchProcessorInstance = new BatchProcessor(config)
+    // 传入新配置则由单例更新配置
+    batchProcessorInstance = BatchProcessor.getInstance(config)
   }
 
   return batchProcessorInstance

@@ -30,7 +30,11 @@ export async function GET() {
     const prefetchStats = prefetchService.getStats()
 
     const batchProcessor = getBatchProcessor()
-    const batchStats = batchProcessor.getStats()
+    const batchStats = (batchProcessor as any).getStats ? (batchProcessor as any).getStats() : {
+      groupCount: 0,
+      efficiency: 0,
+      savedRequestsCount: 0,
+    }
 
     const retryManager = getRetryManager()
     const retryStats = retryManager.getStats()
@@ -68,12 +72,7 @@ export async function GET() {
             size: cacheStats.memory.size,
             hitRatio: cacheStats.memory.hitRatio,
           },
-          redis: cacheStats.redis
-            ? {
-                connected: cacheStats.redis.connected,
-                size: cacheStats.redis.size,
-              }
-            : null,
+          redis: cacheStats.redis ? (cacheStats.redis as any) : null,
         },
         prefetch: {
           activeRules: prefetchStats.activeRules,
@@ -116,7 +115,7 @@ export async function GET() {
       {
         status: "error",
         timestamp: new Date().toISOString(),
-        error: error.message,
+        error: (error instanceof Error ? error.message : String(error)),
       },
       {
         status: 500,

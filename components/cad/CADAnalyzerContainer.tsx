@@ -66,9 +66,9 @@ export function CADAnalyzerContainer() {
   useEffect(() => {
     // 从服务中获取进度信息
     if (isUploading) {
-      setUploadProgress(service.progress.upload);
+      setUploadProgress(service.progress.upload ?? 0);
     } else if (isAnalyzing) {
-      setAnalysisProgress(service.progress.analysis);
+      setAnalysisProgress(service.progress.analysis ?? 0);
     }
   }, [service.progress, isUploading, isAnalyzing]);
   
@@ -101,7 +101,7 @@ export function CADAnalyzerContainer() {
       const userId = 'user123';
       
       // 上传文件，使用进度跟踪
-      const uploadedFile = await service.uploadFile(file, userId, true);
+      const uploadedFile = await service.analyzeFile(file, 'standard', {})
       
       setIsUploading(false);
       setIsAnalyzing(true);
@@ -147,7 +147,7 @@ export function CADAnalyzerContainer() {
     if (!result) return;
     
     // 使用服务生成报告
-    service.generateReport(result.id, 'html')
+    service.downloadReport(result, 'html')
       .then(reportUrl => {
         window.open(reportUrl, '_blank');
       })
@@ -160,6 +160,7 @@ export function CADAnalyzerContainer() {
     if (!result) return;
     
     // 使用服务分享分析结果
+    // TODO: 接入实际分享API
     service.shareAnalysis(result.id)
       .then(shareUrl => {
         navigator.clipboard.writeText(`${window.location.origin}${shareUrl}`)

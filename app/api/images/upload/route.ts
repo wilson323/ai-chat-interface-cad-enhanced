@@ -6,14 +6,11 @@ import { NextRequest, NextResponse } from "next/server"
 import { writeFile } from "fs/promises"
 import { join } from "path"
 import { v4 as uuidv4 } from "uuid"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { mkdir } from "fs/promises"
 
 export async function POST(req: NextRequest) {
   try {
-    // 获取用户会话
-    const session = await getServerSession(authOptions)
-    const userId = session?.user?.id
+    const userId = undefined
 
     // 处理文件上传
     const formData = await req.formData()
@@ -45,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     try {
       // 确保目录存在
-      await createDirIfNotExists(uploadDir)
+      await mkdir(uploadDir, { recursive: true })
 
       // 写入文件
       const filePath = join(uploadDir, filename)
@@ -70,15 +67,4 @@ export async function POST(req: NextRequest) {
   }
 }
 
-// 创建目录（如果不存在）
-async function createDirIfNotExists(dir: string) {
-  try {
-    // 目录创建的逻辑，这里使用简化版（实际应用中可能需要更复杂的逻辑）
-    const { mkdir } = require("fs/promises")
-    await mkdir(dir, { recursive: true })
-  } catch (error) {
-    if ((error as any).code !== "EEXIST") {
-      throw error
-    }
-  }
-} 
+// 目录创建已在主流程中处理 

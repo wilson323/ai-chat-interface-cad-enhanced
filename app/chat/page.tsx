@@ -338,7 +338,7 @@ export default function ChatPage() {
       <ChatSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* 智能体选择器 */}
-      <AgentSelector isOpen={isAgentSelectorOpen} onClose={() => setIsAgentSelectorOpen(false)} />
+      {isAgentSelectorOpen && <AgentSelector onSelect={() => setIsAgentSelectorOpen(false)} />}
     </div>
   )
 }

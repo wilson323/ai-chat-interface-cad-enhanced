@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     
     // 使用Puppeteer将HTML转换为PDF
     const browser = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     
@@ -64,7 +64,7 @@ export async function GET(request: NextRequest) {
     headers.set('Content-Type', 'application/pdf');
     headers.set('Content-Disposition', `attachment; filename="cad-report-${fileId}.pdf"`);
     
-    return new NextResponse(pdfBuffer, {
+    return new Response(pdfBuffer as any, {
       status: 200,
       headers
     });
@@ -111,7 +111,7 @@ export async function POST(request: NextRequest) {
     
     // 使用Puppeteer将HTML转换为PDF
     const browser = await puppeteer.launch({
-      headless: 'new',
+      headless: true,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
     
@@ -133,11 +133,10 @@ export async function POST(request: NextRequest) {
     await browser.close();
     
     // 返回PDF内容
-    return new NextResponse(pdfBuffer, {
+    return new Response(pdfBuffer as any, {
       status: 200,
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="cad-report-${(result as CADAnalysisResult).fileId || 'report'}.pdf"`
       }
     });
   } catch (error) {

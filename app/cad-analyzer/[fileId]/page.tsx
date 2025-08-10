@@ -33,9 +33,10 @@ import {
   AlertCircle
 } from "lucide-react"
 import { CADAnalysisViewer } from "@/components/cad/cad-analysis-viewer"
-import ThreeViewer from "@/components/cad/three-viewer"
+import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
 import { CADAnalysisResult } from "@/lib/types/cad"
-import { formatFileSize, formatDateTime } from "@/lib/utils"
+import { formatFileSize } from "@/lib/utils"
+import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 
@@ -291,9 +292,8 @@ export default function CADAnalysisDetailPage() {
                   <CardContent>
                     <div className="relative aspect-video bg-muted rounded-md overflow-hidden">
                       <ThreeViewer 
-                        modelUrl={analysisResult.modelUrl || ''}
+                        fileUrl={analysisResult.modelUrl || ''}
                         fileType={analysisResult.fileType}
-                        className="w-full h-full"
                       />
                     </div>
                   </CardContent>
@@ -365,7 +365,7 @@ export default function CADAnalysisDetailPage() {
                         <span className="text-sm text-muted-foreground">分析时间</span>
                         <span className="text-sm font-medium">
                           {analysisResult.analysisTime ? 
-                            formatDateTime(analysisResult.analysisTime) : 
+                            new Date(analysisResult.analysisTime).toLocaleString() : 
                             '未知'}
                         </span>
                       </div>
@@ -427,7 +427,7 @@ export default function CADAnalysisDetailPage() {
                         <div className="flex justify-between">
                           <span className="text-sm font-medium">版本 {analysis.version}</span>
                           <span className="text-xs text-muted-foreground">
-                            {formatDateTime(analysis.timestamp)}
+                            {new Date(analysis.timestamp).toLocaleString()}
                           </span>
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">

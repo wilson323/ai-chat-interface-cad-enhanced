@@ -8,6 +8,11 @@
 
 import { type NextRequest, NextResponse } from "next/server"
 
+declare global {
+  // eslint-disable-next-line no-var
+  var agUiEventStreams: Map<string, WritableStreamDefaultWriter> | undefined
+}
+
 export async function GET(req: NextRequest) {
   try {
     const searchParams = req.nextUrl.searchParams

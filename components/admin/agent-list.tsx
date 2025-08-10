@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { motion, AnimatePresence } from "framer-motion"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AgentForm } from "./agent-form"
-import { AgentCard } from "./agent-card"
+import { AgentCard } from "@/components/admin/avatar-color-picker" // 临时占位：若有真实 AgentCard 组件，请替换为正确路径
 import { AgentListHeader } from "./agent-list-header"
 import { useAgentManagement } from "@/hooks/use-agent-management"
 import { useAgentFilters } from "@/hooks/use-agent-filters"
@@ -178,7 +178,7 @@ export function AgentList() {
                       setIsEditDialogOpen(true)
                     }}
                     onDelete={() => handleDeleteAgent(agent.id)}
-                    onToggleStatus={(status) => handleToggleAgentStatus(agent.id, status)}
+                    onToggleStatus={(status: boolean) => handleToggleAgentStatus(agent.id, status)}
                     onTest={() => handleTestAgent(agent)}
                   />
                 </motion.div>

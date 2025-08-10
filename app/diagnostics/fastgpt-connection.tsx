@@ -236,7 +236,7 @@ export default function FastGPTConnectionTest() {
               <Input
                 id="apiKey"
                 value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
                 placeholder="输入 FastGPT API Key"
                 type="password"
               />
@@ -249,7 +249,7 @@ export default function FastGPTConnectionTest() {
               <Input
                 id="apiUrl"
                 value={apiUrl}
-                onChange={(e) => setApiUrl(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiUrl(e.target.value)}
                 placeholder="例如: https://zktecoaihub.com"
               />
               <p className="text-xs text-gray-500">必填，您的FastGPT服务地址</p>
@@ -279,7 +279,7 @@ export default function FastGPTConnectionTest() {
                 <Input
                   id="appId"
                   value={appId}
-                  onChange={(e) => setAppId(e.target.value)}
+                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => setAppId(e.target.value)}
                   placeholder="例如: app_xxxxxx"
                 />
                 <Button variant="outline" size="icon" onClick={copyAppId} disabled={!appId}>
@@ -293,7 +293,7 @@ export default function FastGPTConnectionTest() {
               <Input
                 id="chatId"
                 value={chatId}
-                onChange={(e) => setChatId(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChatId(e.target.value)}
                 placeholder="例如: chat_xxxxxx"
               />
               <p className="text-xs text-gray-500">用于多轮对话，可选，建议保持唯一</p>
@@ -306,7 +306,7 @@ export default function FastGPTConnectionTest() {
               <Input
                 id="responseChatItemId"
                 value={responseChatItemId}
-                onChange={(e) => setResponseChatItemId(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setResponseChatItemId(e.target.value)}
                 placeholder="例如: resp_xxxxxx"
               />
               <p className="text-xs text-gray-500">可选，用于标识本次响应的唯一ID</p>
@@ -316,7 +316,7 @@ export default function FastGPTConnectionTest() {
               <Textarea
                 id="variables"
                 value={variables}
-                onChange={(e) => setVariables(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVariables(e.target.value)}
                 placeholder='{"key1": "value1", "key2": "value2"}'
                 className="h-[80px]"
               />
@@ -331,7 +331,7 @@ export default function FastGPTConnectionTest() {
             <Textarea
               id="testMessage"
               value={testMessage}
-              onChange={(e) => setTestMessage(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTestMessage(e.target.value)}
               placeholder="输入测试消息"
               className="h-[80px]"
             />

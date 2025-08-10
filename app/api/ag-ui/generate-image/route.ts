@@ -7,7 +7,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
-import { generateChatImage } from "@/lib/utils/image-generator"
+import { generateImageFromChat } from "@/lib/utils/image-generator"
 
 export async function POST(req: NextRequest) {
   try {
@@ -56,11 +56,7 @@ export async function POST(req: NextRequest) {
       : messages.filter((msg: any) => msg.role !== "system" && !msg.isWelcome)
 
     // 生成图片
-    const imageUrl = await generateChatImage({
-      messages: filteredMessages,
-      appName: historyData.appName || "AI Chat",
-      darkMode: false,
-    })
+    const { imageUrl } = await generateImageFromChat(filteredMessages, includeWelcome)
 
     // 返回图片URL
     return NextResponse.json({

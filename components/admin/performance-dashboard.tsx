@@ -65,7 +65,7 @@ export function PerformanceDashboard() {
 
       // 获取批处理统计信息
       const batchProcessor = getBatchProcessor()
-      const batchStats = batchProcessor.getStats()
+      const summary = (batchProcessor as any).getJobSummary ? (batchProcessor as any).getJobSummary('default') : { totalTasks: 0, completedTasks: 0, failedTasks: 0, pendingTasks: 0, runningTasks: 0, progress: 0 }
 
       // 获取重试管理器统计信息
       const retryManager = getRetryManager()
@@ -92,14 +92,14 @@ export function PerformanceDashboard() {
         optimizer: optimizerStats,
         cache: cacheStats,
         prefetch: prefetchStats,
-        batch: batchStats,
+        batch: summary,
         retry: retryStats,
         preload: preloadStats,
         fallback: fallbackStats,
         system: systemStats,
       })
     } catch (err) {
-      setError(`获取统计信息失败: ${err.message}`)
+      setError(`获取统计信息失败: ${err instanceof Error ? err.message : String(err)}`)
       console.error("获取统计信息失败:", err)
     } finally {
       setLoading(false)

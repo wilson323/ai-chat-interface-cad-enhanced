@@ -67,7 +67,7 @@ export async function GET(request: Request) {
     if (path.startsWith("agent/")) {
       const agentId = path.split("agent/")[1]
       const agents = readJsonFile(AGENTS_FILE, [])
-      const agent = agents.find((a) => a.id === agentId)
+      const agent = (agents as Array<any>).find((a: any) => a.id === agentId)
 
       if (!agent) {
         return NextResponse.json({ error: "Agent not found" }, { status: 404 })
@@ -88,8 +88,8 @@ export async function GET(request: Request) {
     console.error("API错误:", error)
     return NextResponse.json(
       {
-        error: error.message || "Internal server error",
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        error: (error as any)?.message || "Internal server error",
+        stack: process.env.NODE_ENV === "development" ? (error as any)?.stack : undefined,
       },
       { status: 500 },
     )
@@ -125,7 +125,7 @@ export async function POST(request: Request) {
         return Response.json(
           {
             success: false,
-            message: `保存配置失败: ${error.message}`,
+            message: `保存配置失败: ${(error as any)?.message}`,
           },
           { status: 500 },
         )
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
         return Response.json(
           {
             success: false,
-            message: `读取配置失败: ${error.message}`,
+            message: `读取配置失败: ${(error as any)?.message}`,
           },
           { status: 500 },
         )
@@ -176,14 +176,14 @@ export async function POST(request: Request) {
     return Response.json(
       {
         success: false,
-        message: `请求处理失败: ${error.message}`,
+        message: `请求处理失败: ${(error as any)?.message}`,
       },
       { status: 500 },
     )
   }
 }
 
-export async function PUT(request) {
+export async function PUT(request: Request) {
   try {
     const url = new URL(request.url)
     const path = url.pathname.split("/api/db/")[1]
@@ -199,7 +199,7 @@ export async function PUT(request) {
     if (path.startsWith("agent/")) {
       const agentId = path.split("agent/")[1]
       const agents = readJsonFile(AGENTS_FILE, [])
-      const index = agents.findIndex((a) => a.id === agentId)
+      const index = (agents as Array<any>).findIndex((a: any) => a.id === agentId)
 
       if (index !== -1) {
         agents[index] = {
@@ -224,15 +224,15 @@ export async function PUT(request) {
     console.error("API错误:", error)
     return NextResponse.json(
       {
-        error: error.message || "Internal server error",
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        error: (error as any)?.message || "Internal server error",
+        stack: process.env.NODE_ENV === "development" ? (error as any)?.stack : undefined,
       },
       { status: 500 },
     )
   }
 }
 
-export async function DELETE(request) {
+export async function DELETE(request: Request) {
   try {
     const url = new URL(request.url)
     const path = url.pathname.split("/api/db/")[1]
@@ -240,7 +240,7 @@ export async function DELETE(request) {
     if (path.startsWith("agent/")) {
       const agentId = path.split("agent/")[1]
       const agents = readJsonFile(AGENTS_FILE, [])
-      const filteredAgents = agents.filter((agent) => agent.id !== agentId)
+      const filteredAgents = (agents as Array<any>).filter((agent: any) => agent.id !== agentId)
 
       writeJsonFile(AGENTS_FILE, filteredAgents)
       return NextResponse.json({ success: true })
@@ -251,8 +251,8 @@ export async function DELETE(request) {
     console.error("API错误:", error)
     return NextResponse.json(
       {
-        error: error.message || "Internal server error",
-        stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+        error: (error as any)?.message || "Internal server error",
+        stack: process.env.NODE_ENV === "development" ? (error as any)?.stack : undefined,
       },
       { status: 500 },
     )

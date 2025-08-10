@@ -32,7 +32,7 @@ export function AgentListHeader({
           <Input
             placeholder="Search agents..."
             value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => onSearchChange(e.target.value)}
             className="pl-9 w-full sm:w-64 bg-white/80 dark:bg-gray-800/80"
           />
         </div>

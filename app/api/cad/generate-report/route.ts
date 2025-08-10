@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
-import type { ReportFormat, ReportGenerationOptions } from '@/lib/services/cad-analyzer/report-generator';
+// types removed to avoid import error; use runtime-safe handling
 import type { CADAnalysisResult } from '@/lib/types/cad';
 import type { AIMultimodalAnalysisResult } from '@/lib/services/cad-analyzer/ai-analyzer';
 import type { ValidationResult } from '@/lib/services/cad-analyzer/validation';
@@ -200,7 +200,7 @@ async function generatePDFReport(
     }
     
     // 优化建议
-    if (aiResult.optimizationSuggestions?.workflowImprovements.length) {
+    if (aiResult.optimizationSuggestions?.workflowImprovements?.length) {
       yPos += 5;
       doc.text('优化建议:', 20, yPos);
       yPos += 8;
@@ -516,7 +516,7 @@ async function generateHTMLReport(
           `).join('')}
         ` : ''}
         
-        ${aiResult.optimizationSuggestions?.workflowImprovements?.length ? `
+        ${aiResult.optimizationSuggestions?.workflowImprovements && aiResult.optimizationSuggestions.workflowImprovements.length ? `
           <h3>优化建议</h3>
           ${aiResult.optimizationSuggestions.workflowImprovements.map((improvement: any) => `
             <div class="recommendation">

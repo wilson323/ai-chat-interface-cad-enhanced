@@ -160,7 +160,7 @@ export function ApiConfig() {
                     id="apiUrl"
                     placeholder="例如: https://zktecoaihub.com/api"
                     value={apiUrl}
-                    onChange={(e) => setApiUrl(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiUrl(e.target.value)}
                     required
                   />
                   <p className="text-sm text-gray-500 dark:text-gray-400">FastGPT API的基础URL，通常以/api结尾</p>
@@ -176,7 +176,7 @@ export function ApiConfig() {
                     type="password"
                     placeholder="您的FastGPT API密钥"
                     value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setApiKey(e.target.value)}
                     required
                   />
                   <p className="text-sm text-gray-500 dark:text-gray-400">

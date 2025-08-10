@@ -1,7 +1,7 @@
 "use client"
 
+import React, { useState, useEffect } from "react"
 import { ThemeProvider } from "@/components/ui/theme-provider"
-import { useState, useEffect } from "react"
 
 export default function ClientLayout({
   children,
