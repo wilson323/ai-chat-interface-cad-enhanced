@@ -76,8 +76,7 @@ type SessionItemProps = {
 }
 
 // 使用memo优化会话项组件
-const SessionItem = memo(function SessionItem(
-  ({
+const SessionItem = memo(function SessionItem({
     session,
     isSelected,
     isEditing,
@@ -241,7 +240,7 @@ const SessionItem = memo(function SessionItem(
 )
 
 // 使用memo优化收藏消息项组件
-const FavoriteMessageItem = memo(({ message, formatDate, copyToClipboard, handleUnfavoriteMessage }: { message: any; formatDate: (d: string) => string; copyToClipboard: (t: string) => void; handleUnfavoriteMessage: (id: string) => Promise<void> }) => {
+const FavoriteMessageItem = memo(function FavoriteMessageItem({ message, formatDate, copyToClipboard, handleUnfavoriteMessage }: { message: any; formatDate: (d: string) => string; copyToClipboard: (t: string) => void; handleUnfavoriteMessage: (id: string) => Promise<void> }) {
   return (
     <div className="p-3 rounded-lg mb-3 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="flex justify-between items-center mb-1">
