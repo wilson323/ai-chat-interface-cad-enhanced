@@ -285,9 +285,9 @@ export default function SharedCADAnalysisPage() {
                             </span>
                           </div>
                         )}
-                        {typeof layer !== 'string' && (layer as LayerInfo).description && (
+                        {typeof layer !== 'string' && (layer as any).description && (
                           <p className="text-xs text-muted-foreground mt-1">
-                            {(layer as LayerInfo).description}
+                            {(layer as any).description}
                           </p>
                         )}
                       </div>

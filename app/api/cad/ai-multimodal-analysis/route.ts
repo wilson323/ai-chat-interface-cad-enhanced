@@ -10,6 +10,7 @@ import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
 import { 
   validateFile, 
   updateSessionStatus, 
+  updateSessionProgress,
   createSession,
   generateBasicAnalysisResult,
   createAIAnalysisResult,

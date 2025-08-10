@@ -199,7 +199,7 @@ export async function POST(req: NextRequest) {
             switch (data.event) {
               case 'flowNodeStatus':
                 const stepEvent: AgUIEvent = {
-                  type: EventType.STEP_STARTED,
+                  type: "STEP_STARTED",
                   stepName: data.data?.name || 'unknown',
                   timestamp: Date.now(),
                 }
