@@ -380,8 +380,8 @@ export class PrefetchService {
    * 初始化电池监控
    */
   private initBatteryMonitoring(): void {
-    if (typeof navigator !== "undefined" && navigator.getBattery) {
-      navigator.getBattery().then((battery) => {
+    if (typeof navigator !== "undefined" && (navigator as any).getBattery) {
+      ;(navigator as any).getBattery().then((battery: any) => {
         // 更新电池状态
         this.updateBatteryStatus(battery)
 

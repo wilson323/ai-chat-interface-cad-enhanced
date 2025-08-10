@@ -200,12 +200,12 @@ async function generatePDFReport(
     }
     
     // 优化建议
-    if (aiResult.optimizationSuggestions?.workflowImprovements?.length) {
+    if (aiResult.optimizationSuggestions?.designImprovements?.length) {
       yPos += 5;
       doc.text('优化建议:', 20, yPos);
       yPos += 8;
       
-      for (const improvement of (aiResult.optimizationSuggestions as any).workflowImprovements) {
+      for (const improvement of (aiResult.optimizationSuggestions as any).designImprovements) {
         const lines = splitTextToLines(improvement, 150);
         for (const line of lines) {
           doc.text(`- ${line}`, 30, yPos);
@@ -516,9 +516,9 @@ async function generateHTMLReport(
           `).join('')}
         ` : ''}
         
-        ${(aiResult.optimizationSuggestions as any)?.workflowImprovements && (aiResult.optimizationSuggestions as any).workflowImprovements.length ? `
+        ${(aiResult.optimizationSuggestions as any)?.designImprovements && (aiResult.optimizationSuggestions as any).designImprovements.length ? `
           <h3>优化建议</h3>
-          ${(aiResult.optimizationSuggestions as any).workflowImprovements.map((improvement: any) => `
+          ${(aiResult.optimizationSuggestions as any).designImprovements.map((improvement: any) => `
             <div class="recommendation">
               <p>${improvement}</p>
             </div>

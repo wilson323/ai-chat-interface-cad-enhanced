@@ -128,8 +128,9 @@ export async function POST(request: NextRequest) {
           'count'
         )
         cadMetrics.record('complexity_score', 
-          cadMetrics.calculateComplexityScore(result.cadResult.entities, result.cadResult.layers),
-          'unitless'
+          // 复杂度评分可选：记录实体总数作为近似复杂度
+          Object.values(result.cadResult.entities || {}).reduce((a: number, b: number) => a + b, 0),
+          'count'
         )
 
         // 添加验证

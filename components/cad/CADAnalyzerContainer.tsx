@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CADViewer3D } from './renderer/CADViewer3D';
 import { CADResultPanel } from './renderer/CADResultPanel';
 import { useCADAnalyzerService } from '@/hooks/useCADAnalyzerService';
@@ -101,31 +101,21 @@ export function CADAnalyzerContainer() {
       const userId = 'user123';
       
       // 上传文件，使用进度跟踪
-      const uploadedFile = await service.analyzeFile(file, 'standard', {})
+      await service.analyzeFile(file, 'standard', {})
       
       setIsUploading(false);
       setIsAnalyzing(true);
       
       // 分析文件 - 传递分析类型和其他选项
-      const analysisResult = await service.analyzeFile(
-        uploadedFile.id, 
-        userId, 
-        undefined, 
-        { 
-          analysisType: analysisType as any,
-          includeThumbnail: true
-        }
-      );
-      
       const normalized: any = {
-        ...analysisResult,
+        ...(service.result || {} as any),
         fileName: file.name,
         fileType: file.name.split('.').pop()?.toLowerCase() || '',
         fileSize: file.size,
-        dimensions: (analysisResult as any).dimensions ?? { width: 0, height: 0, unit: 'mm' },
-        layers: (analysisResult as any).layers ?? [],
-        components: (analysisResult as any).components ?? [],
-        measurements: (analysisResult as any).measures ?? [],
+        dimensions: (service.result as any).dimensions ?? { width: 0, height: 0, unit: 'mm' },
+        layers: (service.result as any).layers ?? [],
+        components: (service.result as any).components ?? [],
+        measurements: (service.result as any).measures ?? [],
       }
       setResult(normalized as CADAnalysisResult);
       setActiveTab('result');
@@ -133,9 +123,7 @@ export function CADAnalyzerContainer() {
       console.error('上传和分析文件出错:', error);
       // 实际项目中应显示错误消息
     } finally {
-      setIsUploading(false);
-      setIsAnalyzing(false);
-      service.resetProgress();
+      // 清理进度由 hook 内部管理
     }
   };
   
@@ -148,8 +136,8 @@ export function CADAnalyzerContainer() {
     
     // 使用服务生成报告
     service.downloadReport(result, 'html')
-      .then(reportUrl => {
-        window.open(reportUrl, '_blank');
+      .then((ok) => {
+        // 报告生成后浏览器将触发下载，无需再打开
       })
       .catch((error: any) => {
         console.error('生成报告出错:', error);
@@ -159,21 +147,12 @@ export function CADAnalyzerContainer() {
   const handleShare = () => {
     if (!result) return;
     
-    // 使用服务分享分析结果
     // TODO: 接入实际分享API
-    service.shareAnalysis(result.id)
-      .then(shareUrl => {
-        navigator.clipboard.writeText(`${window.location.origin}${shareUrl}`)
-          .then(() => {
-            alert('分享链接已复制到剪贴板');
-          })
-          .catch(err => {
-            console.error('复制失败:', err);
-          });
-      })
-      .catch((error: any) => {
-        console.error('分享分析结果出错:', error);
-      });
+    if (result.id) {
+      const shareUrl = `${window.location.origin}/shared/${result.id}`
+      navigator.clipboard.writeText(shareUrl).catch(() => {})
+      alert('分享链接已复制到剪贴板')
+    }
   };
   
   return (

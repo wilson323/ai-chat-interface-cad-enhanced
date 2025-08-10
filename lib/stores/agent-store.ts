@@ -45,6 +45,7 @@ interface AgentStore {
   
   // 添加新智能体
   addAgent: (agent: Omit<AgentConfig, 'id' | 'createdAt'>) => Promise<string>;
+  createAgent: (agent: Omit<AgentConfig, 'id' | 'createdAt'>) => Promise<string>;
   
   // 更新智能体
   updateAgent: (id: string, updates: Partial<AgentConfig>) => Promise<void>;
@@ -54,6 +55,7 @@ interface AgentStore {
   
   // 按类型获取智能体
   getAgentsByType: (type: AgentType) => AgentConfig[];
+  getAgentById: (id: string) => Promise<AgentConfig | null>;
 }
 
 export const useAgentStore = create<AgentStore>((set, get) => ({
@@ -123,6 +125,9 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
       set({ isLoading: false });
     }
   },
+  createAgent: async (agentData) => {
+    return get().addAgent(agentData);
+  },
   
   updateAgent: async (id, updates) => {
     try {
@@ -176,5 +181,15 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   
   getAgentsByType: (type) => {
     return get().agents.filter(agent => agent.type === type);
+  },
+  getAgentById: async (id: string) => {
+    const agent = get().agents.find(a => a.id === id)
+    if (agent) return agent
+    try {
+      const fromDb = await db.agents.findById(id)
+      return fromDb || null
+    } catch {
+      return null
+    }
   }
 })); 

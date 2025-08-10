@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { AgentRuntime } from "@ag-ui/server"
 import { CADAnalyzerService } from "@/lib/services/cad-analyzer-service"
 import { v4 as uuidv4 } from 'uuid'
 
@@ -28,110 +27,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "缺少必要参数" }, { status: 400 })
     }
 
-    // 创建AG-UI运行时
-    const runtime = new AgentRuntime({
-      threadId,
-      runId,
-      tools: [
-        {
-          name: "cad_analyzer",
-          description: "Analyzes CAD files and extracts metadata",
-          execute: async () => {
-            try {
-              // 上传文件到CAD分析服务
-              const uploadedFile = await cadAnalyzerService.uploadFile(file, userId, (progress) => {
-                // 更新上传进度状态
-                runtime.updateState({
-                  uploadProgress: progress,
-                })
-              })
-              
-              // 发送文件上传完成的事件
-              runtime.sendTextMessage("文件上传完成，开始分析...")
-              
-              // 分析文件
-              const analysisResult = await cadAnalyzerService.analyzeFile(
-                uploadedFile.id, 
-                userId, 
-                undefined, 
-                {
-                  analysisType: analysisType as any,
-                  includeThumbnail: true,
-                  progressCallback: (progress) => {
-                    // 更新分析进度状态
-                    runtime.updateState({
-                      analysisProgress: progress,
-                    })
-                  }
-                }
-              )
-              
-              // 发送分析完成消息
-              runtime.sendTextMessage(`分析完成，发现 ${analysisResult.components.length} 个组件和 ${analysisResult.measures.length} 个测量数据。`)
-              
-              if (analysisResult.summary) {
-                runtime.sendTextMessage(analysisResult.summary)
-              }
-              
-              // 返回分析结果
-              return analysisResult
-            } catch (error) {
-              console.error("CAD分析错误:", error)
-              throw new Error("分析CAD文件时发生错误")
-            }
-          },
-        },
-        {
-          name: "generate_cad_report",
-          description: "Generates a report for the analyzed CAD file",
-          execute: async (params: { analysisId: string, format?: 'html' | 'pdf' }) => {
-            try {
-              const { analysisId, format = 'html' } = params
-              
-              // 生成报告
-              const reportUrl = await cadAnalyzerService.generateReport(analysisId, format)
-              
-              // 发送报告生成消息
-              runtime.sendTextMessage(`报告已生成，可以通过以下链接访问: ${reportUrl}`)
-              
-              return { success: true, reportUrl }
-            } catch (error) {
-              console.error("生成报告错误:", error)
-              throw new Error("生成CAD报告时发生错误")
-            }
-          }
-        }
-      ],
-    })
-
-    // 设置初始状态
-    runtime.updateState({
-      uploadProgress: 0,
-      analysisProgress: 0,
-      analysisType,
-      fileInfo: {
-        name: file.name,
-        size: file.size,
-        type: file.type
-      }
-    })
-    
-    // 发送欢迎消息
-    runtime.sendTextMessage(`正在处理您的 ${file.name} 文件，请稍候...`)
-
-    // 运行分析工具
-    const result = await runtime.runTool("cad_analyzer", {})
-
-    // 更新运行时状态
-    runtime.updateState({
-      analysisResult: result,
-      status: "completed",
+    // 直接调用服务：上传 + 分析
+    const uploaded = await cadAnalyzerService.uploadFile(file, userId)
+    const analysisResult = await cadAnalyzerService.analyzeFile(uploaded.id, userId, undefined, {
+      analysisType: analysisType as any,
+      includeThumbnail: true,
     })
 
     return NextResponse.json({
       threadId,
       runId,
-      state: runtime.getState(),
+      state: { analysisResult },
       status: "completed",
     })
   } catch (error) {
