@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * 环境验证和依赖兼容性检查模块
  * Environment Validator & Dependency Compatibility Checker
@@ -28,9 +29,7 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
 
   // 检查React版本兼容性
   try {
-    // 使用可选的动态 import 风格以规避 require 限制
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const React = (global as any).__react || (await (async () => null)());
+    // 使用容错的方式读取 react 版本
     const reactPkg = (() => {
       try { return require('react'); } catch { return null as any }
     })();
@@ -46,7 +45,7 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
     if (!reactVersion.startsWith('18.3')) {
       errors.push(`React version mismatch: expected 18.3.x, got ${reactVersion}`);
     }
-  } catch (error) {
+  } catch {
     errors.push('React not found or failed to load');
     checks.push({
       name: 'React',
@@ -74,7 +73,7 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
     if (!isCompatible) {
       errors.push(`Three.js version incompatible: expected r149, got r${THREE.REVISION}`);
     }
-  } catch (error) {
+  } catch {
     errors.push('Three.js not found or failed to load');
     checks.push({
       name: 'Three.js',
@@ -102,7 +101,7 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
     if (!isCompatible) {
       warnings.push(`Next.js version difference: expected 15.3.x, got ${nextVersion}`);
     }
-  } catch (error) {
+  } catch {
     errors.push('Next.js not found or failed to load');
     checks.push({
       name: 'Next.js',
@@ -126,7 +125,7 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
     } else {
       throw new Error('UUID v4 function not available');
     }
-  } catch (error) {
+  } catch {
     errors.push('UUID module not available');
     checks.push({
       name: 'UUID',
@@ -149,7 +148,7 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
       status: 'ok',
       message: 'CAD modules available'
     });
-  } catch (error) {
+  } catch {
     errors.push('CAD dependencies not available');
     checks.push({
       name: 'CAD Dependencies',
