@@ -1,164 +1,95 @@
-import { AgentRuntime, type AgentState, type ToolDefinition } from "@ag-ui/server"
-import { initChatSession, sendChatMessage, getHistoryMessages } from "./fastgpt"
+// 轻量版 FastGPT AG-UI 适配器（移除外部依赖）
+import FastGPTApi from "./fastgpt"
 import { generateImageFromChat } from "../utils/image-generator"
 
-// FastGPT工具定义
-const fastgptTools: ToolDefinition[] = [
-  {
-    name: "init_chat_session",
-    description: "初始化FastGPT聊天会话",
-    execute: async (params: { appId: string; variables?: Record<string, string> }) => {
-      const { appId, variables } = params
-      return await initChatSession(appId, variables)
-    },
-  },
-  {
-    name: "send_message",
-    description: "发送消息到FastGPT",
-    execute: async (params: {
-      chatId: string
-      content: string
-      variables?: Record<string, string>
-      streamCallback?: (chunk: string) => void
-    }) => {
-      const { chatId, content, variables, streamCallback } = params
-      return await sendChatMessage(chatId, content, variables, streamCallback)
-    },
-  },
-  {
-    name: "get_history",
-    description: "获取FastGPT历史消息",
-    execute: async (params: { chatId: string }) => {
-      const { chatId } = params
-      return await getHistoryMessages(chatId)
-    },
-  },
-  {
-    name: "generate_image",
-    description: "从聊天记录生成长图",
-    execute: async (params: { chatId: string; includeWelcome?: boolean }) => {
-      const { chatId, includeWelcome = true } = params
-      const history = await getHistoryMessages(chatId)
-      return await generateImageFromChat(history, includeWelcome)
-    },
-  },
-  {
-    name: "feedback",
-    description: "提交反馈（点赞/点踩）",
-    execute: async (params: { messageId: string; rating: "like" | "dislike"; comment?: string }) => {
-      const { messageId, rating, comment } = params
-      // 实现点赞/点踩功能
-      const response = await fetch("/api/fastgpt/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messageId, rating, comment }),
-      })
-      return await response.json()
-    },
-  },
-  {
-    name: "batch_forward",
-    description: "批量转发消息",
-    execute: async (params: { messages: string[]; targets: string[] }) => {
-      const { messages, targets } = params
-      // 实现批量转发功能
-      const response = await fetch("/api/fastgpt/batch-forward", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages, targets }),
-      })
-      return await response.json()
-    },
-  },
-]
+interface AgentStateInternal {
+  threadId: string
+  runId: string
+  chatId?: string
+  appId?: string
+  variables?: Record<string, string>
+  messages?: Array<{ role: 'user' | 'assistant'; content: string }>
+}
 
-// 创建FastGPT AG-UI适配器
 export class FastGptAgUiAdapter {
-  private runtime: AgentRuntime
+  private state: AgentStateInternal
 
   constructor(threadId: string, runId: string) {
-    this.runtime = new AgentRuntime({
-      threadId,
-      runId,
-      tools: fastgptTools,
-    })
+    this.state = { threadId, runId, messages: [] }
   }
 
-  // 初始化聊天会话
+  getState(): AgentStateInternal {
+    return this.state
+  }
+
+  private updateState(patch: Partial<AgentStateInternal>): void {
+    this.state = { ...this.state, ...patch }
+  }
+
   async initChatSession(appId: string, variables?: Record<string, string>): Promise<any> {
-    const result = await this.runtime.runTool("init_chat_session", { appId, variables })
-    this.runtime.updateState({ chatId: result.chatId, appId, variables })
+    const result = await FastGPTApi.createChatSession(appId)
+    this.updateState({ chatId: result?.id, appId, variables })
     return result
   }
 
-  // 发送消息
   async sendMessage(content: string, streamCallback?: (chunk: string) => void): Promise<any> {
-    const state = this.runtime.getState() as AgentState & { chatId: string; variables?: Record<string, string> }
-    if (!state.chatId) {
-      throw new Error("聊天会话未初始化")
-    }
+    const { chatId, variables } = this.state
+    if (!chatId) throw new Error("聊天会话未初始化")
 
-    const result = await this.runtime.runTool("send_message", {
-      chatId: state.chatId,
-      content,
-      variables: state.variables,
-      streamCallback,
+    // 直接走统一 chat API 路由
+    const response = await fetch("/api/fastgpt/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, messages: [{ role: 'user', content }], variables, stream: !!streamCallback }),
     })
 
-    // 更新状态，保存最新消息
-    const messages = state.messages || []
-    messages.push(
-      {
-        role: "user",
-        content,
-      },
-      {
-        role: "assistant",
-        content: result.reply,
-      },
-    )
+    if (streamCallback && response.body) {
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        streamCallback(decoder.decode(value))
+      }
+    }
 
-    this.runtime.updateState({ messages })
+    const result = await response.json().catch(() => ({ reply: '' }))
+    const messages = this.state.messages || []
+    messages.push({ role: 'user', content }, { role: 'assistant', content: result.reply || '' })
+    this.updateState({ messages })
     return result
   }
 
-  // 获取历史消息
   async getHistory(): Promise<any> {
-    const state = this.runtime.getState() as AgentState & { chatId: string }
-    if (!state.chatId) {
-      throw new Error("聊天会话未初始化")
-    }
-
-    const result = await this.runtime.runTool("get_history", { chatId: state.chatId })
-    this.runtime.updateState({ messages: result.messages })
+    const { chatId } = this.state
+    if (!chatId) throw new Error("聊天会话未初始化")
+    const result = await FastGPTApi.getChatSessions(chatId)
+    this.updateState({ messages: result?.messages || [] })
     return result
   }
 
-  // 生成长图
   async generateImage(includeWelcome = true): Promise<any> {
-    const state = this.runtime.getState() as AgentState & { chatId: string }
-    if (!state.chatId) {
-      throw new Error("聊天会话未初始化")
-    }
-
-    return await this.runtime.runTool("generate_image", {
-      chatId: state.chatId,
-      includeWelcome,
-    })
+    const { chatId } = this.state
+    if (!chatId) throw new Error("聊天会话未初始化")
+    const history = await FastGPTApi.getChatSessions(chatId)
+    return await generateImageFromChat(history, includeWelcome)
   }
 
-  // 提交反馈
   async submitFeedback(messageId: string, rating: "like" | "dislike", comment?: string): Promise<any> {
-    return await this.runtime.runTool("feedback", { messageId, rating, comment })
+    const response = await fetch("/api/fastgpt/feedback", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messageId, rating, comment }),
+    })
+    return await response.json()
   }
 
-  // 批量转发
   async batchForward(messages: string[], targets: string[]): Promise<any> {
-    return await this.runtime.runTool("batch_forward", { messages, targets })
-  }
-
-  // 获取当前状态
-  getState(): AgentState {
-    return this.runtime.getState()
+    const response = await fetch("/api/fastgpt/batch-forward", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages, targets }),
+    })
+    return await response.json()
   }
 }

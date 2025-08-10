@@ -21,7 +21,11 @@ interface APIResponse<T = unknown> {
 }
 
 async function enhancedFetch<T>(url: string): Promise<APIResponse<T>> {
-  // 实现逻辑...
+  const res = await fetch(url)
+  const data = (await res.json().catch(() => ({}))) as T
+  const headersObj: Record<string, string> = {}
+  res.headers.forEach((v, k) => (headersObj[k] = v))
+  return { data, status: res.status, headers: headersObj }
 }
 
 // 响应类型

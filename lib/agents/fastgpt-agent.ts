@@ -16,7 +16,7 @@ export interface FastGPTAgentConfig extends AgentConfig {
 }
 
 export class FastGPTAgent extends BaseAgent {
-  private config: FastGPTAgentConfig;
+  protected config: FastGPTAgentConfig;
   private sessionId: string;
   private messageHistory: any[] = [];
   

@@ -360,13 +360,14 @@ export class AdvancedCADParser {
     };
     
     // DWG通常没有材质
-    const materials = [];
+    const materials: Array<{ name: string; color?: string }> = [];
     
     // 组装结果
     return {
       fileId: new Date().getTime().toString(),
       fileName,
       fileType: 'dwg',
+      fileSize: buffer.byteLength,
       components,
       layers,
       entities,
@@ -437,13 +438,14 @@ export class AdvancedCADParser {
     };
     
     // DXF通常没有材质
-    const materials = [];
+    const materials: Array<{ name: string; color?: string }> = [];
     
     // 组装结果
     return {
       fileId: new Date().getTime().toString(),
       fileName,
       fileType: 'dxf',
+      fileSize: buffer.byteLength,
       components,
       layers,
       entities,
@@ -599,6 +601,7 @@ export class AdvancedCADParser {
       fileId: new Date().getTime().toString(),
       fileName,
       fileType: 'obj',
+      fileSize: buffer.byteLength,
       components,
       layers,
       entities,

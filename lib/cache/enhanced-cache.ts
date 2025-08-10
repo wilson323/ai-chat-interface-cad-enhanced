@@ -2,7 +2,7 @@
  * 增强缓存系统
  * 支持多级缓存、压缩、统计和标签管理
  */
-import LRU from 'lru-cache'
+import { LRUCache } from 'lru-cache'
 import { createHash } from 'crypto'
 import { promisify } from 'util'
 import { gzip, gunzip } from 'zlib'
@@ -39,7 +39,7 @@ export interface CacheStatistics {
 }
 
 export class EnhancedCache<T = any> {
-  private lruCache: LRU<string, CacheEntry<T>>
+  private lruCache: LRUCache<string, CacheEntry<T>>
   private redisClient: any = null
   private statistics: CacheStatistics
   private options: Required<CacheOptions>
@@ -54,13 +54,13 @@ export class EnhancedCache<T = any> {
       redisUrl: options.redisUrl || process.env.REDIS_URL || ''
     }
 
-    this.lruCache = new LRU({
+    this.lruCache = new LRUCache<string, CacheEntry<T>>({
       max: 1000,
       maxSize: this.options.maxSize,
       sizeCalculation: (entry: CacheEntry<T>) => {
         return entry.size || JSON.stringify(entry.value).length
       },
-      dispose: (value, key) => {
+      dispose: (value: CacheEntry<T>, key: string) => {
         this.updateTagMap(key, value.tags, 'delete')
       }
     })

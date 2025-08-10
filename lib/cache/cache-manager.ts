@@ -188,7 +188,7 @@ export class CacheManager {
             this.log("debug", `Cache: Redis hit for ${cacheKey}`)
           }
         } catch (error) {
-          this.log("error", `Redis cache error for ${cacheKey}: ${error.message}`)
+          this.log("error", `Redis cache error for ${cacheKey}: ${error instanceof Error ? error.message : String(error)}`)
           this.errorCount++
         }
       }

@@ -38,6 +38,7 @@ export class IGESParser {
       const entities = this.processEntities(result.entities);
       
       return {
+        fileId: id,
         id,
         fileName,
         fileType: 'iges',
@@ -166,6 +167,7 @@ export class IGESParser {
     const dimensions = this.getDefaultDimensions();
     
     return {
+      fileId: id,
       id,
       fileName,
       fileType: 'iges',

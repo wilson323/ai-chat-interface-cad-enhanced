@@ -339,28 +339,28 @@ const getApiPath = (path: string) => {
 
 // Override axios methods to use path adapter
 const originalGet = apiClient.get
-apiClient.get = function (url: string, config?: any) {
+apiClient.get = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] GET: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalGet.call(this, adaptedUrl, config)
 }
 
 const originalPost = apiClient.post
-apiClient.post = function (url: string, data?: any, config?: any) {
+apiClient.post = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] POST: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalPost.call(this, adaptedUrl, data, config)
 }
 
 const originalPut = apiClient.put
-apiClient.put = function (url: string, data?: any, config?: any) {
+apiClient.put = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] PUT: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalPut.call(this, adaptedUrl, data, config)
 }
 
 const originalDelete = apiClient.delete
-apiClient.delete = function (url: string, config?: any) {
+apiClient.delete = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] DELETE: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalDelete.call(this, adaptedUrl, config)
@@ -432,7 +432,8 @@ const retryRequest = async (
         apiClient.defaults.baseURL = currentBaseUrl
       }
     } catch (proxyError) {
-      console.log("[API] Proxy mode failed:", proxyError.message)
+      const proxyErr = proxyError as any
+      console.log("[API] Proxy mode failed:", proxyErr?.message)
       lastError = proxyError
     }
   }
@@ -730,7 +731,8 @@ const FastGPTApi = {
       let errorMessage = "Failed to get applications list"
       let errorDetails = ""
 
-      if (error.message && error.message.includes("Network Error")) {
+      const err = error as any
+      if (err?.message && String(err.message).includes("Network Error")) {
         errorMessage += ": Network error, cannot connect to server"
         errorDetails =
           "Possible reasons:\n" +
@@ -743,13 +745,14 @@ const FastGPTApi = {
           "- Check if API endpoint URL is correct\n" +
           "- Confirm network connection is normal\n" +
           "- Check if API server is running"
-      } else if (error.response) {
-        errorMessage += `: Server returned error ${error.response.status}`
-        if (error.response.data) {
+      } else if ((error as any)?.response) {
+        const resp = (error as any).response
+        errorMessage += `: Server returned error ${resp.status}`
+        if ((error as any).response?.data) {
           errorDetails =
-            typeof error.response.data === "string" ? error.response.data : JSON.stringify(error.response.data)
+            typeof (error as any).response.data === "string" ? (error as any).response.data : JSON.stringify((error as any).response.data)
         }
-      } else if (error.code === "ECONNABORTED") {
+      } else if ((error as any)?.code === "ECONNABORTED") {
         errorMessage += ": Request timeout, server response time too long"
         errorDetails =
           "Suggested solutions:\n" +
@@ -757,7 +760,8 @@ const FastGPTApi = {
           "- Confirm API server load is normal\n" +
           "- Try again later"
       } else {
-        errorMessage += `: ${error.message || "Unknown error"}`
+        const err = error as any
+        errorMessage += `: ${err?.message || "Unknown error"}`
       }
 
       const enhancedError = new Error(errorMessage)

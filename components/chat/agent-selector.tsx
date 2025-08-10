@@ -73,7 +73,7 @@ export function AgentSelector() {
           type="text"
           placeholder="搜索智能体..."
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
           onFocus={() => setIsSearchFocused(true)}
           onBlur={() => setIsSearchFocused(false)}
           className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent"

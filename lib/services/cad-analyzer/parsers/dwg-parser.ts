@@ -38,6 +38,7 @@ export class DWGParser {
       const entities = this.processEntities(result.entities);
       
       return {
+        fileId: id,
         id,
         fileName,
         fileType: 'dwg',
@@ -153,6 +154,7 @@ export class DWGParser {
     const dimensions = this.getDefaultDimensions();
     
     return {
+      fileId: id,
       id,
       fileName,
       fileType: 'dwg',

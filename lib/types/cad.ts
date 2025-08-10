@@ -82,6 +82,7 @@ export interface CADAnalysisResult {
   fileType: string;
   fileSize: number;
   fileHash?: string;
+  thumbnail?: string;
   // 兼容历史字段
   id?: string; // 某些解析器使用的局部标识
   url?: string; // 旧实现中的模型URL
@@ -272,6 +273,18 @@ export interface AIMultimodalAnalysisResult {
   };
   analysisVersion: string;
   analysisTimestamp: string;
+  // 扩展字段（报告模板引用，均为可选）
+  categorySpecificInsights?: string;
+  confidenceScore?: number;
+  visualAnalysis?: {
+    detectedComponents: Array<{ type: string; count: number; location?: string; confidence: number }>;
+  };
+  technicalAnalysis?: {
+    technicalIssues: Array<{ category: string; description: string; impact?: string; severity: string }>;
+  };
+  optimizationSuggestions?: {
+    designImprovements: Array<{ area: string; suggestion: string; benefit?: string; implementationDifficulty?: string }>;
+  };
 }
 
 /**

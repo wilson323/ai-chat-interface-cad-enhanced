@@ -21,14 +21,14 @@ export function useModelFetcher() {
         if (!apiConfigured) {
           console.log("API not configured, using default models");
           setModels([
-            { id: "default-model", name: "Default Model", available: true },
-            { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", available: true },
-            { id: "gpt-4", name: "GPT-4", available: true },
+            { id: "default-model", name: "Default Model", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
+            { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "openai", maxTokens: 16385, price: 0, available: true, features: ["chat"] },
+            { id: "gpt-4", name: "GPT-4", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
           ]);
           setVoiceModels([
-            { id: "default-voice", name: "Default Voice", gender: "female" },
-            { id: "male-voice", name: "Male Voice", gender: "male" },
-            { id: "female-voice", name: "Female Voice", gender: "female" },
+            { id: "default-voice", name: "Default Voice", gender: "female", language: ["zh-CN"], available: true },
+            { id: "male-voice", name: "Male Voice", gender: "male", language: ["zh-CN"], available: true },
+            { id: "female-voice", name: "Female Voice", gender: "female", language: ["zh-CN"], available: true },
           ]);
           return;
         }
@@ -48,14 +48,14 @@ export function useModelFetcher() {
           variant: "destructive",
         });
         setModels([
-          { id: "default-model", name: "Default Model", available: true },
-          { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", available: true },
-          { id: "gpt-4", name: "GPT-4", available: true },
+          { id: "default-model", name: "Default Model", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
+          { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "openai", maxTokens: 16385, price: 0, available: true, features: ["chat"] },
+          { id: "gpt-4", name: "GPT-4", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
         ]);
         setVoiceModels([
-          { id: "default-voice", name: "Default Voice", gender: "female" },
-          { id: "male-voice", name: "Male Voice", gender: "male" },
-          { id: "female-voice", name: "Female Voice", gender: "female" },
+          { id: "default-voice", name: "Default Voice", gender: "female", language: ["zh-CN"], available: true },
+          { id: "male-voice", name: "Male Voice", gender: "male", language: ["zh-CN"], available: true },
+          { id: "female-voice", name: "Female Voice", gender: "female", language: ["zh-CN"], available: true },
         ]);
       } finally {
         setIsLoadingModels(false);

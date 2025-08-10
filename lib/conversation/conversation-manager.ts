@@ -141,7 +141,7 @@ export class ConversationManager {
 
     // 清除未读消息
     if (conversation && conversation.unread) {
-      this.updateConversation(conversationId, { unread: 0 })
+      this.updateConversation(conversation.id, { unread: 0 })
     }
   }
 

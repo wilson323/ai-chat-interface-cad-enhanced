@@ -6,11 +6,11 @@ import { getCacheManager } from "./cache/cache-manager"
 import { getRedisCacheAdapter } from "./cache/redis-cache-adapter"
 import { getFastGPTOptimizer } from "./api/fastgpt-optimizer"
 import { getEnhancedFastGPTClient } from "./api/fastgpt-enhanced"
-import { getPrefetchService } from "./lib/prefetch/prefetch-service"
-import { getBatchProcessor } from "./lib/batch/batch-processor"
-import { getRetryManager } from "./lib/retry/retry-manager"
-import { getPreloadManager } from "./lib/preload/preload-manager"
-import { getFallbackManager } from "./lib/fallback/fallback-manager"
+import { getPrefetchService } from "./prefetch/prefetch-service"
+import { getBatchProcessor } from "./batch/batch-processor"
+import { getRetryManager } from "./retry/retry-manager"
+import { getPreloadManager } from "./preload/preload-manager"
+import { getFallbackManager } from "./fallback/fallback-manager"
 import { RequestPriority } from "./api/fastgpt-optimizer"
 
 // 系统配置
@@ -247,11 +247,12 @@ export async function initSystem(config: Partial<SystemConfig> = {}): Promise<vo
       {
         id: "cached-response",
         priority: 100,
-        condition: () => cacheManager.has("last-successful-chat"),
+                  condition: () => Boolean((cacheManager as any)?.has?.("last-successful-chat")),
+
         fallback: async () => {
           const cachedResponse = await cacheManager.get("last-successful-chat")
           return {
-            ...cachedResponse,
+            ...((typeof cachedResponse === 'object' && cachedResponse) ? cachedResponse : {}),
             choices: [
               {
                 index: 0,

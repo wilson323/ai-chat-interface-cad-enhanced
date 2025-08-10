@@ -270,9 +270,9 @@ export function useCADAnalyzerService(options: UseCADAnalyzerOptions = {}) {
       setProgress({ percentage: 0, stage: '执行AI分析...' });
       
       // 生成缩略图URL
-      let thumbnailUrl = analysisResult.thumbnail;
+      let thumbnailUrl = analysisResult.thumbnail ?? undefined
       if (!thumbnailUrl && analysisResult.fileId) {
-        thumbnailUrl = `/api/cad/generate-thumbnail?fileId=${analysisResult.fileId}`;
+        thumbnailUrl = `/api/cad/generate-thumbnail?fileId=${analysisResult.fileId}`
       }
       
       // 调用AI分析API

@@ -28,6 +28,7 @@ export class DXFParser {
     
     // 构建结果
     return {
+      fileId: id,
       id,
       fileName,
       fileType: 'dxf',

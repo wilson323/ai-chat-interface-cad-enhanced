@@ -207,7 +207,7 @@ function generateHTMLReport(
       </div>
       <div class="metadata-item">
         <div class="metadata-label">组件数量</div>
-        <div class="metadata-value">${result.components.length}</div>
+        <div class="metadata-value">${(result.components?.length || 0)}</div>
       </div>
       ${result.metadata?.complexityScore ? `
       <div class="metadata-item">
@@ -291,7 +291,7 @@ function generateHTMLReport(
         </tr>
       </thead>
       <tbody>
-        ${result.components.map(component => `
+        ${(result.components ?? []).map(component => `
           <tr>
             <td>${component.id}</td>
             <td>${component.name}</td>
@@ -388,7 +388,7 @@ function generateHTMLReport(
     
     <div class="metadata-item">
       <div class="metadata-label">置信度</div>
-      <div class="metadata-value">${(aiResult.confidenceScore * 100).toFixed(1)}%</div>
+      <div class="metadata-value">${aiResult.confidenceScore !== undefined ? (aiResult.confidenceScore * 100).toFixed(1) : '—'}%</div>
     </div>
     
     ${aiResult.visualAnalysis?.detectedComponents && aiResult.visualAnalysis.detectedComponents.length > 0 ? `
@@ -445,7 +445,7 @@ function generateHTMLReport(
             <td>${improvement.area}</td>
             <td>${improvement.suggestion}</td>
             <td>${improvement.benefit}</td>
-            <td>${formatDifficulty(improvement.implementationDifficulty)}</td>
+            <td>${formatDifficulty(improvement.implementationDifficulty || 'medium')}</td>
           </tr>
         `).join('')}
       </tbody>
@@ -505,12 +505,12 @@ function generateJSONReport(
     dimensions: result.dimensions,
     metadata: result.metadata || {},
     statistics: {
-      componentCount: result.components.length,
+      componentCount: (result.components?.length || 0),
       layerCount: result.layers.length,
       entityCounts: result.entities,
       materialCount: result.materials?.length || 0
     },
-    components: result.components.map(component => ({
+    components: (result.components ?? []).map(component => ({
       id: component.id,
       name: component.name,
       type: component.type,

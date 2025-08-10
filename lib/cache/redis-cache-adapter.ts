@@ -447,9 +447,16 @@ export class RedisCacheAdapter {
       const size = keys ? keys.length : 0
 
       // 获取内存使用情况
-      const info = await this.redis.info("memory")
-      const memoryMatch = info.match(/used_memory:(\d+)/)
-      const memory = memoryMatch ? Number.parseInt(memoryMatch[1], 10) : 0
+      let memory = 0
+      try {
+        const redisAny = this.redis as any
+        if (typeof redisAny.info === 'function') {
+          const info: string = await redisAny.info("memory")
+          const memoryMatch = typeof info === 'string' ? info.match(/used_memory:(\d+)/) : null
+          memory = memoryMatch ? Number.parseInt(memoryMatch[1], 10) : 0
+        }
+      } catch {}
+      
 
       // 计算命中率
       const total = this.hitCount + this.missCount
@@ -465,7 +472,7 @@ export class RedisCacheAdapter {
         connected: this.isConnected,
       }
     } catch (error) {
-      this.log("error", `Error getting stats: ${error.message}`)
+      this.log("error", `Error getting stats: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
 
       // 如果连接断开，尝试重新连接
@@ -516,7 +523,7 @@ export class RedisCacheAdapter {
         await this.redis.sadd(tagIndexKey, key)
       }
     } catch (error) {
-      this.log("error", `Error updating tag indices for key ${key}: ${error.message}`)
+      this.log("error", `Error updating tag indices for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       throw error
     }
   }

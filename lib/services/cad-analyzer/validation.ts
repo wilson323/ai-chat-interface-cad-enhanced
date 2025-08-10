@@ -186,7 +186,7 @@ export function validateCADDesignBasic(
   }
   
   // 检查元数据
-  if (!cadResult.metadata.author || cadResult.metadata.author === '未知') {
+  if (!cadResult.metadata?.author || cadResult.metadata?.author === '未知') {
     issues.push({
       id: 'missing-author',
       title: '缺少作者信息',

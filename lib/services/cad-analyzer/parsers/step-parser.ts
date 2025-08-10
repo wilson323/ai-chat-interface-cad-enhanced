@@ -39,6 +39,7 @@ export class STEPParser {
       const entities = this.processEntities(result.entities);
       
       return {
+        fileId: id,
         id,
         fileName,
         fileType: 'step',
@@ -163,6 +164,7 @@ export class STEPParser {
     const dimensions = this.getDefaultDimensions();
     
     return {
+      fileId: id,
       id,
       fileName,
       fileType: 'step',

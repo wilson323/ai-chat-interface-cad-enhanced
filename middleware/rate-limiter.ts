@@ -31,7 +31,8 @@ export interface RateLimitConfig {
 const DEFAULT_CONFIG: RateLimitConfig = {
   identifierFn: (req) => {
     // 默认使用IP地址作为标识符
-    const ip = req.ip || req.headers.get("x-real-ip") || "127.0.0.1"
+    const ipHeader = req.headers.get("x-forwarded-for") || req.headers.get("x-real-ip")
+    const ip = (ipHeader?.split(",")[0]?.trim()) || "127.0.0.1"
     return ip
   },
   rules: [
@@ -98,7 +99,7 @@ function getRateLimiter(rule: RateLimitConfig["rules"][0]): Ratelimit {
     limiter: Ratelimit.slidingWindow(rule.limit, `${rule.window} s`),
     analytics: true,
     prefix: "ratelimit",
-    blockDuration: rule.blockDuration,
+    // blockDuration 字段不在 RegionRatelimitConfig 中，移除或由实现内部处理
   })
 
   // 缓存限流器

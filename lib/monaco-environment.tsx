@@ -5,9 +5,9 @@ import React from "react"
 // 这个文件配置Monaco编辑器的Web Worker
 // 解决"You must define a function MonacoEnvironment.getWorkerUrl or MonacoEnvironment.getWorker"错误
 
-export function setupMonacoEnvironment() {
+export function setupMonacoEnvironment(): void {
   // 定义全局Monaco环境
-  window.MonacoEnvironment = {
+  (window as any).MonacoEnvironment = {
     getWorkerUrl: (_moduleId: string, label: string) => {
       // 根据语言类型返回不同的worker
       if (label === "json") {
