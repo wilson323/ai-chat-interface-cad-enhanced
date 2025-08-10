@@ -11,7 +11,7 @@
     "dev:fast": "NODE_OPTIONS='--max-old-space-size=4096' next dev --turbo",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint . --ext .ts,.tsx --max-warnings=9999",
+    "lint": "next lint --quiet --max-warnings=9999",
     "type-check": "tsc --noEmit",
     "cleanup": "node scripts/cleanup.js",
     "deploy:prod": "./scripts/deploy-production.sh",
