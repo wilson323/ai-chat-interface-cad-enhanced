@@ -200,12 +200,15 @@ export default function EditAgentPage({ params }: { params: { id: string } }) {
           if (cadValues) {
             cadValues.supportedAnalysisTypes = selectedAnalysisTypes;
             
-            // 处理允许的文件类型
-            if (cadValues.allowedFileTypes) {
-              cadValues.allowedFileTypes = cadValues.allowedFileTypes.split(",");
-            }
+            // 处理允许的文件类型（不直接覆盖字符串字段，转为配置项）
+            const allowedTypes = cadValues.allowedFileTypes
+              ? (cadValues.allowedFileTypes as unknown as string).split(",")
+              : undefined;
             
-            updatedConfig = cadValues;
+            updatedConfig = {
+              ...cadValues,
+              ...(allowedTypes ? { allowedFileTypes: allowedTypes } : {}),
+            } as any;
           }
           break;
         case "poster":

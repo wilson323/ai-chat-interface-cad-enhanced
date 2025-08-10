@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { fetchEventSource } from "@microsoft/fetch-event-source"
-import { rateLimiter } from '@/lib/rate-limiter'
+import { rateLimiter } from '../../../../lib/rate-limiter'
 import { z } from 'zod'
 import { createOptimizedStreamWriter, globalStreamMonitor } from '@/lib/ag-ui/stream-optimizer'
 import type { AgUIEvent } from '@/lib/ag-ui/types'

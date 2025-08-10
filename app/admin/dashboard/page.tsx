@@ -9,7 +9,7 @@ import { ApiConfig } from "@/components/admin/api-config"
 import { UserFeedback } from "@/components/admin/user-feedback"
 import { useToast } from "@/hooks/use-toast"
 import { useFastGPT } from "@/contexts/FastGPTContext"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import { AgentConfig, AgentType } from '@/lib/agents/base-agent'
 import { useAgentStore } from '@/lib/stores/agent-store'

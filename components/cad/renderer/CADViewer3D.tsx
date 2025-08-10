@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ThreeViewer } from './ThreeViewer';
-import { CADAnalysisResult } from '@/lib/services/cad-analyzer-service';
+import { CADAnalysisResult } from '@/lib/types/cad';
 import { useTheme } from 'next-themes';
 import { Loader2, Maximize2, ZoomIn, ZoomOut, RotateCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';

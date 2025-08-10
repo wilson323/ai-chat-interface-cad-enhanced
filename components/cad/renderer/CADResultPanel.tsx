@@ -285,7 +285,7 @@ export function CADResultPanel({
           <div>
             <div className="flex items-center">
               <h4 className="font-medium capitalize">
-                {(measure as any).description || (measure as any).type || measure.name}
+                {(measure as any).description || (measure as any).type || (measure as any).name || '测量'}
               </h4>
               {(measure as any).entities && (measure as any).entities.length > 0 && (
                 <HoverCard>
