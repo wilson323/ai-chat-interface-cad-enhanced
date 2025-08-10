@@ -33,12 +33,15 @@ const nextConfig = {
     'lru-cache',
   ],
   serverExternalPackages: [
-      '@ag-ui/server',
-      'cad-parser-lib',
-      'ai-model-core',
-      'web-ifc',
-      'web-ifc-three'
-    ],
+    '@ag-ui/server',
+    'cad-parser-lib',
+    'ai-model-core',
+    'web-ifc',
+    'web-ifc-three',
+    // moved from experimental.serverComponentsExternalPackages
+    'sharp',
+    'puppeteer-core'
+  ],
   experimental: {
     // 生产环境优化
     optimizeCss: process.env.NODE_ENV === 'production',
@@ -72,13 +75,8 @@ const nextConfig = {
       '@radix-ui/react-toggle-group',
       '@radix-ui/react-tooltip'
     ],
-    // 启用并行编译（提高开发时的速度）
-    parallelServerCompiles: true,
-    // 仅在生产环境启用图片压缩
+    // 仅在开发环境禁用老的优化加载
     disableOptimizedLoading: process.env.NODE_ENV === 'development',
-    // 生产环境启用instrumentationHook用于监控
-    instrumentationHook: process.env.NODE_ENV === 'production',
-    serverComponentsExternalPackages: ['sharp', 'puppeteer-core'],
   },
   // 生产环境启用严格模式
   reactStrictMode: process.env.NODE_ENV === 'production',
@@ -96,8 +94,7 @@ const nextConfig = {
     } : false,
   },
   
-  // 构建时优化
-  swcMinify: true,
+  // 构建时优化（Next.js 15 默认使用 SWC，无需 swcMinify 显式配置）
   
   // 压缩配置
   compress: process.env.NODE_ENV === 'production',
