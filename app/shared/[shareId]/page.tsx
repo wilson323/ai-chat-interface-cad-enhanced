@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -136,7 +137,7 @@ export default function SharedCADAnalysisPage() {
         </Alert>
         
         <Button variant="default" asChild>
-          <a href="/">返回主页</a>
+          <Link href="/">返回主页</Link>
         </Button>
       </div>
     )
@@ -172,10 +173,10 @@ export default function SharedCADAnalysisPage() {
             </Button>
             
             <Button variant="default" size="sm" asChild>
-              <a href="/">
+              <Link href="/">
                 <Home className="mr-2 h-4 w-4" />
                 返回主页
-              </a>
+              </Link>
             </Button>
           </div>
         </div>
@@ -386,16 +387,16 @@ export default function SharedCADAnalysisPage() {
             </CardContent>
             <CardFooter className="flex flex-col space-y-2">
               <Button variant="default" className="w-full" asChild>
-                <a href={`/cad-analyzer/${fileId}`}>
+                <Link href={`/cad-analyzer/${fileId}`}>
                   <ExternalLink className="mr-2 h-4 w-4" />
                   完整分析详情
-                </a>
+                </Link>
               </Button>
               <Button variant="outline" className="w-full" asChild>
-                <a href="/chat">
+                <Link href="/chat">
                   <Home className="mr-2 h-4 w-4" />
                   返回主页
-                </a>
+                </Link>
               </Button>
             </CardFooter>
           </Card>

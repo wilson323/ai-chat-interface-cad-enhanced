@@ -61,7 +61,7 @@ function getSystemHealth(metrics: any): {
   summary: string
 } {
   let score = 100
-  let issues: string[] = []
+  const issues: Array<string> = []
 
   // 评估延迟
   if (metrics.averageLatency > 200) {

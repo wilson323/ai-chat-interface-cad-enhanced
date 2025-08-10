@@ -76,7 +76,7 @@ type SessionItemProps = {
 }
 
 // 使用memo优化会话项组件
-const SessionItem = memo(
+const SessionItem = memo(function SessionItem(
   ({
     session,
     isSelected,
@@ -93,7 +93,7 @@ const SessionItem = memo(
     isMobile,
     onClose,
     formatDate,
-  }: SessionItemProps) => {
+  }: SessionItemProps) {
     const isPinned = session.isPinned
 
     return (

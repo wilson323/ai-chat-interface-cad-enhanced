@@ -765,8 +765,7 @@ const FastGPTApi = {
         errorMessage += `: ${err?.message || "Unknown error"}`
       }
 
-      const enhancedError = new Error(errorMessage)
-      // @ts-ignore
+      const enhancedError: Error & { details?: string } = new Error(errorMessage)
       enhancedError.details = errorDetails
       throw enhancedError
     }

@@ -7,14 +7,7 @@ import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 
-// Add JSX type declarations
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      [elemName: string]: any;
-    }
-  }
-}
+// 移除 namespace 声明，遵循 ESModule 语法与严格类型
 
 /// <reference types="react/next" />
 /// <reference types="react-dom/next" />

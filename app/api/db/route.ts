@@ -106,8 +106,6 @@ export async function POST(request: Request) {
     if (action === "saveApiConfig") {
       try {
         // 保存到本地文件
-        const fs = require("fs")
-        const path = require("path")
         const configDir = path.join(process.cwd(), "data")
         const configPath = path.join(configDir, "api-config.json")
 
@@ -135,8 +133,6 @@ export async function POST(request: Request) {
     if (action === "getApiConfig") {
       try {
         // 从本地文件读取
-        const fs = require("fs")
-        const path = require("path")
         const configPath = path.join(process.cwd(), "data", "api-config.json")
 
         if (!fs.existsSync(configPath)) {

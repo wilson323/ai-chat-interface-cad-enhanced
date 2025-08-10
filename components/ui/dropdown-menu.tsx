@@ -10,7 +10,8 @@ const DropdownMenu = DropdownMenuPrimitive.Root
 const DropdownMenuTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
->(({ className, children, ...props }, ref) => (
+function DropdownMenuTriggerImpl({ className, children, ...props }: React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>, ref: React.ForwardedRef<HTMLButtonElement>) {
+  return (
   <DropdownMenuPrimitive.Trigger
     ref={ref}
     className={cn(
@@ -22,7 +23,9 @@ const DropdownMenuTrigger = React.forwardRef<
   >
     {children}
   </DropdownMenuPrimitive.Trigger>
-))
+  )
+})
+DropdownMenuTrigger.displayName = "DropdownMenuTrigger"
 
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
