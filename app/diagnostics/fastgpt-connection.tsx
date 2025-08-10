@@ -12,6 +12,7 @@ import { FastGPTConfig } from "@/config/fastgpt"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useToast } from "@/hooks/use-toast"
+import type React from "react"
 
 interface TestResult {
   success: boolean

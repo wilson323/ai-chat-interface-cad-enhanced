@@ -1,11 +1,10 @@
 interface NetworkInformation {
-  downlink?: number;
-  effectiveType?: string;
-  rtt?: number;
-  saveData?: boolean;
+  effectiveType?: string
+  downlink?: number
+  rtt?: number
+  saveData?: boolean
 }
 
 interface Navigator {
-  connection?: NetworkInformation;
-  getBattery?: () => Promise<any>;
+  connection?: NetworkInformation
 }

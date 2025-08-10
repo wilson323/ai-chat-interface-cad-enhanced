@@ -806,7 +806,7 @@ export function getPreloadManager(config?: Partial<PreloadConfig>): PreloadManag
       preloadImage: () => Promise.resolve(new Image()),
       preloadScript: () => Promise.resolve(document.createElement("script")),
       preloadStyle: () => Promise.resolve(document.createElement("link")),
-      preloadFont: (url, fontFamily) => Promise.resolve(new FontFace(fontFamily, `url(${url})`)),
+      preloadFont: (url: string, fontFamily: string) => Promise.resolve(new FontFace(fontFamily, `url(${url})`)),
       preloadData: () => Promise.resolve(null),
       preloadAll: () => Promise.resolve(true),
       getResource: () => null,

@@ -92,7 +92,7 @@ async function generatePDFReport(
   cadResult: CADAnalysisResult,
   aiResult?: AIMultimodalAnalysisResult,
   validationResult?: ValidationResult,
-  options?: ReportGenerationOptions
+  options?: any
 ): Promise<Blob> {
   // 创建PDF文档
   const doc = new jsPDF();
@@ -205,7 +205,7 @@ async function generatePDFReport(
       doc.text('优化建议:', 20, yPos);
       yPos += 8;
       
-      for (const improvement of aiResult.optimizationSuggestions.workflowImprovements) {
+      for (const improvement of (aiResult.optimizationSuggestions as any).workflowImprovements) {
         const lines = splitTextToLines(improvement, 150);
         for (const line of lines) {
           doc.text(`- ${line}`, 30, yPos);
@@ -317,7 +317,7 @@ async function generateHTMLReport(
   cadResult: CADAnalysisResult,
   aiResult?: AIMultimodalAnalysisResult,
   validationResult?: ValidationResult,
-  options?: ReportGenerationOptions
+  options?: any
 ): Promise<Blob> {
   let html = `
     <!DOCTYPE html>
@@ -516,9 +516,9 @@ async function generateHTMLReport(
           `).join('')}
         ` : ''}
         
-        ${aiResult.optimizationSuggestions?.workflowImprovements && aiResult.optimizationSuggestions.workflowImprovements.length ? `
+        ${(aiResult.optimizationSuggestions as any)?.workflowImprovements && (aiResult.optimizationSuggestions as any).workflowImprovements.length ? `
           <h3>优化建议</h3>
-          ${aiResult.optimizationSuggestions.workflowImprovements.map((improvement: any) => `
+          ${(aiResult.optimizationSuggestions as any).workflowImprovements.map((improvement: any) => `
             <div class="recommendation">
               <p>${improvement}</p>
             </div>
@@ -579,7 +579,7 @@ function generateJSONReport(
   cadResult: CADAnalysisResult,
   aiResult?: AIMultimodalAnalysisResult,
   validationResult?: ValidationResult,
-  options?: ReportGenerationOptions
+  options?: any
 ): Promise<Blob> {
   // 创建报告对象
   const report = {
@@ -640,7 +640,7 @@ function generateJSONReport(
 /**
  * 获取内容类型
  */
-function getContentType(format: ReportFormat): string {
+function getContentType(format: any): string {
   switch (format) {
     case 'pdf': return 'application/pdf';
     case 'html': return 'text/html';

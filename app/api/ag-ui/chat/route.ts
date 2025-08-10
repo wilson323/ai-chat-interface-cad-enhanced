@@ -221,7 +221,7 @@ export async function POST(req: NextRequest) {
 
           // 保持向后兼容 - 写入原始数据
           const rawEvent: AgUIEvent = {
-            type: EventType.RAW,
+            type: "RAW",
             event: data,
             source: "fastgpt",
             timestamp: Date.now(),

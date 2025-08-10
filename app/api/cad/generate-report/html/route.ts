@@ -100,13 +100,24 @@ function generateHTMLReport(
   
   // 格式化图层数据
   const layersHtml = (result.layers || [])
-    .map(layer => `
-      <tr>
-        <td>${layer.name}</td>
-        <td>${layer.color || 'N/A'}</td>
-        <td>${layer.entityCount || 0}</td>
-      </tr>
-    `).join('');
+    .map((layer: any) => {
+      if (typeof layer === 'string') {
+        return `
+          <tr>
+            <td>${layer}</td>
+            <td>N/A</td>
+            <td>0</td>
+          </tr>
+        `
+      }
+      return `
+        <tr>
+          <td>${layer.name}</td>
+          <td>${layer.color || 'N/A'}</td>
+          <td>${layer.entityCount || 0}</td>
+        </tr>
+      `
+    }).join('');
   
   // 格式化AI分析结果
   let aiAnalysisHtml = '';

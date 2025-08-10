@@ -57,7 +57,7 @@ export default function AdminLogin() {
                 id="username"
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUsername(e.target.value)}
                 placeholder="admin"
                 className="border-green-200 focus:border-[#6cb33f] focus:ring-[#6cb33f]"
                 required
@@ -71,7 +71,7 @@ export default function AdminLogin() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="border-green-200 focus:border-[#6cb33f] focus:ring-[#6cb33f]"
                 required

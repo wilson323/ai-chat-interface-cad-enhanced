@@ -862,13 +862,12 @@ let syncManagerInstance: SyncManager | null = null
 
 export function getSyncManager(config?: Partial<SyncManagerConfig>, options?: SyncOptions): SyncManager {
   if (!syncManagerInstance) {
-    syncManagerInstance = new SyncManager(config, options)
-
-    // 从本地存储加载
-    if (typeof window !== "undefined") {
-      syncManagerInstance.loadFromLocalStorage()
+    syncManagerInstance = SyncManager.getInstance(config, options)
+  } else if (config || options) {
+    // 允许更新选项
+    if (options) {
+      syncManagerInstance.updateOptions(options)
     }
   }
-
-  return syncManagerInstance
+  return syncManagerInstance as SyncManager
 }

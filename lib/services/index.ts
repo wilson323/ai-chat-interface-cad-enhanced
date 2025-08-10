@@ -7,7 +7,7 @@ export * from '../protocol/ag-ui-client';
 export * from '../conversation/conversation-tree';
 
 // 数据同步与备份
-export { SyncManager, getSyncManager } from '../sync/sync-manager';
+export { getSyncManager } from '../sync/sync-manager';
 
 // 系统监控与指标
 export { MonitoringService } from './monitoring-service';

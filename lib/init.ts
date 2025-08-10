@@ -9,14 +9,7 @@ import { getEnhancedFastGPTClient } from "./api/fastgpt-enhanced"
 import { getPrefetchService } from "./prefetch/prefetch-service"
 import { RequestPriority } from "./api/fastgpt-optimizer"
 
-// 添加process环境变量类型声明
-declare global {
-  namespace NodeJS {
-    interface ProcessEnv {
-      NODE_ENV: 'development' | 'production' | 'test'
-    }
-  }
-}
+// 环境类型声明移除，避免与其他声明冲突
 
 // 初始化配置
 interface InitConfig {

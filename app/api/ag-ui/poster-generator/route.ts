@@ -4,8 +4,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+// 会话暂不依赖 next-auth，按无会话处理
 import { v4 as uuidv4 } from "uuid"
 
 // 模拟海报生成函数
@@ -74,9 +73,7 @@ async function generatePoster(input: string, options: any = {}) {
  */
 export async function POST(req: NextRequest) {
   try {
-    // 获取用户会话
-    const session = await getServerSession(authOptions)
-    const userId = session?.user?.id
+    const userId = undefined
 
     // 解析请求体
     const body = await req.json()

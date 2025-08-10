@@ -22,7 +22,7 @@ export async function GET(request: NextRequest, { params }: { params: { filename
     const fileBuffer = await fs.readFile(filePath)
 
     // 返回图片
-    return new Response(fileBuffer, {
+    return new Response(fileBuffer as any, {
       headers: {
         "Content-Type": "image/png",
         "Cache-Control": "public, max-age=3600",

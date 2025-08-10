@@ -371,14 +371,14 @@ export default function SharedCADAnalysisPage() {
                 </ul>
               </div>
               
-              {analysisResult.aiAnalysis && (
+              {(analysisResult as any).aiAnalysis && (
                 <>
                   <Separator />
                   
                   <div>
                     <h3 className="text-sm font-medium">AI见解</h3>
                     <div className="mt-2 p-3 bg-primary/5 rounded-md text-sm">
-                      {analysisResult.aiAnalysis}
+                      {(analysisResult as any).aiAnalysis}
                     </div>
                   </div>
                 </>

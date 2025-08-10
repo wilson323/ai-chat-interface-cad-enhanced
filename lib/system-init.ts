@@ -169,10 +169,12 @@ export async function initSystem(config: Partial<SystemConfig> = {}): Promise<vo
 
     // 初始化批处理器
     const batchProcessor = getBatchProcessor({
-      debug: mergedConfig.debug,
-      logLevel: mergedConfig.logLevel,
-      maxBatchSize: mergedConfig.batch.maxBatchSize,
-      maxWaitTime: mergedConfig.batch.maxWaitTime,
+      // 批处理器配置按 BatchProcessorConfig 定义
+      maxConcurrentJobs: 3,
+      maxConcurrentTasksPerJob: 5,
+      defaultPriority: 1,
+      defaultMaxAttempts: 3,
+      defaultRetryDelay: 5000,
     })
 
     // 初始化重试管理器

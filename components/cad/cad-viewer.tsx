@@ -37,7 +37,7 @@ interface Device {
 interface CADViewerProps {
   fileUrl: string
   fileType: string
-  metadata: Record<string, unknown>
+  metadata: Record<string, any>
   entities: Record<string, number>
   devices?: Device[]
   wiring?: {
@@ -184,11 +184,8 @@ export function CADViewer({
     return (
       <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-lg relative">
         <ThreeViewer 
-          fileUrl={fileUrl} 
+          modelUrl={fileUrl} 
           fileType={fileType}
-          dimensions={dimensions}
-          onLoadStart={() => setIsLoading(true)}
-          onLoadComplete={() => setIsLoading(false)}
         />
         
         {/* 3D模型信息覆盖层 */}
@@ -332,11 +329,11 @@ export function CADViewer({
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500 dark:text-gray-400">软件</dt>
-                  <dd className="font-medium">{metadata.software || '未知'}</dd>
+                  <dd className="font-medium">{(metadata as any).software || '未知'}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500 dark:text-gray-400">版本</dt>
-                  <dd className="font-medium">{metadata.version || '未知'}</dd>
+                  <dd className="font-medium">{(metadata as any).version || '未知'}</dd>
                 </div>
               </dl>
             </CardContent>
@@ -368,7 +365,7 @@ export function CADViewer({
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-gray-500 dark:text-gray-400">作者</dt>
-                  <dd className="font-medium">{metadata.author || '未知'}</dd>
+                  <dd className="font-medium">{(metadata as any).author || '未知'}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500 dark:text-gray-400">创建时间</dt>

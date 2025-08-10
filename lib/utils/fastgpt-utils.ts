@@ -115,14 +115,8 @@ export const getQuestionSuggestions = async (
   model = "GPT-4o-mini",
 ): Promise<string[]> => {
   try {
-    const result = await fastGPTClient.createQuestionGuide(appId, chatId, {
-      open: true,
-      model,
-      customPrompt:
-        "You are a helpful assistant. Based on the conversation history, suggest 3 follow-up questions the user might want to ask.",
-    })
-
-    return Array.isArray(result) ? result : []
+    // 后端暂未提供该接口，返回空数组作为占位
+    return []
   } catch (error) {
     console.error("Failed to get question suggestions:", error)
     return []

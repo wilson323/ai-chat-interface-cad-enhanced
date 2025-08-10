@@ -371,7 +371,7 @@ export function AgentForm({ initialData, onSubmit, onCancel, models, voiceModels
                 ) : (
                   <Select
                     value={formData.config.voiceId || ""}
-                    onValueChange={(value: string) => handleSwitchChange("voiceId", value)}
+                    onValueChange={(value: string) => (handleSwitchChange as any)("voiceId", value)}
                   >
                     <SelectTrigger className="border-gray-300 focus:border-green-500 focus:ring-green-500">
                       <SelectValue placeholder="Select a voice model" />

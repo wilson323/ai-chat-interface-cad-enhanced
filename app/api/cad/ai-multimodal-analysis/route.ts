@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
       : 'standard';
     
     const optionsJson = formData.get('options')?.toString() || '{}';
-    let options = {};
+    let options: any = {};
     try {
       options = JSON.parse(optionsJson);
     } catch (e) {
@@ -78,11 +78,8 @@ export async function POST(request: NextRequest) {
     session.sessionId = sessionId;
     
     // 更新会话状态为处理中
-    updateSessionStatus(sessionId, 'processing', { 
-      percentage: 10, 
-      stage: '分析中', 
-      details: '处理文件基本信息' 
-    });
+    updateSessionStatus(sessionId, 'processing');
+    updateSessionProgress(sessionId, 10, '处理文件基本信息');
 
     // 生成分析结果
     // 注意：实际项目中，这里应该是一个异步过程，将文件发送到处理服务
@@ -100,11 +97,7 @@ export async function POST(request: NextRequest) {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // 更新进度
-    updateSessionStatus(sessionId, 'processing', { 
-      percentage: 30, 
-      stage: '分析中', 
-      details: '提取CAD实体数据' 
-    });
+    updateSessionProgress(sessionId, 30, '提取CAD实体数据');
     
     // 2. 计算CAD统计信息
     const stats = calculateCADStats({});
@@ -114,11 +107,7 @@ export async function POST(request: NextRequest) {
     await new Promise(resolve => setTimeout(resolve, 500));
     
     // 更新进度
-    updateSessionStatus(sessionId, 'processing', { 
-      percentage: 50, 
-      stage: '分析中', 
-      details: 'AI多模态分析' 
-    });
+    updateSessionProgress(sessionId, 50, 'AI多模态分析');
     
     // 3. 进行AI多模态分析
     let aiAnalysisResult: AIMultimodalAnalysisResult | null = null;
@@ -136,11 +125,7 @@ export async function POST(request: NextRequest) {
       });
       
       // 更新进度
-      updateSessionStatus(sessionId, 'processing', { 
-        percentage: 70, 
-        stage: '分析中', 
-        details: '领域专家分析' 
-      });
+      updateSessionProgress(sessionId, 70, '领域专家分析');
       
       // 4. 如果指定了领域，进行领域特定分析
       if (options.aiModelType && options.aiModelType !== 'general') {
@@ -155,11 +140,7 @@ export async function POST(request: NextRequest) {
     let bimData = null;
     if (isBIMFile(fileType) && options.ifcOptions) {
       // 更新进度
-      updateSessionStatus(sessionId, 'processing', { 
-        percentage: 80, 
-        stage: '分析中', 
-        details: '解析BIM数据' 
-      });
+      updateSessionProgress(sessionId, 80, '解析BIM数据');
       
       bimData = await parseIFCFile(file, options.ifcOptions as any);
     }
@@ -168,11 +149,7 @@ export async function POST(request: NextRequest) {
     let thumbnail = null;
     if (options.includeThumbnail !== false) {
       // 更新进度
-      updateSessionStatus(sessionId, 'processing', { 
-        percentage: 90, 
-        stage: '分析中', 
-        details: '生成缩略图' 
-      });
+      updateSessionProgress(sessionId, 90, '生成缩略图');
       
       // 模拟缩略图URL
       thumbnail = `/api/cad/generate-thumbnail?id=${fileId}`;
@@ -190,11 +167,8 @@ export async function POST(request: NextRequest) {
     };
     
     // 更新会话状态为完成
-    updateSessionStatus(sessionId, 'completed', { 
-      percentage: 100, 
-      stage: '完成', 
-      details: '分析完成' 
-    });
+    updateSessionStatus(sessionId, 'completed');
+    updateSessionProgress(sessionId, 100, '完成');
     
     // 返回结果
     return NextResponse.json(fullResult);

@@ -226,7 +226,7 @@ export default function ThreeViewer({
             },
             (error) => {
               console.error('GLTF加载错误:', error)
-              setError('无法加载GLTF/GLB模型: ' + error.message)
+              setError('无法加载GLTF/GLB模型: ' + (error instanceof Error ? error.message : String(error)))
               setIsLoading(false)
             }
           )
@@ -271,7 +271,7 @@ export default function ThreeViewer({
             },
             (error) => {
               console.error('STL加载错误:', error)
-              setError('无法加载STL模型: ' + error.message)
+              setError('无法加载STL模型: ' + (error instanceof Error ? error.message : String(error)))
               setIsLoading(false)
             }
           )
@@ -318,7 +318,7 @@ export default function ThreeViewer({
             },
             (error) => {
               console.error('OBJ加载错误:', error)
-              setError('无法加载OBJ模型: ' + error.message)
+              setError('无法加载OBJ模型: ' + (error instanceof Error ? error.message : String(error)))
               setIsLoading(false)
             }
           )

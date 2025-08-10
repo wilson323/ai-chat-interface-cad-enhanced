@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { motion, AnimatePresence } from "framer-motion"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AgentForm } from "./agent-form"
-import { AgentCard } from "@/components/admin/avatar-color-picker" // 临时占位：若有真实 AgentCard 组件，请替换为正确路径
+import { AgentCard } from "./agent-card"
 import { AgentListHeader } from "./agent-list-header"
 import { useAgentManagement } from "@/hooks/use-agent-management"
 import { useAgentFilters } from "@/hooks/use-agent-filters"

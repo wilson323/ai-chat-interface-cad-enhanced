@@ -280,7 +280,7 @@ const FavoriteMessageItem = memo(({ message, formatDate, copyToClipboard, handle
 })
 
 // 加载更多指示器组件
-const LoadMoreIndicator = ({ loading, onInView }) => {
+const LoadMoreIndicator = ({ loading, onInView }: { loading: boolean; onInView: () => void }) => {
   const { ref } = useInView({
     onChange: (inView) => {
       if (inView && !loading) {
