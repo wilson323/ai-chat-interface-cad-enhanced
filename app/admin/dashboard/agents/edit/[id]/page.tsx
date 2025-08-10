@@ -100,50 +100,50 @@ export default function EditAgentPage({ params }: { params: { id: string } }) {
           // 设置通用字段
           form.setValue("name", agentData.name);
           form.setValue("description", agentData.description);
-          form.setValue("isActive", agentData.isActive);
+          form.setValue("isActive", (agentData as any).isActive ?? true);
           
           // 设置元数据
-          if (agentData.metadata) {
-            form.setValue("metadata.showInGallery", agentData.metadata.showInGallery ?? true);
-            form.setValue("metadata.galleryIconUrl", agentData.metadata.galleryIconUrl ?? "");
-            form.setValue("metadata.priority", agentData.metadata.priority ?? 0);
+          if ((agentData as any).metadata) {
+            form.setValue("metadata.showInGallery", (agentData as any).metadata.showInGallery ?? true);
+            form.setValue("metadata.galleryIconUrl", (agentData as any).metadata.galleryIconUrl ?? "");
+            form.setValue("metadata.priority", (agentData as any).metadata.priority ?? 0);
           }
           
           // 根据代理类型设置特定字段
           switch (agentData.type) {
             case "fastgpt":
-              if (agentData.configuration) {
-                form.setValue("fastgpt.apiEndpoint", agentData.configuration.apiEndpoint ?? "");
-                form.setValue("fastgpt.apiKey", agentData.configuration.apiKey ?? "");
-                form.setValue("fastgpt.modelId", agentData.configuration.modelId ?? "");
-                form.setValue("fastgpt.systemPrompt", agentData.configuration.systemPrompt ?? "");
+              if ((agentData as any).configuration) {
+                form.setValue("fastgpt.apiEndpoint", (agentData as any).configuration.apiEndpoint ?? "");
+                form.setValue("fastgpt.apiKey", (agentData as any).configuration.apiKey ?? "");
+                form.setValue("fastgpt.modelId", (agentData as any).configuration.modelId ?? "");
+                form.setValue("fastgpt.systemPrompt", (agentData as any).configuration.systemPrompt ?? "");
               }
               break;
             case "cad":
-              if (agentData.configuration) {
-                form.setValue("cad.apiEndpoint", agentData.configuration.apiEndpoint ?? "");
-                form.setValue("cad.apiKey", agentData.configuration.apiKey ?? "");
-                form.setValue("cad.modelId", agentData.configuration.modelId ?? "");
-                form.setValue("cad.promptTemplate", agentData.configuration.promptTemplate ?? "");
-                form.setValue("cad.maxFileSize", agentData.configuration.maxFileSize ?? 50);
-                form.setValue("cad.allowedFileTypes", Array.isArray(agentData.configuration.allowedFileTypes) 
-                  ? agentData.configuration.allowedFileTypes.join(",") 
+              if ((agentData as any).configuration) {
+                form.setValue("cad.apiEndpoint", (agentData as any).configuration.apiEndpoint ?? "");
+                form.setValue("cad.apiKey", (agentData as any).configuration.apiKey ?? "");
+                form.setValue("cad.modelId", (agentData as any).configuration.modelId ?? "");
+                form.setValue("cad.promptTemplate", (agentData as any).configuration.promptTemplate ?? "");
+                form.setValue("cad.maxFileSize", (agentData as any).configuration.maxFileSize ?? 50);
+                form.setValue("cad.allowedFileTypes", Array.isArray((agentData as any).configuration.allowedFileTypes) 
+                  ? (agentData as any).configuration.allowedFileTypes.join(",") 
                   : "");
                 
                 // 处理分析类型
-                const analysisTypes = agentData.configuration.supportedAnalysisTypes ?? ["standard"];
+                const analysisTypes = (agentData as any).configuration.supportedAnalysisTypes ?? ["standard"];
                 setSelectedAnalysisTypes(analysisTypes);
                 form.setValue("cad.supportedAnalysisTypes", analysisTypes);
               }
               break;
             case "poster":
-              if (agentData.configuration) {
-                form.setValue("poster.apiEndpoint", agentData.configuration.apiEndpoint ?? "");
-                form.setValue("poster.apiKey", agentData.configuration.apiKey ?? "");
-                form.setValue("poster.modelId", agentData.configuration.modelId ?? "");
-                form.setValue("poster.defaultPrompt", agentData.configuration.defaultPrompt ?? "");
-                form.setValue("poster.maxWidth", agentData.configuration.maxWidth ?? 1024);
-                form.setValue("poster.maxHeight", agentData.configuration.maxHeight ?? 1024);
+              if ((agentData as any).configuration) {
+                form.setValue("poster.apiEndpoint", (agentData as any).configuration.apiEndpoint ?? "");
+                form.setValue("poster.apiKey", (agentData as any).configuration.apiKey ?? "");
+                form.setValue("poster.modelId", (agentData as any).configuration.modelId ?? "");
+                form.setValue("poster.defaultPrompt", (agentData as any).configuration.defaultPrompt ?? "");
+                form.setValue("poster.maxWidth", (agentData as any).configuration.maxWidth ?? 1024);
+                form.setValue("poster.maxHeight", (agentData as any).configuration.maxHeight ?? 1024);
               }
               break;
           }
@@ -214,13 +214,12 @@ export default function EditAgentPage({ params }: { params: { id: string } }) {
       }
       
       // 更新智能体
-      await updateAgent({
-        ...agent,
+      await updateAgent(agent.id, {
         name: values.name,
         description: values.description,
         isActive: values.isActive,
         configuration: {
-          ...agent.configuration,
+          ...(agent as any).configuration,
           ...updatedConfig
         },
         metadata: values.metadata
@@ -523,7 +522,7 @@ export default function EditAgentPage({ params }: { params: { id: string } }) {
                             <Switch 
                               id="standard" 
                               checked={selectedAnalysisTypes.includes("standard")}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked: boolean) => 
                                 handleAnalysisTypeChange("standard", checked)
                               }
                             />
@@ -533,7 +532,7 @@ export default function EditAgentPage({ params }: { params: { id: string } }) {
                             <Switch 
                               id="detailed"
                               checked={selectedAnalysisTypes.includes("detailed")}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked: boolean) => 
                                 handleAnalysisTypeChange("detailed", checked)
                               }
                             />
@@ -543,7 +542,7 @@ export default function EditAgentPage({ params }: { params: { id: string } }) {
                             <Switch 
                               id="professional"
                               checked={selectedAnalysisTypes.includes("professional")}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked: boolean) => 
                                 handleAnalysisTypeChange("professional", checked)
                               }
                             />
@@ -553,7 +552,7 @@ export default function EditAgentPage({ params }: { params: { id: string } }) {
                             <Switch 
                               id="measurement"
                               checked={selectedAnalysisTypes.includes("measurement")}
-                              onCheckedChange={(checked) => 
+                              onCheckedChange={(checked: boolean) => 
                                 handleAnalysisTypeChange("measurement", checked)
                               }
                             />

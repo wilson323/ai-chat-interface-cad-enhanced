@@ -129,7 +129,7 @@ export async function POST(request: NextRequest) {
         )
         cadMetrics.record('complexity_score', 
           // 复杂度评分可选：记录实体总数作为近似复杂度
-          Object.values(result.cadResult.entities || {}).reduce((a: number, b: number) => a + b, 0),
+          (Object.values(result.cadResult.entities || {}) as Array<number>).reduce((a: number, b: number) => a + b, 0),
           'count'
         )
 

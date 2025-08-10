@@ -84,6 +84,12 @@ export default function NewCADAgentPage() {
         type: "cad",
         name: values.name,
         description: values.description,
+        isActive: values.isActive,
+        metadata: {
+          showInGallery: values.showInGallery,
+          galleryIconUrl: values.galleryIconUrl,
+          priority: values.priority,
+        },
         configuration: {
           apiEndpoint: values.apiEndpoint,
           apiKey: values.apiKey,
@@ -92,14 +98,8 @@ export default function NewCADAgentPage() {
           maxFileSize: values.maxFileSize,
           allowedFileTypes: values.allowedFileTypes.split(","),
           supportedAnalysisTypes: values.supportedAnalysisTypes,
-        },
-        isActive: values.isActive,
-        metadata: {
-          showInGallery: values.showInGallery,
-          galleryIconUrl: values.galleryIconUrl,
-          priority: values.priority,
-        }
-      });
+        } as any,
+      } as any);
       
       toast({
         title: "创建成功",
@@ -317,7 +317,7 @@ export default function NewCADAgentPage() {
                           <Switch 
                             id="standard" 
                             checked={selectedAnalysisTypes.includes("standard")}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               handleAnalysisTypeChange("standard", checked)
                             }
                           />
@@ -327,7 +327,7 @@ export default function NewCADAgentPage() {
                           <Switch 
                             id="detailed"
                             checked={selectedAnalysisTypes.includes("detailed")}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               handleAnalysisTypeChange("detailed", checked)
                             }
                           />
@@ -337,7 +337,7 @@ export default function NewCADAgentPage() {
                           <Switch 
                             id="professional"
                             checked={selectedAnalysisTypes.includes("professional")}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               handleAnalysisTypeChange("professional", checked)
                             }
                           />
@@ -347,7 +347,7 @@ export default function NewCADAgentPage() {
                           <Switch 
                             id="measurement"
                             checked={selectedAnalysisTypes.includes("measurement")}
-                            onCheckedChange={(checked) => 
+                            onCheckedChange={(checked: boolean) => 
                               handleAnalysisTypeChange("measurement", checked)
                             }
                           />

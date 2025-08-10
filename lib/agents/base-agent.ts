@@ -13,6 +13,14 @@ export interface AgentConfig {
   systemPrompt?: string;
   baseUrl?: string;
   icon?: string;
+  // Admin 扩展配置
+  isActive?: boolean;
+  configuration?: Record<string, any>;
+  metadata?: {
+    showInGallery?: boolean;
+    galleryIconUrl?: string;
+    priority?: number;
+  };
   createdAt?: Date;
   updatedAt?: Date;
 }

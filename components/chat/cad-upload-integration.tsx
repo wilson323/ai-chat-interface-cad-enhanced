@@ -33,6 +33,7 @@ import {
   is2DFileType
 } from "@/lib/utils/cad-file-utils"
 import { ANALYZER_CONFIG } from "@/config/cad-analyzer.config"
+import type React from "react"
 
 interface CADChatUploadProps {
   onAnalysisComplete: (result: CADAnalysisResult) => void

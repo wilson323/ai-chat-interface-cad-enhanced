@@ -26,7 +26,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { motion, AnimatePresence } from "framer-motion"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { AgentForm } from "./agent-form"
-import { AgentCard } from "@/components/admin/agent-card"
+import { AgentCard } from "./agent-card"
 import { AgentListHeader } from "./agent-list-header"
 import { useAgentManagement } from "@/hooks/use-agent-management"
 import { useAgentFilters } from "@/hooks/use-agent-filters"
@@ -178,7 +178,7 @@ export function AgentList() {
                       setIsEditDialogOpen(true)
                     }}
                     onDelete={() => handleDeleteAgent(agent.id)}
-                    onToggleStatus={(status: boolean) => handleToggleAgentStatus(agent.id, status)}
+                    onToggleStatus={(status: boolean) => handleToggleAgentStatus(agent.id, status ? 'active' : 'inactive')}
                     onTest={() => handleTestAgent(agent)}
                   />
                 </motion.div>

@@ -804,10 +804,10 @@ export class SyncManager {
         // 加载每个备份的数据
         this.backups = records.map(record => {
           try {
-            const data = localStorage.getItem(`backup_data_${record.id}`);
-            return { ...record, data };
+            const data = localStorage.getItem(`backup_data_${record.id}`) || undefined;
+            return { ...record, data } as BackupRecord;
           } catch {
-            return record;
+            return record as BackupRecord;
           }
         });
       }
