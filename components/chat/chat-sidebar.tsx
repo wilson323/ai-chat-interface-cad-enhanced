@@ -354,12 +354,15 @@ const getScrollPosition = (key: string): number => {
   }
 }
 
-// 防抖函数
-const debounce = (fn: Function, ms = 300) => {
+// 防抖函数（具名类型，避免使用 Function）
+type AnyFunction<TReturn = void> = (...args: Array<any>) => TReturn
+const debounce = <F extends AnyFunction>(fn: F, ms = 300) => {
   let timeoutId: ReturnType<typeof setTimeout>
-  return function (this: any, ...args: any[]) {
+  return (...args: Parameters<F>): void => {
     clearTimeout(timeoutId)
-    timeoutId = setTimeout(() => fn.apply(this, args), ms)
+    timeoutId = setTimeout(() => {
+      fn(...args)
+    }, ms)
   }
 }
 
