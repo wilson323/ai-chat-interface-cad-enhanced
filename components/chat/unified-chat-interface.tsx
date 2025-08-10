@@ -158,7 +158,7 @@ export function UnifiedChatInterface({
   const [currentStreamingId, setCurrentStreamingId] = useState<string | null>(null)
 
   // Refs
-  const listRef = useRef<React.RefObject<ScrollArea>>(null)
+  const listRef = useRef<HTMLDivElement | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerHeight, setContainerHeight] = useState(400)
 

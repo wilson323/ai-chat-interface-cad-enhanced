@@ -5,7 +5,7 @@ import { v4 as uuidv4 } from "uuid"
 import { createQueue } from 'lib/utils/processingQueue'
 import { isCADFile } from '@/lib/utils/fileValidation'
 import { cadMetrics } from '@/lib/services/cad-analyzer/metrics'
-import { validateCADAnalysisResult } from '@/lib/services/cad-analyzer/validation'
+import * as validation from '@/lib/services/cad-analyzer/validation'
 
 /**
  * CAD文件上传和分析API端点
@@ -124,16 +124,16 @@ export async function POST(request: NextRequest) {
           success: 'true'
         })
         cadMetrics.record('entity_count', 
-          Object.values(result.cadResult.entities).reduce((sum, count) => sum + count, 0), 
+          Object.values(result.cadResult.entities as Record<string, number>).reduce((sum: number, count: number) => sum + count, 0), 
           'count'
         )
         cadMetrics.record('complexity_score', 
           cadMetrics.calculateComplexityScore(result.cadResult.entities, result.cadResult.layers),
-          'score'
+          'unitless'
         )
 
         // 添加验证
-        const validationResult = validateCADAnalysisResult(result)
+        const validationResult = (validation as any).validateCADAnalysisResult?.(result)
         if (!validationResult.valid) {
           console.warn('CAD验证警告:', validationResult.issues)
         }

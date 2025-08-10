@@ -29,21 +29,21 @@ export function initializeServices(config: {
   batchConfig?: any;
 }) {
   // 初始化同步管理器
-  const syncManager = getSyncManager(config.syncConfig);
+  const syncManagerInstance = getSyncManager(config.syncConfig);
   
   // 初始化监控服务
-  const monitoringService = MonitoringService.getInstance(config.monitoringConfig);
+  const monitoringServiceInstance = MonitoringService.getInstance(config.monitoringConfig);
   
   // 初始化API安全服务
-  const apiSecurityService = ApiSecurityService.getInstance(config.securityConfig);
+  const apiSecurityServiceInstance = ApiSecurityService.getInstance(config.securityConfig);
   
   // 初始化批处理服务
-  const batchProcessor = BatchProcessor.getInstance(config.batchConfig);
+  const batchProcessorInstance = BatchProcessor.getInstance(config.batchConfig);
   
   return {
-    syncManager,
-    monitoringService,
-    apiSecurityService,
-    batchProcessor
+    syncManager: syncManagerInstance,
+    monitoringService: monitoringServiceInstance,
+    apiSecurityService: apiSecurityServiceInstance,
+    batchProcessor: batchProcessorInstance
   };
 } 

@@ -169,7 +169,6 @@ export async function initSystem(config: Partial<SystemConfig> = {}): Promise<vo
 
     // 初始化批处理器
     const batchProcessor = getBatchProcessor({
-      enabled: mergedConfig.batch.enabled,
       debug: mergedConfig.debug,
       logLevel: mergedConfig.logLevel,
       maxBatchSize: mergedConfig.batch.maxBatchSize,

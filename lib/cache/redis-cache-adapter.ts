@@ -114,7 +114,7 @@ export class RedisCacheAdapter {
 
         return true
       } catch (error) {
-        this.log("error", `Failed to connect to Redis: ${error.message}`)
+        this.log("error", `Failed to connect to Redis: ${error instanceof Error ? error.message : String(error)}`)
         this.isConnected = false
         this.errorCount++
 
@@ -177,7 +177,7 @@ export class RedisCacheAdapter {
       // 使用Promise.race实现超时
       return await Promise.race([getPromise, timeoutPromise])
     } catch (error) {
-      this.log("error", `Error getting item for key ${key}: ${error.message}`)
+      this.log("error", `Error getting item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
 
       // 如果连接断开，尝试重新连接
@@ -236,7 +236,7 @@ export class RedisCacheAdapter {
       // 使用Promise.race实现超时
       return await Promise.race([setPromise, timeoutPromise])
     } catch (error) {
-      this.log("error", `Error setting item for key ${key}: ${error.message}`)
+      this.log("error", `Error setting item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
 
       // 如果连接断开，尝试重新连接
@@ -281,7 +281,7 @@ export class RedisCacheAdapter {
       // 使用Promise.race实现超时
       return await Promise.race([deletePromise, timeoutPromise])
     } catch (error) {
-      this.log("error", `Error deleting item for key ${key}: ${error.message}`)
+      this.log("error", `Error deleting item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
 
       // 如果连接断开，尝试重新连接
@@ -344,7 +344,7 @@ export class RedisCacheAdapter {
       // 使用Promise.race实现超时
       return await Promise.race([deleteByTagPromise, timeoutPromise])
     } catch (error) {
-      this.log("error", `Error deleting items with tag ${tag}: ${error.message}`)
+      this.log("error", `Error deleting items with tag ${tag}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
 
       // 如果连接断开，尝试重新连接
@@ -401,7 +401,7 @@ export class RedisCacheAdapter {
       // 使用Promise.race实现超时
       return await Promise.race([clearPromise, timeoutPromise])
     } catch (error) {
-      this.log("error", `Error clearing cache: ${error.message}`)
+      this.log("error", `Error clearing cache: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
 
       // 如果连接断开，尝试重新连接

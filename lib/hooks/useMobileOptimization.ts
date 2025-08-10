@@ -152,7 +152,7 @@ export function useMobileOptimization(config: Partial<MobileOptimizationConfig> 
     
     const handleFocus = () => {
       // 移动设备输入框获得焦点时，假定键盘弹出
-      if (deviceType !== 'desktop') {
+      if (deviceType !== ('desktop' as DeviceType)) {
         setIsKeyboardVisible(true);
       }
     };
@@ -170,7 +170,7 @@ export function useMobileOptimization(config: Partial<MobileOptimizationConfig> 
     
     // 监听窗口大小变化（iOS上键盘弹出会触发resize）
     const handleResize = () => {
-      if (deviceType !== 'desktop') {
+      if (deviceType !== ('desktop' as DeviceType)) {
         // 如果窗口高度变小，可能是键盘弹出
         const currentHeight = window.innerHeight;
         const isKeyboardOpen = currentHeight < window.outerHeight * 0.8;

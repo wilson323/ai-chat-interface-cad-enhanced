@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -49,6 +50,7 @@ export function CADChatUpload({
   maxFileSizeMB = 50
 }: CADChatUploadProps) {
   const [file, setFile] = useState<File | null>(null)
+  const [sendTab, setSendTab] = useState<string>("default")
   const [isUploading, setIsUploading] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -397,7 +399,7 @@ export function CADChatUpload({
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={(e) => {
+                    onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
                       e.stopPropagation();
                       handleReset();
                     }}
@@ -429,7 +431,7 @@ export function CADChatUpload({
           </>
         ) : (
           /* 分析完成后的发送到聊天区域 */
-          <Tabs defaultValue="default">
+          <Tabs value={sendTab} onValueChange={setSendTab}>
             <TabsList className="grid grid-cols-2 mb-4">
               <TabsTrigger value="default">默认提示</TabsTrigger>
               <TabsTrigger value="custom">自定义提示</TabsTrigger>
@@ -508,14 +510,10 @@ export function CADChatUpload({
           )}
           
           {analysisResult && (
-            <Tabs.Context.Consumer>
-              {(context) => (
-                <Button onClick={() => handleSendToChat(context?.value === 'custom')}>
-                  <MessageSquarePlus className="mr-2 h-4 w-4" />
-                  发送到聊天
-                </Button>
-              )}
-            </Tabs.Context.Consumer>
+            <Button onClick={() => handleSendToChat(sendTab === 'custom')}>
+              <MessageSquarePlus className="mr-2 h-4 w-4" />
+              发送到聊天
+            </Button>
           )}
         </div>
       </CardFooter>

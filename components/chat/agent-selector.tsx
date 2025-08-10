@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Search, Bot } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { motion } from "framer-motion"
+import type React from "react"
 
 interface AgentSelectorProps {
   onSelect?: (agentId: string) => void

@@ -688,11 +688,11 @@ export class SyncManager {
         timestamp: Date.now(),
         size: backupData.length,
         conversationCount: parsed.conversations.length,
-        messageCount: parsed.conversations.reduce((sum, conv) => {
+        messageCount: parsed.conversations.reduce((sum: number, conv: any) => {
           try {
             const convData = JSON.parse(conv.data);
             return sum + Object.values(convData.nodes).reduce(
-              (nodeSum, node: any) => nodeSum + (node.messages?.length || 0), 0
+              (nodeSum: number, node: any) => nodeSum + (node.messages?.length || 0), 0
             );
           } catch {
             return sum;
@@ -716,10 +716,10 @@ export class SyncManager {
 
   // 获取所有备份
   public getBackups(): BackupRecord[] {
-    return this.backups.map(backup => ({
-      ...backup,
-      data: undefined // 不返回完整数据
-    }));
+    return this.backups.map((backup) => {
+      const { data, ...rest } = backup as any
+      return rest as BackupRecord
+    })
   }
 
   // 删除备份

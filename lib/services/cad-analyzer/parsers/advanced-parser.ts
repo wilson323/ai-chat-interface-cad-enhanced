@@ -521,6 +521,7 @@ export class AdvancedCADParser {
       fileId: new Date().getTime().toString(),
       fileName,
       fileType: 'stl',
+      fileSize: buffer.byteLength,
       components,
       layers,
       entities,
@@ -833,14 +834,14 @@ export class AdvancedCADParser {
     score += Math.min(20, entityTypeCount * 2);
     
     // 基于组件数量 (最高20分)
-    const componentCount = result.components.length;
+    const componentCount = (result.components?.length ?? 0);
     if (componentCount <= 1) score += 5;
     else if (componentCount <= 5) score += 10;
     else if (componentCount <= 15) score += 15;
     else score += 20;
     
     // 基于图层数量 (最高20分)
-    const layerCount = result.layers.length;
+    const layerCount = (result.layers as any)?.length ?? 0;
     if (layerCount <= 1) score += 5;
     else if (layerCount <= 5) score += 10;
     else if (layerCount <= 15) score += 15;

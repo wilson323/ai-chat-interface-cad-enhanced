@@ -125,7 +125,7 @@ export class CADAnalyzerService {
         let progress = 0;
         const interval = setInterval(() => {
           progress += 2;
-          options.progressCallback(Math.min(progress, 95));
+          options?.progressCallback?.(Math.min(progress, 95));
           if (progress >= 100) clearInterval(interval);
         }, 200);
       }
@@ -198,7 +198,8 @@ export class CADAnalyzerService {
   
   async getAnalysisHistory(userId: string, limit: number = 10, offset: number = 0): Promise<CADAnalysisResult[]> {
     try {
-      return await db.cadAnalysis.findByUserId(userId, { limit, offset });
+      const res = await (db.cadAnalysis as any).findByUserId(userId, limit, offset);
+      return res
     } catch (error) {
       console.error('获取CAD分析历史出错:', error);
       throw new Error('获取CAD分析历史失败');

@@ -418,7 +418,7 @@ export class ApiSecurityService {
       }
       
       if (filter.endpoint) {
-        filtered = filtered.filter(log => log.endpoint.includes(filter.endpoint));
+        filtered = filtered.filter(log => (log.endpoint || "").includes(filter.endpoint!));
       }
       
       if (filter.startTime) {

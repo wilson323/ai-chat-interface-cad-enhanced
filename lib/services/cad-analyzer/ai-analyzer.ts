@@ -98,7 +98,7 @@ export class CADMultimodalAIAnalyzer {
       components: Array.isArray(response.components) ? response.components : [],
       materialEstimation: Array.isArray(response.materialEstimation) ? response.materialEstimation : [],
       manufacturingDifficulty: response.manufacturingDifficulty || { level: '未知', explanation: '无法评估' },
-      interactiveGuidance: response.interactiveGuidance || [],
+      // 交互式引导非必需，按需扩展
       analysisVersion: response.analysisVersion || '1.0',
       analysisTimestamp: response.analysisTimestamp || new Date().toISOString()
     };
@@ -120,7 +120,7 @@ export class CADMultimodalAIAnalyzer {
       components: [],
       materialEstimation: [],
       manufacturingDifficulty: { level: '未知', explanation: '无法评估' },
-      interactiveGuidance: [],
+      // 交互式引导非必需，按需扩展
       analysisVersion: '1.0',
       analysisTimestamp: new Date().toISOString()
     };

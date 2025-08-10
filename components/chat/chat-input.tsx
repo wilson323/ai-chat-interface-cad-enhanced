@@ -180,7 +180,7 @@ export function ChatInput({ onSubmit, isLoading, isMuted }: ChatInputProps) {
             <Textarea
               ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder={isRecording ? "正在录音..." : "输入消息..."}
               className="min-h-[40px] max-h-[200px] w-full resize-none bg-transparent border-0 focus:ring-0 p-2 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 text-sm md:text-base"

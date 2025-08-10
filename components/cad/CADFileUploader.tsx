@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { CheckCircle, File, Loader2, UploadCloud, AlertCircle } from 'lucide-react';
-import { CADFileType, SUPPORTED_CAD_FILE_TYPES } from '@/lib/services/cad-analyzer/cad-analyzer-service';
+import { CADFileType } from '@/lib/types/cad'
 import { formatFileSize } from '@/lib/utils';
 
 interface CADFileUploaderProps {
@@ -24,7 +24,9 @@ export function CADFileUploader({
   isUploading = false,
   uploadProgress = 0,
   error,
-  supportedFormats = SUPPORTED_CAD_FILE_TYPES,
+  supportedFormats = [
+    'dxf','dwg','step','stp','iges','igs','stl','obj','gltf','glb','ply','dae','3ds','fbx'
+  ] as Array<CADFileType>,
   maxSizeMB = 100
 }: CADFileUploaderProps) {
   const [dragActive, setDragActive] = useState(false);

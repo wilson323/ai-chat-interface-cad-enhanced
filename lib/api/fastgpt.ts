@@ -592,7 +592,7 @@ const FastGPTApi = {
           apiClient.defaults.baseURL = currentUrl
         }
 
-        return { success: true, data: response.data, useProxy }
+        return { ok: true, message: 'ok' }
       } catch (modelError) {
         // If /models endpoint fails, try with root endpoint
         console.log("[API] Trying to test connection with root endpoint...", modelError)
@@ -609,7 +609,7 @@ const FastGPTApi = {
             apiClient.defaults.baseURL = currentUrl
           }
 
-          return { success: true, data: rootResponse.data, useProxy }
+          return { ok: true, message: 'ok' }
         } catch (rootError) {
           clearTimeout(timeoutId)
 

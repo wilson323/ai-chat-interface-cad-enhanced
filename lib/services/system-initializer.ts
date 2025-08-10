@@ -359,18 +359,22 @@ export class SystemInitializer {
         monitoring: {
           ...base.services.monitoring,
           ...override.services?.monitoring,
+          enabled: (override.services?.monitoring?.enabled ?? base.services.monitoring.enabled ?? false) as boolean,
         },
         security: {
           ...base.services.security,
           ...override.services?.security,
+          enabled: (override.services?.security?.enabled ?? base.services.security.enabled ?? false) as boolean,
         },
         sync: {
           ...base.services.sync,
           ...override.services?.sync,
+          enabled: (override.services?.sync?.enabled ?? base.services.sync.enabled ?? false) as boolean,
         },
         batch: {
           ...base.services.batch,
           ...override.services?.batch,
+          enabled: (override.services?.batch?.enabled ?? base.services.batch.enabled ?? false) as boolean,
         },
       },
       features: {

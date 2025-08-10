@@ -225,7 +225,7 @@ export class CacheManager {
 
       return null
     } catch (error) {
-      this.log("error", `Error getting cache item for key ${key}: ${error.message}`)
+      this.log("error", `Error getting cache item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
 
       // 如果提供了fetchFn，尝试直接调用它作为降级策略
@@ -233,7 +233,7 @@ export class CacheManager {
         try {
           return await fetchFn()
         } catch (fetchError) {
-          this.log("error", `Error fetching data after cache error: ${fetchError.message}`)
+          this.log("error", `Error fetching data after cache error: ${fetchError instanceof Error ? fetchError.message : String(fetchError)}`)
           throw fetchError
         }
       }
@@ -284,14 +284,14 @@ export class CacheManager {
         try {
           await this.redisAdapter.set(cacheKey, item, Math.ceil(ttl / 1000))
         } catch (error) {
-          this.log("error", `Redis cache error setting ${cacheKey}: ${error.message}`)
+          this.log("error", `Redis cache error setting ${cacheKey}: ${error instanceof Error ? error.message : String(error)}`)
           this.errorCount++
         }
       }
 
       this.log("debug", `Cache: set ${cacheKey}, expires at ${new Date(expiry).toISOString()}`)
     } catch (error) {
-      this.log("error", `Error setting cache item for key ${key}: ${error.message}`)
+      this.log("error", `Error setting cache item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
       throw error
     }
@@ -313,7 +313,7 @@ export class CacheManager {
         try {
           localStorage.removeItem(`cache:${cacheKey}`)
         } catch (error) {
-          this.log("error", `Error removing from localStorage: ${error.message}`)
+          this.log("error", `Error removing from localStorage: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
 
@@ -322,14 +322,14 @@ export class CacheManager {
         try {
           await this.redisAdapter.delete(cacheKey)
         } catch (error) {
-          this.log("error", `Redis cache error deleting ${cacheKey}: ${error.message}`)
+          this.log("error", `Redis cache error deleting ${cacheKey}: ${error instanceof Error ? error.message : String(error)}`)
           this.errorCount++
         }
       }
 
       this.log("debug", `Cache: deleted ${cacheKey}`)
     } catch (error) {
-      this.log("error", `Error deleting cache item for key ${key}: ${error.message}`)
+      this.log("error", `Error deleting cache item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
       throw error
     }
@@ -378,7 +378,7 @@ export class CacheManager {
             localStorage.removeItem(key)
           }
         } catch (error) {
-          this.log("error", `Error removing from localStorage by tag: ${error.message}`)
+          this.log("error", `Error removing from localStorage by tag: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
 
@@ -387,14 +387,14 @@ export class CacheManager {
         try {
           await this.redisAdapter.deleteByTag(tag)
         } catch (error) {
-          this.log("error", `Redis cache error deleting by tag ${tag}: ${error.message}`)
+          this.log("error", `Redis cache error deleting by tag ${tag}: ${error instanceof Error ? error.message : String(error)}`)
           this.errorCount++
         }
       }
 
       this.log("info", `Cache: deleted items with tag ${tag}`)
     } catch (error) {
-      this.log("error", `Error deleting cache items by tag ${tag}: ${error.message}`)
+      this.log("error", `Error deleting cache items by tag ${tag}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
       throw error
     }
@@ -418,7 +418,7 @@ export class CacheManager {
             }
           }
         } catch (error) {
-          this.log("error", `Error clearing localStorage cache: ${error.message}`)
+          this.log("error", `Error clearing localStorage cache: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
 
@@ -427,14 +427,14 @@ export class CacheManager {
         try {
           await this.redisAdapter.clear()
         } catch (error) {
-          this.log("error", `Redis cache error clearing all: ${error.message}`)
+          this.log("error", `Redis cache error clearing all: ${error instanceof Error ? error.message : String(error)}`)
           this.errorCount++
         }
       }
 
       this.log("info", "Cache: cleared all caches")
     } catch (error) {
-      this.log("error", `Error clearing all caches: ${error.message}`)
+      this.log("error", `Error clearing all caches: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
       throw error
     }
@@ -481,7 +481,7 @@ export class CacheManager {
       try {
         redisStats = await this.redisAdapter.getStats()
       } catch (error) {
-        this.log("error", `Error getting Redis cache stats: ${error.message}`)
+        this.log("error", `Error getting Redis cache stats: ${error instanceof Error ? error.message : String(error)}`)
       }
     }
 
@@ -537,7 +537,7 @@ export class CacheManager {
 
       return parsed as CacheItem<T>
     } catch (error) {
-      this.log("error", `Error reading from localStorage: ${error.message}`)
+      this.log("error", `Error reading from localStorage: ${error instanceof Error ? error.message : String(error)}`)
       return null
     }
   }
@@ -555,7 +555,7 @@ export class CacheManager {
       localStorage.setItem(`cache:${key}`, data)
     } catch (error) {
       // 可能是localStorage已满，尝试清理一些旧数据
-      this.log("error", `Error writing to localStorage: ${error.message}`)
+      this.log("error", `Error writing to localStorage: ${error instanceof Error ? error.message : String(error)}`)
       this.cleanupLocalStorage(true)
     }
   }
@@ -598,7 +598,7 @@ export class CacheManager {
         this.log("debug", `Cache: cleaned up ${keysToRemove.length} expired items from localStorage`)
       }
     } catch (error) {
-      this.log("error", `Error cleaning up localStorage: ${error.message}`)
+      this.log("error", `Error cleaning up localStorage: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -631,7 +631,7 @@ export class CacheManager {
         await this.set(key, value, { ttl, tags, metadata })
         return value
       } catch (error) {
-        this.log("error", `Error fetching data for ${key}: ${error.message}`)
+        this.log("error", `Error fetching data for ${key}: ${error instanceof Error ? error.message : String(error)}`)
         this.errorCount++
         throw error
       } finally {
@@ -674,7 +674,7 @@ export class CacheManager {
         await this.set(key, value, { ttl, tags, metadata })
         return value
       } catch (error) {
-        this.log("error", `Error revalidating ${key}: ${error.message}`)
+        this.log("error", `Error revalidating ${key}: ${error instanceof Error ? error.message : String(error)}`)
         this.errorCount++
         // 出错时不更新缓存，保留旧值
       } finally {
@@ -734,7 +734,7 @@ export class CacheManager {
         await this.set(key, value, { ttl, tags, metadata })
         return value
       } catch (error) {
-        this.log("error", `Error prefetching ${key}: ${error.message}`)
+        this.log("error", `Error prefetching ${key}: ${error instanceof Error ? error.message : String(error)}`)
         this.errorCount++
         // 出错时不更新缓存，保留旧值
       } finally {

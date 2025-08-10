@@ -7,7 +7,6 @@ import { STLLoader } from 'three/examples/jsm/loaders/STLLoader'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader'
-import { IFCLoader } from 'three/examples/jsm/loaders/IFCLoader'
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader'
 import { ColladaLoader } from 'three/examples/jsm/loaders/ColladaLoader'
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader'
@@ -371,12 +370,14 @@ export function ThreeViewer({
     
     // 环境光遮蔽
     if (renderConfig.ambientOcclusion) {
-      const ssaoPass = new SSAOPass(scene, camera, containerRef.current.clientWidth, containerRef.current.clientHeight);
-      ssaoPass.radius = 10;
-      ssaoPass.intensity = 0.5;
-      ssaoPass.kernelRadius = 16;
-      ssaoPass.kernelSize = 32;
-      composer.addPass(ssaoPass);
+      const ssaoPass = new SSAOPass(scene as any, camera as any, containerRef.current.clientWidth, containerRef.current.clientHeight) as any
+      if (ssaoPass) {
+        if ('radius' in ssaoPass) ssaoPass.radius = 10
+        if ('intensity' in ssaoPass) ssaoPass.intensity = 0.5
+        if ('kernelRadius' in ssaoPass) ssaoPass.kernelRadius = 16
+        if ('kernelSize' in ssaoPass) ssaoPass.kernelSize = 32
+        composer.addPass(ssaoPass)
+      }
     }
     
     // 边缘高光
@@ -520,11 +521,10 @@ export function ThreeViewer({
       
       // 更新FXAA分辨率
       const pixelRatio = rendererRef.current.getPixelRatio();
-      const fxaaPass = composerRef.current.passes.find(pass => pass.material && pass.material.uniforms && pass.material.uniforms['resolution']);
-      
-      if (fxaaPass && fxaaPass.material.uniforms['resolution']) {
-        fxaaPass.material.uniforms['resolution'].value.x = 1 / (width * pixelRatio);
-        fxaaPass.material.uniforms['resolution'].value.y = 1 / (height * pixelRatio);
+      const fxaaPass = composerRef.current.passes.find((pass: any) => pass?.material?.uniforms?.['resolution']) as any
+      if (fxaaPass?.material?.uniforms?.['resolution']) {
+        fxaaPass.material.uniforms['resolution'].value.x = 1 / (width * pixelRatio)
+        fxaaPass.material.uniforms['resolution'].value.y = 1 / (height * pixelRatio)
       }
     };
     
@@ -596,7 +596,7 @@ export function ThreeViewer({
         }
         
         // 添加到场景
-        if (modelGroup.children.length > 0) {
+        if (modelGroup.children.length > 0 && sceneRef.current) {
           sceneRef.current.add(modelGroup);
           modelRef.current = modelGroup;
           
@@ -607,14 +607,10 @@ export function ThreeViewer({
           
           // 根据渲染选项应用体积光
           if (renderConfig.ambientOcclusion && composerRef.current) {
-            const ssaoPass = composerRef.current.passes.find(
-              pass => pass.constructor.name === 'SSAOPass'
-            ) as SSAOPass;
-            
-            if (ssaoPass) {
-              // 更新SSAO
-              ssaoPass.scene = sceneRef.current;
-              ssaoPass.camera = cameraRef.current!;
+            const ssaoPass = composerRef.current.passes.find((pass: any) => pass?.constructor?.name === 'SSAOPass') as any
+            if (ssaoPass && sceneRef.current && cameraRef.current) {
+              ssaoPass.scene = sceneRef.current as any
+              ssaoPass.camera = cameraRef.current as any
             }
           }
           
@@ -675,12 +671,7 @@ export function ThreeViewer({
         
         if (component.geometry) {
           // 直接使用提供的几何数据
-          if (component.geometry.vertices && component.geometry.faces) {
-            // 旧的Three.js格式
-            geometry = new THREE.BufferGeometry().fromGeometry(
-              new THREE.Geometry().fromJSON(component.geometry)
-            );
-          } else if (component.geometry.attributes) {
+          if (component.geometry.attributes) {
             // BufferGeometry格式
             geometry = new THREE.BufferGeometry();
             
@@ -814,7 +805,7 @@ export function ThreeViewer({
       const result = await new Promise<THREE.Object3D | THREE.BufferGeometry>((resolve, reject) => {
         loaderForType.load(
           url,
-          resolve,
+          (obj: any) => resolve(obj as any),
           (progress) => {
             // console.log('加载进度:', Math.round((progress.loaded / progress.total) * 100) + '%');
           },
@@ -909,11 +900,9 @@ export function ThreeViewer({
         return new PLYLoader();
       case '3ds':
         return new TDSLoader();
-      case 'ifc': {
-        const ifcLoader = new IFCLoader();
-        ifcLoader.ifcManager.setWasmPath('/ifc/');
-        return ifcLoader;
-      }
+      case 'ifc':
+        // 如需 IFC 支持，应单独引入并配置 wasm 资源；当前先不启用
+        return new STLLoader();
       default:
         return new STLLoader();  // 默认使用STL加载器
     }

@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
         fileId,
         metadata,
         lastSynced: timestamp || Date.now(),
-        version: ((await redis.get(`${key}:version`)) || 0) + 1,
+        version: (Number(await redis.get(`${key}:version`)) || 0) + 1,
       }),
     )
 

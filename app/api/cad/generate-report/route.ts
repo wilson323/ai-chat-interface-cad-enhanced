@@ -482,11 +482,11 @@ async function generateHTMLReport(
             </tr>
           </thead>
           <tbody>
-            ${cadResult.layers.map(layer => `
+            ${Array.isArray(cadResult.layers) ? cadResult.layers.map((layer: any) => `
               <tr>
-                <td>${layer}</td>
+                <td>${typeof layer === 'string' ? layer : (layer?.name || '')}</td>
               </tr>
-            `).join('')}
+            `).join('') : ''}
           </tbody>
         </table>
       </div>
@@ -497,9 +497,7 @@ async function generateHTMLReport(
     html += `
       <div class="section">
         <h2>AI增强分析</h2>
-        <div class="metadata-item">
-          <strong>信心分数:</strong> ${(aiResult.confidenceScore * 100).toFixed(1)}%
-        </div>
+        ${typeof aiResult.confidenceScore === 'number' ? `<div class="metadata-item"><strong>信心分数:</strong> ${(aiResult.confidenceScore * 100).toFixed(1)}%</div>` : ''}
         
         <h3>总体摘要</h3>
         <p>${aiResult.summary}</p>
@@ -507,9 +505,9 @@ async function generateHTMLReport(
         <h3>专业领域见解</h3>
         <p>${aiResult.categorySpecificInsights}</p>
         
-        ${aiResult.technicalAnalysis?.technicalIssues.length ? `
+        ${aiResult.technicalAnalysis?.technicalIssues?.length ? `
           <h3>技术问题分析</h3>
-          ${aiResult.technicalAnalysis.technicalIssues.map(issue => `
+          ${aiResult.technicalAnalysis.technicalIssues.map((issue: any) => `
             <div class="issue ${issue.severity ? `issue-${issue.severity}` : 'issue-medium'}">
               <h4>${issue.category}</h4>
               <p>${issue.description}</p>
@@ -518,9 +516,9 @@ async function generateHTMLReport(
           `).join('')}
         ` : ''}
         
-        ${aiResult.optimizationSuggestions?.workflowImprovements.length ? `
+        ${aiResult.optimizationSuggestions?.workflowImprovements?.length ? `
           <h3>优化建议</h3>
-          ${aiResult.optimizationSuggestions.workflowImprovements.map(improvement => `
+          ${aiResult.optimizationSuggestions.workflowImprovements.map((improvement: any) => `
             <div class="recommendation">
               <p>${improvement}</p>
             </div>

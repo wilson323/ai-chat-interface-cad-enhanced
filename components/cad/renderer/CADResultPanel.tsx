@@ -1,11 +1,6 @@
 "use client";
 
 import React, { useState } from 'react';
-import { 
-  CADAnalysisResult, 
-  Component, 
-  Measurement 
-} from '@/lib/services/cad-analyzer-service';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +52,7 @@ import {
   CardTitle
 } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { CADAnalysisResult, AIMultimodalAnalysisResult, DomainSpecificAnalysis } from '@/lib/types/cad';
+import { CADAnalysisResult, AIMultimodalAnalysisResult, DomainSpecificAnalysis, CADMeasurement, CADComponent, LayerInfo } from '@/lib/types/cad';
 import { formatFileSize } from '@/lib/utils';
 
 interface CADResultPanelProps {
@@ -100,10 +95,10 @@ export function CADResultPanel({
   const entityCount = Object.values(result.entities || {}).reduce((sum, count) => sum + Number(count), 0);
   
   // AI分析结果
-  const aiAnalysis = result.aiAnalysis as AIMultimodalAnalysisResult;
+  const aiAnalysis = (result as any).aiAnalysis as AIMultimodalAnalysisResult;
   
   // 领域分析
-  const domainAnalysis = result.domainAnalysis as DomainSpecificAnalysis;
+  const domainAnalysis = (result as any).domainAnalysis as DomainSpecificAnalysis;
   
   const handleExport = () => {
     // 导出功能实现
@@ -112,7 +107,7 @@ export function CADResultPanel({
   
   const handleCopy = () => {
     // 复制到剪贴板
-    navigator.clipboard.writeText(result.summary)
+    navigator.clipboard.writeText((result as any).summary || '')
       .then(() => alert('摘要已复制到剪贴板'))
       .catch(err => console.error('复制失败:', err));
   };
@@ -140,7 +135,7 @@ export function CADResultPanel({
   };
   
   const getAnalysisTypeColor = () => {
-    switch (result.analysisType) {
+    switch ((result as any).analysisType as any) {
       case 'detailed': return 'bg-blue-100 text-blue-800';
       case 'professional': return 'bg-purple-100 text-purple-800';
       case 'measurement': return 'bg-green-100 text-green-800';
@@ -176,7 +171,7 @@ export function CADResultPanel({
     if (Array.isArray(value)) {
       if (value.length === 3 && value.every(v => typeof v === 'number')) {
         // Likely a 3D coordinate
-        return `[${value.map(v => v.toFixed(2)).join(', ')}]`;
+        return `[${value.map(v => (Number.isFinite(v) ? v : 0).toFixed(2)).join(', ')}]`;
       }
       
       if (value.length === 0) {
@@ -213,19 +208,23 @@ export function CADResultPanel({
     return String(value);
   };
   
-  const filteredComponents = result.components.filter(component => 
-    component.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    component.type.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredComponents = (result.components || []).filter((component) => {
+    const name = (component as any).name || ''
+    const type = (component as any).type || ''
+    return (
+      String(name).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      String(type).toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  });
+  
+  const filteredMeasurements = (result.measurements || []).filter((measure: any) =>
+    String(measure.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    String(measure.type || measure.name || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
   
-  const filteredMeasurements = result.measures.filter(measure => 
-    (measure.description || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    measure.type.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  
-  const renderComponentTree = (component: Component, depth = 0) => {
+  const renderComponentTree = (component: CADComponent, depth = 0) => {
     const isExpanded = expandedComponents.includes(component.id);
-    const hasSubComponents = component.subComponents && component.subComponents.length > 0;
+    const hasSubComponents = (component as any).subComponents && (component as any).subComponents.length > 0;
     
     return (
       <div key={component.id} className="border-b last:border-b-0">
@@ -247,8 +246,8 @@ export function CADResultPanel({
                 <Badge variant="outline">{component.type}</Badge>
               </div>
               <div className="text-sm text-gray-500 mt-1">
-                位置: [{component.position.map(p => p.toFixed(2)).join(', ')}]
-                {component.material && <span className="ml-2">材料: {component.material}</span>}
+                位置: [{(component.position || [0,0,0]).map(p => Number(p).toFixed(2)).join(', ')}]
+                {component.material && <span className="ml-2">材料: {String(component.material)}</span>}
               </div>
             </div>
           </div>
@@ -267,8 +266,8 @@ export function CADResultPanel({
         
         {isExpanded && hasSubComponents && (
           <div className="border-l-2 ml-3 pl-2">
-            {component.subComponents!.map(subComponent => 
-              renderComponentTree(subComponent, depth + 1)
+            {(component as any).subComponents!.map((subComponent: any) => 
+              renderComponentTree(subComponent as CADComponent, depth + 1)
             )}
           </div>
         )}
@@ -276,7 +275,7 @@ export function CADResultPanel({
     );
   };
   
-  const renderMeasurement = (measure: Measurement) => {
+  const renderMeasurement = (measure: CADMeasurement) => {
     return (
       <div 
         key={measure.id}
@@ -286,9 +285,9 @@ export function CADResultPanel({
           <div>
             <div className="flex items-center">
               <h4 className="font-medium capitalize">
-                {measure.description || measure.type}
+                {(measure as any).description || (measure as any).type || measure.name}
               </h4>
-              {measure.entities && measure.entities.length > 0 && (
+              {(measure as any).entities && (measure as any).entities.length > 0 && (
                 <HoverCard>
                   <HoverCardTrigger asChild>
                     <Button variant="ghost" size="sm" className="h-6 ml-1">
@@ -298,7 +297,7 @@ export function CADResultPanel({
                   <HoverCardContent className="w-60">
                     <p className="text-sm">相关组件:</p>
                     <ul className="text-sm mt-1 list-disc pl-4">
-                      {measure.entities.map(entity => (
+                      {(measure as any).entities.map((entity: string) => (
                         <li key={entity}>{entity}</li>
                       ))}
                     </ul>
@@ -306,9 +305,9 @@ export function CADResultPanel({
                 </HoverCard>
               )}
             </div>
-            {measure.points && (
+            {(measure as any).points && (
               <div className="text-xs text-gray-500 mt-1">
-                {measure.points.map((point, idx) => (
+                {(measure as any).points.map((point: Array<number>, idx: number) => (
                   <div key={idx}>
                     点 {idx+1}: [{point.map(p => p.toFixed(2)).join(', ')}]
                   </div>
@@ -317,8 +316,10 @@ export function CADResultPanel({
             )}
           </div>
           <div className="text-right">
-            <div className="font-medium text-lg">{measure.value.toFixed(2)}</div>
-            <div className="text-xs text-gray-500">{measure.unit}</div>
+            {typeof (measure as any).value === 'number' && (
+              <div className="font-medium text-lg">{(measure as any).value.toFixed(2)}</div>
+            )}
+            <div className="text-xs text-gray-500">{(measure as any).unit || result.dimensions?.unit || ''}</div>
           </div>
         </div>
       </div>
@@ -402,11 +403,11 @@ export function CADResultPanel({
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">文件类型</p>
-                  <p className="font-medium">{result.fileType.toUpperCase()}</p>
+                  <p className="font-medium">{String(result.fileType).toUpperCase()}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">文件大小</p>
-                  <p className="font-medium">{formatFileSize(result.fileSize)}</p>
+                  <p className="font-medium">{formatFileSize((result as any).fileSize || 0)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">实体总数</p>
@@ -421,16 +422,16 @@ export function CADResultPanel({
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-secondary p-2 rounded-md">
                     <p className="text-xs text-muted-foreground">宽度</p>
-                    <p className="font-medium">{result.dimensions.width} {result.dimensions.unit}</p>
+                    <p className="font-medium">{result.dimensions?.width ?? '-'} {result.dimensions?.unit ?? ''}</p>
                   </div>
                   <div className="bg-secondary p-2 rounded-md">
                     <p className="text-xs text-muted-foreground">高度</p>
-                    <p className="font-medium">{result.dimensions.height} {result.dimensions.unit}</p>
+                    <p className="font-medium">{result.dimensions?.height ?? '-'} {result.dimensions?.unit ?? ''}</p>
                   </div>
-                  {result.dimensions.depth !== undefined && (
+                  {result.dimensions?.depth !== undefined && (
                     <div className="bg-secondary p-2 rounded-md">
                       <p className="text-xs text-muted-foreground">深度</p>
-                      <p className="font-medium">{result.dimensions.depth} {result.dimensions.unit}</p>
+                      <p className="font-medium">{result.dimensions?.depth} {result.dimensions?.unit ?? ''}</p>
                     </div>
                   )}
                 </div>
@@ -477,7 +478,7 @@ export function CADResultPanel({
                       <div className="flex items-center">
                         <span className="text-sm">{key}</span>
                       </div>
-                      <span className="text-sm font-medium">{value}</span>
+                      <span className="text-sm font-medium">{String(value)}</span>
                     </div>
                   ))}
                 </div>
@@ -491,15 +492,19 @@ export function CADResultPanel({
               </CardHeader>
               <CardContent>
                 <div className="space-y-2 max-h-[200px] overflow-y-auto pr-2">
-                  {result.layers && result.layers.length > 0 ? (
-                    result.layers.map((layer, index) => (
-                      <div key={index} className="flex justify-between items-center">
-                        <span className="text-sm">{layer.name || `图层 ${index + 1}`}</span>
-                        <Badge variant="outline" className="text-xs">
-                          {layer.entityCount || 0} 个实体
-                        </Badge>
-                      </div>
-                    ))
+                  {Array.isArray(result.layers) && result.layers.length > 0 ? (
+                    (result.layers as Array<LayerInfo | string>).map((layer, index) => {
+                      const name = typeof layer === 'string' ? layer : (layer.name || `图层 ${index + 1}`)
+                      const count = typeof layer === 'string' ? 0 : (layer.entityCount || 0)
+                      return (
+                        <div key={index} className="flex justify-between items-center">
+                          <span className="text-sm">{name}</span>
+                          <Badge variant="outline" className="text-xs">
+                            {count} 个实体
+                          </Badge>
+                        </div>
+                      )
+                    })
                   ) : (
                     <p className="text-sm text-muted-foreground">无图层数据</p>
                   )}
@@ -525,9 +530,9 @@ export function CADResultPanel({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    {aiAnalysis && aiAnalysis.components && aiAnalysis.components.length > 0 ? (
+                    {aiAnalysis && (aiAnalysis as any).components && (aiAnalysis as any).components.length > 0 ? (
                       <div className="space-y-2">
-                        {aiAnalysis.components.map((component, idx) => (
+                        {(aiAnalysis as any).components.map((component: any, idx: number) => (
                           <div key={idx} className="border rounded-md p-3">
                             <div className="flex justify-between items-center">
                               <h4 className="font-medium">{component.name}</h4>
@@ -553,25 +558,30 @@ export function CADResultPanel({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    {result.layers && result.layers.length > 0 ? (
+                    {Array.isArray(result.layers) && result.layers.length > 0 ? (
                       <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                        {result.layers.map((layer, idx) => (
-                          <div key={idx} className="border rounded-md p-2">
-                            <p className="font-medium">{layer.name}</p>
-                            <div className="flex justify-between mt-1">
-                              <span className="text-xs text-muted-foreground">
-                                {layer.entityCount || 0} 个实体
-                              </span>
-                              {layer.color && (
-                                <div 
-                                  className="w-4 h-4 rounded-full"
-                                  style={{ backgroundColor: layer.color }}
-                                  title={layer.color}
-                                />
-                              )}
+                        {(result.layers as Array<LayerInfo | string>).map((layer, idx) => {
+                          const name = typeof layer === 'string' ? layer : (layer.name || `图层 ${idx + 1}`)
+                          const count = typeof layer === 'string' ? 0 : (layer.entityCount || 0)
+                          const color = typeof layer === 'string' ? undefined : layer.color
+                          return (
+                            <div key={idx} className="border rounded-md p-2">
+                              <p className="font-medium">{name}</p>
+                              <div className="flex justify-between mt-1">
+                                <span className="text-xs text-muted-foreground">
+                                  {count} 个实体
+                                </span>
+                                {color && (
+                                  <div 
+                                    className="w-4 h-4 rounded-full"
+                                    style={{ backgroundColor: color }}
+                                    title={color}
+                                  />
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     ) : (
                       <p className="text-sm text-muted-foreground">无图层数据</p>
@@ -587,9 +597,9 @@ export function CADResultPanel({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    {aiAnalysis && aiAnalysis.materialEstimation && aiAnalysis.materialEstimation.length > 0 ? (
+                    {aiAnalysis && (aiAnalysis as any).materialEstimation && (aiAnalysis as any).materialEstimation.length > 0 ? (
                       <div className="space-y-1">
-                        {aiAnalysis.materialEstimation.map((material, idx) => (
+                        {(aiAnalysis as any).materialEstimation.map((material: any, idx: number) => (
                           <div key={idx} className="flex justify-between py-1 border-b last:border-b-0">
                             <span>{material.material}</span>
                             <span className="font-medium">{material.amount} {material.unit}</span>
@@ -605,7 +615,7 @@ export function CADResultPanel({
             </CardContent>
           </Card>
           
-          {result.bimData && (
+          {(result as any).bimData && (
             <Card className="mt-4">
               <CardHeader>
                 <CardTitle>BIM数据</CardTitle>
@@ -616,9 +626,9 @@ export function CADResultPanel({
                   <AccordionItem value="spaces">
                     <AccordionTrigger>空间信息</AccordionTrigger>
                     <AccordionContent>
-                      {result.bimData.spaces && result.bimData.spaces.length > 0 ? (
+                      {(result as any).bimData.spaces && (result as any).bimData.spaces.length > 0 ? (
                         <div className="space-y-2">
-                          {result.bimData.spaces.map((space, idx) => (
+                          {(result as any).bimData.spaces.map((space: any, idx: number) => (
                             <div key={idx} className="border rounded-md p-2">
                               <p className="font-medium">{space.name}</p>
                               <div className="flex justify-between text-sm">
@@ -637,9 +647,9 @@ export function CADResultPanel({
                   <AccordionItem value="stories">
                     <AccordionTrigger>楼层信息</AccordionTrigger>
                     <AccordionContent>
-                      {result.bimData.stories && result.bimData.stories.length > 0 ? (
+                      {(result as any).bimData.stories && (result as any).bimData.stories.length > 0 ? (
                         <div className="space-y-2">
-                          {result.bimData.stories.map((story, idx) => (
+                          {(result as any).bimData.stories.map((story: any, idx: number) => (
                             <div key={idx} className="border rounded-md p-2">
                               <p className="font-medium">{story.name}</p>
                               <p className="text-sm">标高: {story.elevation} m</p>
@@ -655,9 +665,9 @@ export function CADResultPanel({
                   <AccordionItem value="elements">
                     <AccordionTrigger>构件信息</AccordionTrigger>
                     <AccordionContent>
-                      {result.bimData.elements && result.bimData.elements.length > 0 ? (
+                      {(result as any).bimData.elements && (result as any).bimData.elements.length > 0 ? (
                         <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
-                          {result.bimData.elements.map((element, idx) => (
+                          {(result as any).bimData.elements.map((element: any, idx: number) => (
                             <div key={idx} className="border rounded-md p-2">
                               <p className="font-medium">{element.type}</p>
                               <p className="text-sm">材料: {element.material}</p>
@@ -802,28 +812,28 @@ export function CADResultPanel({
                       <p className="text-sm text-muted-foreground">宽度</p>
                       <Ruler className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <p className="text-lg font-medium mt-1">{result.dimensions.width} {result.dimensions.unit}</p>
+                    <p className="text-lg font-medium mt-1">{result.dimensions?.width ?? '-'} {result.dimensions?.unit ?? ''}</p>
                   </div>
                   <div className="border rounded-md p-3">
                     <div className="flex justify-between items-center">
                       <p className="text-sm text-muted-foreground">高度</p>
                       <Ruler className="h-4 w-4 text-muted-foreground" />
                     </div>
-                    <p className="text-lg font-medium mt-1">{result.dimensions.height} {result.dimensions.unit}</p>
+                    <p className="text-lg font-medium mt-1">{result.dimensions?.height ?? '-'} {result.dimensions?.unit ?? ''}</p>
                   </div>
-                  {result.dimensions.depth !== undefined && (
+                  {result.dimensions?.depth !== undefined && (
                     <div className="border rounded-md p-3">
                       <div className="flex justify-between items-center">
                         <p className="text-sm text-muted-foreground">深度</p>
                         <Ruler className="h-4 w-4 text-muted-foreground" />
                       </div>
-                      <p className="text-lg font-medium mt-1">{result.dimensions.depth} {result.dimensions.unit}</p>
+                      <p className="text-lg font-medium mt-1">{result.dimensions?.depth} {result.dimensions?.unit ?? ''}</p>
                     </div>
                   )}
                 </div>
               </div>
               
-              {result.measurements && result.measurements.length > 0 ? (
+              {(result.measurements || []).length > 0 ? (
                 <div>
                   <h3 className="font-medium text-lg mb-2">详细测量</h3>
                   <div className="border rounded-md overflow-hidden">
@@ -836,11 +846,11 @@ export function CADResultPanel({
                         </tr>
                       </thead>
                       <tbody>
-                        {result.measurements.map((measurement, idx) => (
+                        {(result.measurements || []).map((measurement: any, idx: number) => (
                           <tr key={idx} className="border-t">
-                            <td className="px-4 py-2 text-sm">{measurement.name}</td>
+                            <td className="px-4 py-2 text-sm">{measurement.name || measurement.type}</td>
                             <td className="px-4 py-2 text-sm font-medium">{measurement.value}</td>
-                            <td className="px-4 py-2 text-sm">{measurement.unit || result.dimensions.unit}</td>
+                            <td className="px-4 py-2 text-sm">{measurement.unit || result.dimensions?.unit || ''}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -853,19 +863,19 @@ export function CADResultPanel({
                 </div>
               )}
               
-              {result.volume !== undefined && (
+              {(result as any).volume !== undefined && (
                 <div className="border rounded-md p-4">
                   <h3 className="font-medium text-md mb-1">体积估算</h3>
                   <div className="flex items-center">
                     <BarChart className="h-5 w-5 text-primary mr-2" />
                     <p className="text-lg font-medium">
-                      {result.volume} {result.dimensions.unit === 'mm' ? 'mm³' : 'm³'}
+                      {(result as any).volume} {result.dimensions?.unit === 'mm' ? 'mm³' : 'm³'}
                     </p>
                   </div>
-                  {result.estimatedWeight !== undefined && (
+                  {(result as any).estimatedWeight !== undefined && (
                     <div className="mt-2 pt-2 border-t">
                       <p className="text-sm text-muted-foreground">估计重量</p>
-                      <p className="font-medium">{result.estimatedWeight.value} {result.estimatedWeight.unit}</p>
+                      <p className="font-medium">{(result as any).estimatedWeight.value} {(result as any).estimatedWeight.unit}</p>
                     </div>
                   )}
                 </div>
@@ -879,7 +889,7 @@ export function CADResultPanel({
             <div className="space-y-4">
               <Card>
                 <CardHeader>
-                  <CardTitle>{getDomainDisplayName(domainAnalysis.domain)}专业分析</CardTitle>
+                  <CardTitle>{getDomainDisplayName((domainAnalysis as any).domain)}专业分析</CardTitle>
                   <CardDescription>
                     专业领域分析结果和专家建议
                   </CardDescription>
@@ -890,7 +900,7 @@ export function CADResultPanel({
                       <div>
                         <h3 className="text-md font-medium mb-3">专业见解</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                          {domainAnalysis.insights.map((insight, idx) => (
+                          {domainAnalysis.insights.map((insight: any, idx: number) => (
                             <div key={idx} className="border rounded-md p-3">
                               <h4 className="font-medium">{insight.title}</h4>
                               <p className="text-sm text-muted-foreground mt-1">
@@ -927,7 +937,7 @@ export function CADResultPanel({
                               </tr>
                             </thead>
                             <tbody>
-                              {domainAnalysis.standards.map((standard, idx) => (
+                              {domainAnalysis.standards.map((standard: any, idx: number) => (
                                 <tr key={idx} className="border-t">
                                   <td className="px-4 py-2 text-sm">{standard.name}</td>
                                   <td className="px-4 py-2">
@@ -955,7 +965,7 @@ export function CADResultPanel({
                           {Object.entries(domainAnalysis.metrics).map(([key, value], idx) => (
                             <div key={idx} className="border rounded-md p-3">
                               <p className="text-xs text-muted-foreground">{key}</p>
-                              <p className="text-lg font-medium mt-1">{value}</p>
+                              <p className="text-lg font-medium mt-1">{String(value)}</p>
                             </div>
                           ))}
                         </div>
@@ -972,7 +982,7 @@ export function CADResultPanel({
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
-                      {domainAnalysis.expertRecommendations.map((recommendation, idx) => (
+                      {domainAnalysis.expertRecommendations.map((recommendation: string, idx: number) => (
                         <div key={idx} className="bg-secondary p-3 rounded-md">
                           <div className="flex">
                             <Info className="h-5 w-5 text-primary mr-2 flex-shrink-0" />

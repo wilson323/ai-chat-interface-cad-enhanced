@@ -343,7 +343,7 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
       try {
         const result = await FastGPTApi.testConnection()
 
-        if (result.success) {
+        if ((result as any).ok) {
           toast({
             title: "API configuration successful",
             description: "Successfully connected to FastGPT API",

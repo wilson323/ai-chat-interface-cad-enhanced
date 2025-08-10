@@ -802,7 +802,7 @@ let preloadManagerInstance: PreloadManager | null = null
 export function getPreloadManager(config?: Partial<PreloadConfig>): PreloadManager {
   if (typeof window === "undefined") {
     // 服务器端返回一个空实现
-    return {
+    return ({
       preloadImage: () => Promise.resolve(new Image()),
       preloadScript: () => Promise.resolve(document.createElement("script")),
       preloadStyle: () => Promise.resolve(document.createElement("link")),
@@ -822,7 +822,7 @@ export function getPreloadManager(config?: Partial<PreloadConfig>): PreloadManag
         cacheSize: 0,
       }),
       clearCache: () => {},
-    } as PreloadManager
+    } as unknown) as PreloadManager
   }
 
   if (!preloadManagerInstance) {

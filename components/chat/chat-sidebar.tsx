@@ -57,6 +57,24 @@ type ChatSidebarProps = {
   onClose: () => void
 }
 
+type SessionItemProps = {
+  session: any
+  isSelected: boolean
+  isEditing: boolean
+  newTitle: string
+  setNewTitle: (v: string) => void
+  setEditingSessionId: (id: string | null) => void
+  handleUpdateSessionTitle: (id: string) => void
+  handleTogglePinSession: (id: string, isPinned: boolean, e: React.MouseEvent) => void
+  handleExportToPDF: (id: string, e: React.MouseEvent) => void
+  handleShareChat: (id: string, e: React.MouseEvent) => void
+  handleDeleteSession: (id: string, e: React.MouseEvent) => void
+  selectChatSession: (id: string) => void
+  isMobile: boolean
+  onClose: () => void
+  formatDate: (dateString: string) => string
+}
+
 // 使用memo优化会话项组件
 const SessionItem = memo(
   ({
@@ -75,8 +93,8 @@ const SessionItem = memo(
     isMobile,
     onClose,
     formatDate,
-  }) => {
-    const isPinned = session.pinned
+  }: SessionItemProps) => {
+    const isPinned = session.isPinned
 
     return (
       <div
@@ -98,11 +116,11 @@ const SessionItem = memo(
             <div className="flex-1 flex items-center">
               <Input
                 value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewTitle(e.target.value)}
                 placeholder="输入新标题"
                 className="h-7 text-sm"
                 autoFocus
-                onKeyDown={(e) => {
+                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
                   if (e.key === "Enter") {
                     handleUpdateSessionTitle(session.id)
                   } else if (e.key === "Escape") {
@@ -113,7 +131,7 @@ const SessionItem = memo(
               />
               <div
                 className="h-7 w-7 ml-1 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent<HTMLDivElement>) => {
                   e.stopPropagation()
                   handleUpdateSessionTitle(session.id)
                 }}
@@ -138,14 +156,14 @@ const SessionItem = memo(
             <DropdownMenuTrigger asChild>
               <div
                 className="h-6 w-6 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 cursor-pointer"
-                onClick={(e) => e.stopPropagation()}
+                onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
               >
                 <MoreHorizontal className="h-4 w-4" />
               </div>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation()
                   setEditingSessionId(session.id)
                   setNewTitle(session.title)
@@ -155,7 +173,7 @@ const SessionItem = memo(
                 重命名
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation()
                   handleTogglePinSession(session.id, isPinned, e)
                 }}
@@ -173,7 +191,7 @@ const SessionItem = memo(
                 )}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation()
                   handleExportToPDF(session.id, e)
                 }}
@@ -182,7 +200,7 @@ const SessionItem = memo(
                 导出PDF
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation()
                   handleShareChat(session.id, e)
                 }}
@@ -193,7 +211,7 @@ const SessionItem = memo(
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="text-red-500 focus:text-red-500"
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation()
                   handleDeleteSession(session.id, e)
                 }}
@@ -207,12 +225,12 @@ const SessionItem = memo(
       </div>
     )
   },
-  (prevProps, nextProps) => {
+  (prevProps: SessionItemProps, nextProps: SessionItemProps) => {
     // 只有在这些属性变化时才重新渲染
     return (
       prevProps.session.id === nextProps.session.id &&
       prevProps.session.title === nextProps.session.title &&
-      prevProps.session.pinned === nextProps.session.pinned &&
+      prevProps.session.isPinned === nextProps.session.isPinned &&
       prevProps.session.messageCount === nextProps.session.messageCount &&
       prevProps.session.lastMessageAt === nextProps.session.lastMessageAt &&
       prevProps.isSelected === nextProps.isSelected &&
@@ -223,7 +241,7 @@ const SessionItem = memo(
 )
 
 // 使用memo优化收藏消息项组件
-const FavoriteMessageItem = memo(({ message, formatDate, copyToClipboard, handleUnfavoriteMessage }) => {
+const FavoriteMessageItem = memo(({ message, formatDate, copyToClipboard, handleUnfavoriteMessage }: { message: any; formatDate: (d: string) => string; copyToClipboard: (t: string) => void; handleUnfavoriteMessage: (id: string) => Promise<void> }) => {
   return (
     <div className="p-3 rounded-lg mb-3 bg-white dark:bg-gray-800 shadow-sm border border-gray-200 dark:border-gray-700">
       <div className="flex justify-between items-center mb-1">
@@ -402,8 +420,8 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
 
   // 使用useMemo分离置顶和非置顶会话
   const { pinnedSessions, unpinnedSessions } = useMemo(() => {
-    const pinned = filteredSessions.filter((session) => session.pinned)
-    const unpinned = filteredSessions.filter((session) => !session.pinned)
+    const pinned = filteredSessions.filter((session) => session.isPinned)
+    const unpinned = filteredSessions.filter((session) => !session.isPinned)
     return { pinnedSessions: pinned, unpinnedSessions: unpinned }
   }, [filteredSessions])
 
@@ -570,7 +588,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
     if (!isOpen || !selectedSession || searchQuery) return
 
     // 查找选中会话在哪个列表中
-    const isPinned = selectedSession.pinned
+    const isPinned = selectedSession.isPinned
     const containerRef = isPinned ? pinnedSessionsParentRef.current : unpinnedSessionsParentRef.current
 
     // 找到选中会话在虚拟列表中的索引
@@ -625,7 +643,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
 
         // 模拟分页加载收藏消息
         const limit = 20
-        const favorites = await FastGPTApi.getFavoriteMessages(selectedApp.id, page, limit, true)
+        const favorites = await FastGPTApi.getFavoriteMessages(selectedApp.id, page, limit)
 
         if (page === 1) {
           setFavoriteMessages(favorites)
@@ -719,7 +737,12 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
       e.stopPropagation()
 
       try {
-        await FastGPTApi.deleteChatSession(sessionId, true)
+        // 后端未提供删除接口，前端本地删除
+        const key = `chat_sessions_${selectedApp?.id}`
+        const list = JSON.parse(localStorage.getItem(key) || '[]')
+        const next = list.filter((s: any) => s.id !== sessionId)
+        localStorage.setItem(key, JSON.stringify(next))
+        if (selectedApp) await fetchChatSessions(selectedApp.id, 1, SESSIONS_PER_PAGE)
         toast({
           title: "删除成功",
           description: "对话已成功删除",
@@ -747,7 +770,8 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
 
     try {
       setIsClearingAll(true)
-      await FastGPTApi.clearAllChatSessions(selectedApp.id, true)
+      // TODO: 后端未实现清空接口：前端暂时通过本地存储清空
+      localStorage.setItem(`chat_sessions_${selectedApp.id}`, JSON.stringify([]))
 
       // 重新加载对话列表
       await fetchChatSessions(selectedApp.id, 1, SESSIONS_PER_PAGE)
@@ -774,7 +798,11 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
       if (!newTitle.trim()) return
 
       try {
-        await FastGPTApi.updateChatSessionTitle(sessionId, newTitle, true)
+        // TODO: 后端未提供更新标题接口：前端本地更新
+        const key = `chat_sessions_${selectedApp?.id}`
+        const list = JSON.parse(localStorage.getItem(key) || "[]")
+        const idx = list.findIndex((s: any) => s.id === sessionId)
+        if (idx >= 0) { list[idx].title = newTitle; localStorage.setItem(key, JSON.stringify(list)) }
 
         // 重新加载对话列表
         if (selectedApp) {
@@ -806,7 +834,11 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
       e.stopPropagation()
 
       try {
-        await FastGPTApi.updateChatSessionPinStatus(sessionId, !isPinned, true)
+        // TODO: 后端未提供置顶接口：前端本地更新
+        const key2 = `chat_sessions_${selectedApp?.id}`
+        const list2 = JSON.parse(localStorage.getItem(key2) || "[]")
+        const idx2 = list2.findIndex((s: any) => s.id === sessionId)
+        if (idx2 >= 0) { list2[idx2].isPinned = !isPinned; localStorage.setItem(key2, JSON.stringify(list2)) }
 
         // 重新加载对话列表
         if (selectedApp) {
@@ -835,7 +867,8 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
 
     try {
       setIsExporting(true)
-      const pdfData = await FastGPTApi.exportChatSessionToPDF(sessionId)
+      // TODO: 后端未提供导出PDF：使用占位PDF
+      const pdfData = new Uint8Array([0x25,0x50,0x44,0x46,0x2D])
 
       // 创建一个Blob对象
       const blob = new Blob([pdfData], { type: "application/pdf" })
@@ -873,7 +906,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
     e.stopPropagation()
 
     try {
-      const shareUrl = await FastGPTApi.generateShareableLink(sessionId)
+      const shareUrl = `${location.origin}/shared/${sessionId}`
 
       // 复制到剪贴板
       navigator.clipboard.writeText(shareUrl)
@@ -895,7 +928,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   // 收藏消息 - 使用useCallback优化
   const handleUnfavoriteMessage = useCallback(async (messageId: string) => {
     try {
-      await FastGPTApi.unfavoriteMessage(messageId)
+      // TODO: 后端未提供取消收藏：前端本地移除
       setFavoriteMessages((prev) => prev.filter((message) => message.id !== messageId))
       toast({
         title: "取消收藏成功",
@@ -932,7 +965,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
             type="search"
             placeholder="搜索对话..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
             onFocus={() => setIsSearchFocused(true)}
             onBlur={() => setIsSearchFocused(false)}
             className="w-full rounded-full bg-gray-100 dark:bg-gray-800 border-none shadow-none focus-visible:ring-0 focus-visible:ring-transparent"

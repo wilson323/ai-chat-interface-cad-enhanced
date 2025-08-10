@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { CADViewer3D } from './renderer/CADViewer3D';
 import { CADResultPanel } from './renderer/CADResultPanel';
 import { useCADAnalyzerService } from '@/hooks/useCADAnalyzerService';
-import { CADAnalysisResult } from '@/lib/services/cad-analyzer-service';
+import { CADAnalysisResult } from '@/lib/types/cad';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -117,7 +117,17 @@ export function CADAnalyzerContainer() {
         }
       );
       
-      setResult(analysisResult);
+      const normalized: any = {
+        ...analysisResult,
+        fileName: file.name,
+        fileType: file.name.split('.').pop()?.toLowerCase() || '',
+        fileSize: file.size,
+        dimensions: (analysisResult as any).dimensions ?? { width: 0, height: 0, unit: 'mm' },
+        layers: (analysisResult as any).layers ?? [],
+        components: (analysisResult as any).components ?? [],
+        measurements: (analysisResult as any).measures ?? [],
+      }
+      setResult(normalized as CADAnalysisResult);
       setActiveTab('result');
     } catch (error) {
       console.error('上传和分析文件出错:', error);
@@ -141,7 +151,7 @@ export function CADAnalyzerContainer() {
       .then(reportUrl => {
         window.open(reportUrl, '_blank');
       })
-      .catch(error => {
+      .catch((error: any) => {
         console.error('生成报告出错:', error);
       });
   };
@@ -160,7 +170,7 @@ export function CADAnalyzerContainer() {
             console.error('复制失败:', err);
           });
       })
-      .catch(error => {
+      .catch((error: any) => {
         console.error('分享分析结果出错:', error);
       });
   };
