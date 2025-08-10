@@ -11,6 +11,7 @@ const InputOTP = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof OTPInput>
 >(({ className, containerClassName, ...props }, ref) => (
   <OTPInput
+    maxLength={6}
     ref={ref}
     containerClassName={cn(
       "flex items-center gap-2 has-[:disabled]:opacity-50",

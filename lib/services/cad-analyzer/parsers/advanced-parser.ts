@@ -360,7 +360,7 @@ export class AdvancedCADParser {
     };
     
     // DWG通常没有材质
-    const materials: Array<{ name: string; color?: string }> = [];
+    const materials: CADMaterial[] = [];
     
     // 组装结果
     return {
@@ -438,7 +438,7 @@ export class AdvancedCADParser {
     };
     
     // DXF通常没有材质
-    const materials: Array<{ name: string; color?: string }> = [];
+    const materials: CADMaterial[] = [];
     
     // 组装结果
     return {
@@ -592,9 +592,9 @@ export class AdvancedCADParser {
     };
     
     // 生成材质列表
-    const materials = hasMaterialLib ? 
-      this.generateSampleMaterials() : 
-      [{ name: '默认材质', color: '#DDDDDD' }];
+    const materials: CADMaterial[] = hasMaterialLib ? 
+      this.generateSampleMaterials() as CADMaterial[] : 
+      [{ name: '默认材质', color: '#DDDDDD' } as CADMaterial];
     
     // 组装结果
     return {

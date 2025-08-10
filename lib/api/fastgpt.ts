@@ -1,4 +1,4 @@
-import axios from "axios"
+import axios, { AxiosResponse, AxiosRequestConfig } from "axios"
 import { DEFAULT_API_CONFIG, STORAGE_KEYS, PROXY_CONFIG, ERROR_MESSAGES, MODEL_TYPES } from "@/config/fastgpt"
 // This is a client-side file, so we don't use any sensitive environment variables here
 import { v4 as uuidv4 } from "uuid"
@@ -342,28 +342,28 @@ const originalGet = apiClient.get
 apiClient.get = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] GET: Original path ${url} -> Adapted path ${adaptedUrl}`)
-  return originalGet.call(this, adaptedUrl, config)
+  return originalGet.call(this, adaptedUrl, config) as unknown as Promise<R>
 }
 
 const originalPost = apiClient.post
 apiClient.post = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] POST: Original path ${url} -> Adapted path ${adaptedUrl}`)
-  return originalPost.call(this, adaptedUrl, data, config)
+  return originalPost.call(this, adaptedUrl, data, config) as unknown as Promise<R>
 }
 
 const originalPut = apiClient.put
 apiClient.put = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] PUT: Original path ${url} -> Adapted path ${adaptedUrl}`)
-  return originalPut.call(this, adaptedUrl, data, config)
+  return originalPut.call(this, adaptedUrl, data, config) as unknown as Promise<R>
 }
 
 const originalDelete = apiClient.delete
 apiClient.delete = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] DELETE: Original path ${url} -> Adapted path ${adaptedUrl}`)
-  return originalDelete.call(this, adaptedUrl, config)
+  return originalDelete.call(this, adaptedUrl, config) as unknown as Promise<R>
 }
 
 // Check if API is configured
@@ -443,7 +443,7 @@ const retryRequest = async (
     return await requestFn()
   } catch (error) {
     lastError = error
-    console.log("[API] Direct request failed:", error.message)
+    console.log("[API] Direct request failed:", (error as any)?.message)
   }
 
   // Start retry process
@@ -472,7 +472,7 @@ const retryRequest = async (
     } catch (error) {
       lastError = error
       retryCount++
-      console.log(`[API] Retry ${retryCount}/${maxRetries} failed:`, error.message)
+      console.log(`[API] Retry ${retryCount}/${maxRetries} failed:`, (error as any)?.message)
     }
   }
 
@@ -553,7 +553,7 @@ const FastGPTApi = {
   },
 
   // Test API connection
-  testConnection: async (useProxy = true) => {
+  testConnection: async (useProxy = true): Promise<{ ok: boolean; message: string }> => {
     try {
       // Validate URL format
       const baseUrl = apiClient.defaults.baseURL
@@ -640,44 +640,45 @@ const FastGPTApi = {
       let errorStatus = 0
       let suggestedAction = ""
 
+      const err: any = error as any
       // Handle timeout error
-      if (error.name === "AbortError" || error.code === "ECONNABORTED") {
+      if (err?.name === "AbortError" || err?.code === "ECONNABORTED") {
         errorDetails = ERROR_MESSAGES.TIMEOUT
         errorStatus = 408 // Request Timeout
         suggestedAction = ERROR_MESSAGES.SUGGESTIONS.TRY_PROXY
       }
       // Handle network error
-      else if (error.message && error.message.includes("Network Error")) {
+      else if (err?.message && String(err.message).includes("Network Error")) {
         errorDetails = ERROR_MESSAGES.NETWORK_ERROR
         errorStatus = 0 // Network errors have no HTTP status code
         suggestedAction = ERROR_MESSAGES.SUGGESTIONS.ENABLE_PROXY
       }
       // Handle server returned error
-      else if (error.response) {
-        errorStatus = error.response.status
-        errorDetails = `Server returned error: ${error.response.status} - ${error.response.statusText}`
-        if (error.response.data) {
-          if (typeof error.response.data === "string") {
-            errorDetails += `\n${error.response.data}`
+      else if (err?.response) {
+        errorStatus = err.response.status
+        errorDetails = `Server returned error: ${err.response.status} - ${err.response.statusText}`
+        if (err.response.data) {
+          if (typeof err.response.data === "string") {
+            errorDetails += `\n${err.response.data}`
           } else {
-            errorDetails += `\n${JSON.stringify(error.response.data)}`
+            errorDetails += `\n${JSON.stringify(err.response.data)}`
           }
         }
 
         // Friendly tips for specific status codes
-        if (error.response.status === 401) {
+        if (err.response.status === 401) {
           errorDetails += "\nAPI key is invalid or expired, please check your API key"
           suggestedAction = ERROR_MESSAGES.SUGGESTIONS.CHECK_API_KEY
-        } else if (error.response.status === 403) {
+        } else if (err.response.status === 403) {
           errorDetails += "\nYou don't have permission to access this resource, please check API key permissions"
           suggestedAction = ERROR_MESSAGES.SUGGESTIONS.CHECK_PERMISSIONS
-        } else if (error.response.status === 404) {
+        } else if (err.response.status === 404) {
           errorDetails += "\nAPI endpoint does not exist, please check URL path is correct"
           suggestedAction = ERROR_MESSAGES.SUGGESTIONS.CHECK_URL
         }
       }
       // Handle request error
-      else if (error.request) {
+      else if (err?.request) {
         errorDetails =
           "Request sent but no response received. Possible reasons:\n" +
           "1. Server is not running\n" +
@@ -686,10 +687,10 @@ const FastGPTApi = {
         suggestedAction = ERROR_MESSAGES.SUGGESTIONS.TRY_PROXY
       }
       // Handle other errors
-      else if (error.details) {
-        errorDetails = error.details
-      } else if (error.message) {
-        errorDetails = error.message
+      else if (err?.details) {
+        errorDetails = err.details
+      } else if (err?.message) {
+        errorDetails = err.message
       }
 
       // Check URL format
@@ -707,7 +708,7 @@ const FastGPTApi = {
         message: ERROR_MESSAGES.CONNECTION_FAILED,
         details: errorDetails,
         status: errorStatus,
-        originalError: error.message || ERROR_MESSAGES.UNKNOWN,
+        originalError: (err?.message || ERROR_MESSAGES.UNKNOWN),
         suggestedAction,
       }
     }
@@ -725,7 +726,7 @@ const FastGPTApi = {
 
       return result.data
     } catch (error) {
-      console.error("Failed to get applications list:", error.response?.data || error.message)
+      console.error("Failed to get applications list:", (error as any)?.response?.data || (error as any)?.message)
 
       // Build more detailed error message
       let errorMessage = "Failed to get applications list"

@@ -5,7 +5,7 @@ import type { FastGPTApp, ChatSession, User, ApiConfig } from "@/types/fastgpt"
 import { useToast } from "@/hooks/use-toast"
 import { STORAGE_KEYS, ERROR_MESSAGES } from "@/config/fastgpt"
 import { DEFAULT_AGENT } from "@/config/default-agent"
-import FastGPTClient from "@/lib/api/fastgpt-client"
+import FastGPTApi from "@/lib/api/fastgpt"
 import React from "react"
 
 // FastGPTContextType interface with pagination methods
@@ -188,7 +188,7 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
           console.log(`Setting API config with proxy mode: ${useProxy}`)
 
           // Update FastGPT client configuration
-          FastGPTClient.setConfig(apiConfig.apiKey, apiConfig.baseUrl, useProxy)
+          FastGPTApi.setApiConfig(apiConfig.baseUrl, apiConfig.apiKey, useProxy)
           setIsConfigured(true)
         }
 
@@ -330,15 +330,18 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
 
       // Set API configuration in client
-      FastGPTClient.setConfig(apiKey, baseUrl, useProxy === undefined ? true : useProxy)
+      FastGPTApi.setApiConfig(baseUrl, apiKey, useProxy === undefined ? true : useProxy)
 
-      // Save to local storage
-      const config = { baseUrl, apiKey, useProxy: useProxy === undefined ? true : useProxy }
+      // Save to local storage，带默认/原则模型（若已有）
+      const localCfgRaw = localStorage.getItem(STORAGE_KEYS.API_CONFIG)
+      let prevExtra: any = {}
+      try { prevExtra = localCfgRaw ? JSON.parse(localCfgRaw) : {} } catch {}
+      const config = { baseUrl, apiKey, useProxy: useProxy === undefined ? true : useProxy, defaultModel: prevExtra.defaultModel, principleModel: prevExtra.principleModel }
       localStorageDB.saveApiConfig(config)
 
       // Test connection
       try {
-        const result = await FastGPTClient.testConnection()
+        const result = await FastGPTApi.testConnection()
 
         if (result.success) {
           toast({

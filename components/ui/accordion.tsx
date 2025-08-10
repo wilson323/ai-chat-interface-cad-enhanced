@@ -15,6 +15,7 @@ const AccordionItem = React.forwardRef<
   <AccordionPrimitive.Item
     ref={ref}
     className={cn("border-b", className)}
+    value={(props as any).value ?? Math.random().toString(36).slice(2)}
     {...props}
   />
 ))

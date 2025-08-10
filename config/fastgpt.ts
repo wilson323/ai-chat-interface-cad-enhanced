@@ -23,7 +23,7 @@ export const DEFAULT_API_CONFIG = {
 export const FastGPTConfig = {
   apiUrl: "https://api.fastgpt.in",
   apiKey: "", // Empty string, will be filled by server-side code
-  defaultModel: "gpt-3.5-turbo",
+  defaultModel: "qwen-turbo",
   defaultAgentId: "", // Default agent ID
   useProxy: true, // Whether to use proxy
   maxTokens: 2048,

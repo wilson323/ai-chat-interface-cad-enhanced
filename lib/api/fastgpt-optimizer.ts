@@ -203,7 +203,7 @@ export class FastGPTOptimizer {
             return cachedResult
           }
         } catch (error) {
-          this.log("error", `Cache error for ${effectiveCacheKey}: ${error.message}`)
+          this.log("error", `Cache error for ${effectiveCacheKey}: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
 
@@ -287,7 +287,7 @@ export class FastGPTOptimizer {
     } catch (error) {
       // 记录请求失败
       const responseTime = Date.now() - requestStartTime
-      this.recordRequest(endpoint, false, responseTime, error.message)
+      this.recordRequest(endpoint, false, responseTime, error instanceof Error ? error.message : String(error))
 
       throw error
     }
@@ -545,13 +545,13 @@ export class FastGPTOptimizer {
             tags: cacheTags,
           })
         } catch (error) {
-          this.log("error", `Error caching result for ${cacheKey}: ${error.message}`)
+          this.log("error", `Error caching result for ${cacheKey}: ${error instanceof Error ? error.message : String(error)}`)
         }
       }
 
       return result
     } catch (error) {
-      this.log("error", `Error executing request to ${endpoint}: ${error.message}`)
+      this.log("error", `Error executing request to ${endpoint}: ${error instanceof Error ? error.message : String(error)}`)
       throw error
     }
   }
@@ -593,10 +593,10 @@ export class FastGPTOptimizer {
     this.requestCount++
     this.failureRate = this.requestCount > 0 ? (this.requestCount - this.successCount) / this.requestCount : 0
 
-    this.log("error", `Request ${id} failed in ${responseTime}ms: ${error.message}`)
+    this.log("error", `Request ${id} failed in ${responseTime}ms: ${error instanceof Error ? error.message : String(error)}`)
 
     // 记录请求失败
-    this.recordRequest(endpoint, false, responseTime, error.message)
+    this.recordRequest(endpoint, false, responseTime, error instanceof Error ? error.message : String(error))
 
     // 检查是否应该重试
     if (retries < this.config.maxRetries) {
@@ -838,7 +838,7 @@ export class FastGPTOptimizer {
       this.recordRequest(endpoint, true, responseTime, undefined, batch.length)
     } catch (error) {
       // 记录批处理请求失败
-      this.recordRequest(endpoint, false, 0, error.message, batch.length)
+      this.recordRequest(endpoint, false, 0, error instanceof Error ? error.message : String(error), batch.length)
 
       // 处理错误
       for (const requestItem of batch) {
@@ -926,7 +926,7 @@ export class FastGPTOptimizer {
               tags: requestItem.cacheTags,
             })
           } catch (error) {
-            this.log("error", `Error caching result for ${requestItem.cacheKey}: ${error.message}`)
+            this.log("error", `Error caching result for ${requestItem.cacheKey}: ${error instanceof Error ? error.message : String(error)}`)
           }
         }
 
@@ -961,7 +961,7 @@ export class FastGPTOptimizer {
                 tags: requestItem.cacheTags,
               })
             } catch (error) {
-              this.log("error", `Error caching result for ${requestItem.cacheKey}: ${error.message}`)
+              this.log("error", `Error caching result for ${requestItem.cacheKey}: ${error instanceof Error ? error.message : String(error)}`)
             }
           }
 
@@ -1002,7 +1002,7 @@ export class FastGPTOptimizer {
               tags: requestItem.cacheTags,
             })
           } catch (error) {
-            this.log("error", `Error caching result for ${requestItem.cacheKey}: ${error.message}`)
+            this.log("error", `Error caching result for ${requestItem.cacheKey}: ${error instanceof Error ? error.message : String(error)}`)
           }
         }
 
@@ -1149,7 +1149,7 @@ export class FastGPTOptimizer {
   /**
    * 执行健康检查
    */
-  private async performHealthCheck(): void {
+  private async performHealthCheck(): Promise<void> {
     this.lastHealthCheck = Date.now()
 
     // 检查失败率

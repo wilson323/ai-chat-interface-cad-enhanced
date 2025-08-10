@@ -21,7 +21,7 @@ export function useModelFetcher() {
         if (!apiConfigured) {
           console.log("API not configured, using default models");
           setModels([
-            { id: "default-model", name: "Default Model", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
+            { id: "qwen-turbo", name: "Qwen Turbo", provider: "qwen", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
             { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "openai", maxTokens: 16385, price: 0, available: true, features: ["chat"] },
             { id: "gpt-4", name: "GPT-4", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
           ]);
@@ -48,7 +48,7 @@ export function useModelFetcher() {
           variant: "destructive",
         });
         setModels([
-          { id: "default-model", name: "Default Model", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
+          { id: "qwen-turbo", name: "Qwen Turbo", provider: "qwen", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
           { id: "gpt-3.5-turbo", name: "GPT-3.5 Turbo", provider: "openai", maxTokens: 16385, price: 0, available: true, features: ["chat"] },
           { id: "gpt-4", name: "GPT-4", provider: "openai", maxTokens: 8192, price: 0, available: true, features: ["chat"] },
         ]);

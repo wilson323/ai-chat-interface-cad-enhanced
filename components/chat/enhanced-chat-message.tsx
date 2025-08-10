@@ -11,7 +11,7 @@ import { useMobile } from "@/hooks/use-mobile"
 
 interface Message {
   id: string
-  role: "user" | "assistant" | "system"
+  role: "user" | "assistant" | "system" | "tool"
   content: string
   timestamp: Date
   isFavorite?: boolean
@@ -27,6 +27,8 @@ interface EnhancedChatMessageProps {
   onFeedback?: (messageId: string, type: "like" | "dislike", comment?: string) => void
   onFavorite?: (messageId: string) => void
   formatTime?: (date: Date) => string
+  isLoading?: boolean
+  currentStreamContent?: string
 }
 
 export function EnhancedChatMessage({
@@ -38,7 +40,7 @@ export function EnhancedChatMessage({
   onCopy,
   onFeedback,
   onFavorite,
-  formatTime = (date) => date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+  formatTime = (date: Date) => date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
 }: EnhancedChatMessageProps) {
   const [showActions, setShowActions] = useState(false)
   const isMobile = useMobile()

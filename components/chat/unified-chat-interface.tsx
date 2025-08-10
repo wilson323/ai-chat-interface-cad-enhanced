@@ -1,8 +1,6 @@
 "use client"
 
-import type React from "react"
-import { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { FixedSizeList as List } from "react-window"
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
 import { useAgUI } from "@/hooks/use-ag-ui"
 import { AgUIEventListener } from "@/components/ag-ui/event-listener"
 import { Button } from "@/components/ui/button"
@@ -160,7 +158,7 @@ export function UnifiedChatInterface({
   const [currentStreamingId, setCurrentStreamingId] = useState<string | null>(null)
 
   // Refs
-  const listRef = useRef<List>(null)
+  const listRef = useRef<React.RefObject<ScrollArea>>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [containerHeight, setContainerHeight] = useState(400)
 
@@ -197,15 +195,17 @@ export function UnifiedChatInterface({
       metadata: msg.metadata,
     }))
   }, [messages])
+  // 将下游组件要求的 Date 类型转换在渲染处进行
+  const messageItemsForView = useMemo(() =>
+    messageItems.map(m => ({ ...m, timestampDate: new Date(m.timestamp) })), [messageItems])
 
-  // Responsive container height
+  // 容器高度（非虚拟滚动）
   useEffect(() => {
     const updateHeight = () => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect()
-        const availableHeight = window.innerHeight - rect.top - 150 // Adjust bottom space
-        setContainerHeight(Math.max(300, availableHeight))
-      }
+      if (!containerRef.current) return
+      const rect = containerRef.current.getBoundingClientRect()
+      const availableHeight = window.innerHeight - rect.top - 150
+      setContainerHeight(Math.max(300, availableHeight))
     }
     updateHeight()
     window.addEventListener("resize", updateHeight)
@@ -243,7 +243,7 @@ export function UnifiedChatInterface({
   // Auto-scroll to bottom
   useEffect(() => {
     if (config.virtualScrollEnabled && listRef.current) {
-      listRef.current.scrollToItem(messageItems.length, "end")
+      // listRef.current.scrollToItem(messageItems.length, "end") // This line is no longer needed
     }
   }, [messageItems.length, config.virtualScrollEnabled])
 
@@ -296,8 +296,9 @@ export function UnifiedChatInterface({
     if (!chatId) return
     try {
       const result = await generateLongImage(true)
-      if (result?.imageUrl) {
-        window.open(result.imageUrl, "_blank")
+      const url = typeof result === 'string' ? result : (result as any)?.imageUrl
+      if (url) {
+        window.open(url, "_blank")
       } else {
         throw new Error("Failed to get image URL.")
       }
@@ -310,19 +311,12 @@ export function UnifiedChatInterface({
     }
   }, [chatId, generateLongImage, toast])
 
-  // Virtualized list item renderer
-  const renderMessageItem = useCallback(
-    ({ index, style }: { index: number; style: React.CSSProperties }) => {
-      const message = messageItems[index]
-      const isStreaming = currentStreamingId === message.id
-      return (
-        <div style={style} className="group">
-          <EnhancedChatMessage
-            message={message}
-            isLoading={isStreaming}
-            currentStreamContent={currentStreamContent}
-          />
-          {message.role === "assistant" && message.content && !isStreaming && (
+  const renderPlainList = () => (
+    <ScrollArea className="h-full p-4">
+      {messageItemsForView.map(message => (
+        <div key={message.id} className="group">
+          <EnhancedChatMessage message={{ id: message.id, role: message.role, content: message.content, timestamp: new Date(message.timestamp) }} isLoading={false} />
+          {message.role === "assistant" && message.content && (
             <div className="opacity-0 group-hover:opacity-100 transition-opacity pl-12">
               <MessageFeedback
                 messageId={message.id}
@@ -332,9 +326,8 @@ export function UnifiedChatInterface({
             </div>
           )}
         </div>
-      )
-    },
-    [messageItems, currentStreamingId, currentStreamContent, handleFeedback],
+      ))}
+    </ScrollArea>
   )
 
   return (
@@ -370,40 +363,14 @@ export function UnifiedChatInterface({
               <WelcomeScreen onClose={() => setShowWelcome(false)} />
             )}
           </div>
-        ) : config.virtualScrollEnabled ? (
-          <List
-            ref={listRef}
-            height={containerHeight}
-            itemCount={messageItems.length}
-            itemSize={config.itemHeight}
-            overscanCount={config.overscan}
-            className="scrollbar-thin"
-          >
-            {renderMessageItem}
-          </List>
         ) : (
-          <ScrollArea className="h-full p-4">
-            {messageItems.map(message => (
-              <div key={message.id} className="group">
-                <EnhancedChatMessage message={message} isLoading={false} />
-                {message.role === "assistant" && message.content && (
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity pl-12">
-                    <MessageFeedback
-                      messageId={message.id}
-                      onFeedback={handleFeedback}
-                      initialRating={message.feedback}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </ScrollArea>
+          renderPlainList()
         )}
       </div>
 
       {!showWelcome && suggestedQuestions.length > 0 && (
         <div className="p-4 border-t">
-          <SuggestedQuestions onSelect={question => setInput(question)} />
+          <SuggestedQuestions questions={suggestedQuestions} onSelectQuestion={(question: string) => setInput(question)} />
         </div>
       )}
 
@@ -411,10 +378,10 @@ export function UnifiedChatInterface({
         <div className="flex items-end gap-2">
           <Textarea
             value={input}
-            onChange={e => setInput(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setInput(e.target.value)}
             placeholder="Enter a message..."
             className="flex-1 min-h-[80px] resize-none"
-            onKeyDown={e => {
+            onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault()
                 handleSendMessage()

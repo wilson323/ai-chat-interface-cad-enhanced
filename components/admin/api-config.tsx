@@ -14,12 +14,17 @@ import { DEFAULT_API_CONFIG } from "@/config/fastgpt"
 import { DEFAULT_AGENT } from "@/config/default-agent"
 import { AlertCircle, CheckCircle2, RefreshCw, Key, Globe, Shield } from "lucide-react"
 import { motion } from "framer-motion"
+import { useModelFetcher } from "@/hooks/use-model-fetcher"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 export function ApiConfig() {
   const { configureApi, isConfigured, isLoading, initializeDefaultAgent } = useFastGPT()
+  const { models } = useModelFetcher()
   const [apiUrl, setApiUrl] = useState("")
   const [apiKey, setApiKey] = useState("")
   const [useProxy, setUseProxy] = useState(true) // 默认开启代理
+  const [defaultModel, setDefaultModel] = useState<string>("qwen-turbo")
+  const [principleModel, setPrincipleModel] = useState<string>("qwen-turbo")
   const [testStatus, setTestStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [testMessage, setTestMessage] = useState("")
   const [activeTab, setActiveTab] = useState("config")
@@ -38,6 +43,8 @@ export function ApiConfig() {
             setApiKey(config.apiKey || "")
             // 如果明确设置了useProxy，则使用该值，否则默认为true
             setUseProxy(config.useProxy === undefined ? true : config.useProxy)
+            if (config.defaultModel) setDefaultModel(config.defaultModel)
+            if (config.principleModel) setPrincipleModel(config.principleModel)
           } catch (e) {
             console.error("解析本地存储的API配置失败:", e)
             setApiUrl(DEFAULT_API_CONFIG.baseUrl)
@@ -67,7 +74,7 @@ export function ApiConfig() {
 
     try {
       // 保存到本地存储
-      const config = { baseUrl: apiUrl, apiKey, useProxy }
+      const config = { baseUrl: apiUrl, apiKey, useProxy, defaultModel, principleModel }
       localStorage.setItem("ai_chat_api_config", JSON.stringify(config))
       console.log("API配置已保存到本地存储")
 
@@ -177,6 +184,35 @@ export function ApiConfig() {
                   </p>
                 </div>
 
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">默认模型</Label>
+                    <Select value={defaultModel} onValueChange={setDefaultModel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择默认模型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {models.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.name} ({m.provider})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-1">原则模型</Label>
+                    <Select value={principleModel} onValueChange={setPrincipleModel}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="选择原则模型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {models.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>{m.name} ({m.provider})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
                 <div className="flex items-center space-x-2">
                   <Switch id="useProxy" checked={useProxy} onCheckedChange={setUseProxy} />
                   <Label htmlFor="useProxy" className="flex items-center gap-1 cursor-pointer">
@@ -211,6 +247,8 @@ export function ApiConfig() {
                     setApiUrl(DEFAULT_API_CONFIG.baseUrl)
                     setApiKey("")
                     setUseProxy(true) // 重置为默认开启代理
+                    setDefaultModel("qwen-turbo")
+                    setPrincipleModel("qwen-turbo")
                     // 重置时也保存到本地存储
                     localStorage.setItem(
                       "ai_chat_api_config",
@@ -218,6 +256,8 @@ export function ApiConfig() {
                         baseUrl: DEFAULT_API_CONFIG.baseUrl,
                         apiKey: "",
                         useProxy: true, // 默认开启代理
+                        defaultModel: "qwen-turbo",
+                        principleModel: "qwen-turbo",
                       }),
                     )
                   }}

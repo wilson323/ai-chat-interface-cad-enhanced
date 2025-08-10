@@ -10,7 +10,7 @@
 
 import * as React from 'react'
 import { useState, useCallback } from 'react'
-import { HttpAgent } from "@ag-ui/client"
+import { FastGptAgUiAdapter } from "@/lib/api/fastgpt-ag-ui-adapter"
 
 export function useAgUiCad() {
   const [result, setResult] = useState<any>(null)
@@ -22,25 +22,21 @@ export function useAgUiCad() {
     setError(null)
 
     try {
-      // 创建AG-UI Agent
-      const agent = new HttpAgent({
-        url: `/api/ag-ui/cad-analysis`,
-        headers: {},
-      })
+      const threadId = `thread_${Date.now()}`
+      const runId = `run_${crypto?.randomUUID?.() || Date.now()}`
+      const agent = new FastGptAgUiAdapter(threadId, runId)
 
       // 准备表单数据
       const formData = new FormData()
       formData.append("file", file)
-      formData.append("threadId", `thread_${Date.now()}`)
-      formData.append("runId", `run_${Date.now()}`)
+      formData.append("threadId", threadId)
+      formData.append("runId", runId)
 
-      // 运行Agent
-      const response = await agent.runAgent({
-        forwardedProps: { formData },
-      })
+      const resp = await fetch('/api/ag-ui/cad-analysis', { method: 'POST', body: formData })
+      const response = await resp.json()
 
       // 从Agent状态中提取CAD分析结果
-      const analysisResult = response.state.analysisResult || {}
+      const analysisResult = response?.data?.analysisResult || response?.analysisResult || {}
       setResult(analysisResult)
     } catch (err) {
       console.error("CAD分析错误:", err)

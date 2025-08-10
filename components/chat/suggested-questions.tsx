@@ -9,9 +9,10 @@ interface SuggestedQuestionsProps {
   questions: string[]
   onSelectQuestion: (question: string) => void
   className?: string
+  onSelect?: (question: string) => void
 }
 
-export function SuggestedQuestions({ questions, onSelectQuestion, className = "" }: SuggestedQuestionsProps) {
+export function SuggestedQuestions({ questions, onSelectQuestion, className = "", onSelect }: SuggestedQuestionsProps) {
   const [isVisible, setIsVisible] = useState(true)
   const isMobile = useMobile()
 
@@ -54,7 +55,7 @@ export function SuggestedQuestions({ questions, onSelectQuestion, className = ""
               size="sm"
               className="text-xs bg-white/80 dark:bg-gray-700/80 hover:bg-gray-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-600"
               onClick={() => {
-                onSelectQuestion(question)
+                ;(onSelect ?? onSelectQuestion)(question)
                 setIsVisible(false)
               }}
             >

@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 
 const DropdownMenu = DropdownMenuPrimitive.Root
 
-export const DropdownMenuTrigger = React.forwardRef<
+const DropdownMenuTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Trigger>
 >(({ className, children, ...props }, ref) => (

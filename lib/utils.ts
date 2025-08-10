@@ -1,7 +1,7 @@
-import { clsx } from "clsx"
+import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
 
-export function cn(...inputs: Array<string | false | null | undefined>) {
+export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
@@ -11,6 +11,7 @@ export const STORAGE_KEYS = {
   USE_PROXY: "fastgpt_use_proxy",
   CURRENT_USER: "currentUser",
   DEFAULT_AGENT_INITIALIZED: "default_agent_initialized",
+  AGENTS: "fastgpt_agents",
 }
 
 export const isApiConfigured = () => {

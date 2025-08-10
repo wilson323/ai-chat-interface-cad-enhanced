@@ -93,6 +93,8 @@ export interface ApiConfig {
   baseUrl: string
   apiKey: string
   useProxy?: boolean
+  defaultModel?: string
+  principleModel?: string
 }
 
 // 用户类型

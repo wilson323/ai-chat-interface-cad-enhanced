@@ -10,7 +10,12 @@ import { Search, Bot } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { motion } from "framer-motion"
 
-export function AgentSelector() {
+interface AgentSelectorProps {
+  onSelect?: (agentId: string) => void
+  selectedAgent?: string
+}
+
+export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps = {}) {
   const { applications, selectApplication, selectedApp, isLoading } = useFastGPT()
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearchFocused, setIsSearchFocused] = useState(false)
@@ -25,6 +30,7 @@ export function AgentSelector() {
 
   // 处理智能体选择
   const handleSelectAgent = (appId: string) => {
+    if (onSelect) onSelect(appId)
     selectApplication(appId)
   }
 
@@ -98,9 +104,9 @@ export function AgentSelector() {
                 layout={false}
               >
                 <Button
-                  variant={selectedApp?.id === agent.id ? "default" : "ghost"}
+                  variant={(selectedAgent ?? selectedApp?.id) === agent.id ? "default" : "ghost"}
                   className={`w-full justify-start gap-3 h-auto py-3 px-3 ${
-                    selectedApp?.id === agent.id
+                    (selectedAgent ?? selectedApp?.id) === agent.id
                       ? "bg-green-500 hover:bg-green-600 text-white"
                       : "hover:bg-gray-100 dark:hover:bg-gray-800"
                   }`}

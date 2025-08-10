@@ -9,10 +9,11 @@ interface MessageFeedbackProps {
   messageId: string
   onFeedback: (messageId: string, type: "like" | "dislike", comment?: string) => void
   className?: string
+  initialRating?: "like" | "dislike"
 }
 
-export function MessageFeedback({ messageId, onFeedback, className = "" }: MessageFeedbackProps) {
-  const [feedback, setFeedback] = useState<"like" | "dislike" | null>(null)
+export function MessageFeedback({ messageId, onFeedback, className = "", initialRating }: MessageFeedbackProps) {
+  const [feedback, setFeedback] = useState<"like" | "dislike" | null>(initialRating ?? null)
   const [showComment, setShowComment] = useState(false)
   const [comment, setComment] = useState("")
   const [isSubmitted, setIsSubmitted] = useState(false)

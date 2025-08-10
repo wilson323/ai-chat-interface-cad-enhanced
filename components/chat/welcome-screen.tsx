@@ -7,12 +7,13 @@ import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 
 type WelcomeScreenProps = {
-  onGetStarted: () => void
-  isDarkMode: boolean
-  toggleTheme: () => void
+  onGetStarted?: () => void
+  onClose?: () => void
+  isDarkMode?: boolean
+  toggleTheme?: () => void
 }
 
-export function WelcomeScreen({ onGetStarted, isDarkMode, toggleTheme }: WelcomeScreenProps) {
+export function WelcomeScreen({ onGetStarted, onClose, isDarkMode = false, toggleTheme = () => {} }: WelcomeScreenProps) {
   const [animationStep, setAnimationStep] = useState(0)
   const [hoverButton, setHoverButton] = useState(false)
 
@@ -244,7 +245,10 @@ export function WelcomeScreen({ onGetStarted, isDarkMode, toggleTheme }: Welcome
             onHoverEnd={() => setHoverButton(false)}
           >
             <Button
-              onClick={onGetStarted}
+              onClick={() => {
+                onGetStarted?.()
+                onClose?.()
+              }}
               size="lg"
               className="bg-[#6cb33f] hover:bg-[#5da32f] text-white w-full rounded-xl py-6 px-6 font-medium text-base shadow-lg hover:shadow-xl transition-all"
             >
