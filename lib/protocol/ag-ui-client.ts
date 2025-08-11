@@ -1,4 +1,5 @@
 import { Observable, Subject, BehaviorSubject } from 'rxjs';
+import type { Subscriber } from 'rxjs';
 import { filter, map, tap } from 'rxjs/operators';
 
 // AG-UI 协议事件类型
@@ -236,13 +237,13 @@ export abstract class AbstractAgent {
   protected debug: boolean;
   protected eventSubject: Subject<AgentEvent> = new Subject<AgentEvent>();
   protected messagesSubject: BehaviorSubject<Array<Message>>;
-  protected stateSubject: BehaviorSubject<Record<string, any>>;
+  protected stateSubject: BehaviorSubject<Record<string, unknown>>;
   protected runningSubject: BehaviorSubject<boolean> = new BehaviorSubject<boolean>(false);
   
   // 暴露 Observable 接口
   public events$: Observable<AgentEvent> = this.eventSubject.asObservable();
   public messages$: Observable<Array<Message>>;
-  public state$: Observable<Record<string, any>>;
+  public state$: Observable<Record<string, unknown>>;
   public running$: Observable<boolean> = this.runningSubject.asObservable();
   
   constructor(config: AgentConfig) {
@@ -252,8 +253,8 @@ export abstract class AbstractAgent {
     this.debug = config.debug || false;
     
     // 初始化消息和状态
-    this.messagesSubject = new BehaviorSubject<Array<Message>>(config.initialMessages || []);
-    this.stateSubject = new BehaviorSubject<Record<string, any>>(config.initialState || {});
+    this.messagesSubject = new BehaviorSubject<Array<Message>>(Array.isArray(config.initialMessages) ? config.initialMessages : []);
+    this.stateSubject = new BehaviorSubject<Record<string, unknown>>(typeof config.initialState === 'object' && config.initialState !== null ? config.initialState : {});
     
     this.messages$ = this.messagesSubject.asObservable();
     this.state$ = this.stateSubject.asObservable();
@@ -276,26 +277,28 @@ export abstract class AbstractAgent {
   }
   
   // 获取/设置状态
-  get state(): Record<string, any> {
+  get state(): Record<string, unknown> {
     return this.stateSubject.getValue();
   }
   
-  set state(state: Record<string, any>) {
+  set state(state: Record<string, unknown>) {
     this.stateSubject.next(state);
   }
   
   // 准备执行输入
-  protected prepareRunAgentInput(parameters: any = {}): RunAgentInput {
-    const runId = parameters.runId || `run-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  protected prepareRunAgentInput(parameters: Partial<{ runId: string; tools: Array<Tool>; context: Array<ContextItem>; forwardedProps: Record<string, unknown> }> = {}): RunAgentInput {
+    const runId = typeof parameters.runId === 'string' && parameters.runId.length > 0
+      ? parameters.runId
+      : `run-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
     
     return {
       threadId: this.threadId,
       runId,
       state: this.state,
       messages: this.messages,
-      tools: parameters.tools || [],
-      context: parameters.context || [],
-      forwardedProps: parameters.forwardedProps || {}
+      tools: Array.isArray(parameters.tools) ? parameters.tools : [],
+      context: Array.isArray(parameters.context) ? parameters.context : [],
+      forwardedProps: parameters.forwardedProps ?? {}
     };
   }
   
@@ -555,7 +558,7 @@ export class HttpAgent extends AbstractAgent {
   }
   
   // 处理 SSE 响应
-  private async handleSSEResponse(response: Response, subscriber: any): Promise<void> {
+  private async handleSSEResponse(response: Response, subscriber: Subscriber<AgentEvent>): Promise<void> {
     const reader = response.body?.getReader();
     if (!reader) {
       throw new Error('无法读取响应流');
@@ -598,10 +601,10 @@ export class HttpAgent extends AbstractAgent {
           if (data) {
             try {
               // 解析事件数据
-              const eventData = JSON.parse(data);
-              
-              // 发送事件
-              subscriber.next(eventData);
+              const parsed: unknown = JSON.parse(data);
+              if (isAgentEvent(parsed)) {
+                subscriber.next(parsed);
+              }
             } catch (error) {
               console.error('[AG-UI] 解析事件数据失败:', error);
             }
@@ -614,24 +617,24 @@ export class HttpAgent extends AbstractAgent {
   }
   
   // 处理 JSON 响应
-  private async handleJSONResponse(response: Response, subscriber: any): Promise<void> {
+  private async handleJSONResponse(response: Response, subscriber: Subscriber<AgentEvent>): Promise<void> {
     try {
-      const data = await response.json();
+      const data: unknown = await response.json();
       
       // 检查是否为事件数组
       if (Array.isArray(data)) {
         // 发送事件数组
         for (const event of data) {
-          subscriber.next(event);
+          if (isAgentEvent(event)) subscriber.next(event);
         }
-      } else if (data.type && Object.values(EventType).includes(data.type)) {
+      } else if (isAgentEvent(data)) {
         // 单个事件
         subscriber.next(data);
       } else {
         // 包装为 STATE_SNAPSHOT 事件
         subscriber.next({
           type: EventType.STATE_SNAPSHOT,
-          snapshot: data,
+          snapshot: data as Record<string, unknown>,
           timestamp: Date.now()
         });
       }
@@ -639,4 +642,19 @@ export class HttpAgent extends AbstractAgent {
       throw new Error(`解析 JSON 响应失败: ${error}`);
     }
   }
+}
+
+function isEventType(value: unknown): value is EventType {
+  return typeof value === 'string' && (Object.values(EventType) as Array<string>).includes(value);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isAgentEvent(value: unknown): value is AgentEvent {
+  if (!isRecord(value)) return false;
+  const maybeType = (value as Record<string, unknown>).type;
+  const ts = (value as Record<string, unknown>).timestamp;
+  return isEventType(maybeType) && typeof ts === 'number';
 } 
