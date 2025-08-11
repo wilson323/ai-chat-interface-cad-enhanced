@@ -4,14 +4,19 @@
 import { AgentConfig, AgentType } from '../agents/base-agent';
 import { CADFile, CADAnalysisResult } from '../services/cad-analyzer-service';
 
+// 辅助类型（基础占位，不绑定具体业务字段）
+interface PosterRecord { id: string; userId: string; [key: string]: unknown }
+interface SessionRecord { id: string; userId: string; [key: string]: unknown }
+interface VisitRecord { ip: string; agentId: string; timestamp: Date; [key: string]: unknown }
+
 // 模拟数据存储
 const inMemoryDB = {
   agents: [] as AgentConfig[],
   cadFiles: [] as CADFile[],
   cadAnalysis: [] as CADAnalysisResult[],
-  posters: [] as any[],
-  sessions: [] as any[],
-  analytics: [] as any[],
+  posters: [] as PosterRecord[],
+  sessions: [] as SessionRecord[],
+  analytics: [] as VisitRecord[],
 };
 
 // 统一数据库访问层
@@ -120,18 +125,18 @@ export const db = {
   // 海报生成历史
   posters: {
     // 类似于上面的实现
-    async findByUserId(userId: string): Promise<any[]> {
+    async findByUserId(userId: string): Promise<PosterRecord[]> {
       return inMemoryDB.posters
         .filter(p => p.userId === userId)
         .map(p => ({ ...p }));
     },
     
-    async findById(id: string): Promise<any | null> {
+    async findById(id: string): Promise<PosterRecord | null> {
       const poster = inMemoryDB.posters.find(p => p.id === id);
       return poster ? { ...poster } : null;
     },
     
-    async create(data: any): Promise<void> {
+    async create(data: PosterRecord): Promise<void> {
       inMemoryDB.posters.push({ ...data });
     },
     
@@ -146,11 +151,11 @@ export const db = {
   // 用户会话历史
   sessions: {
     // 会话历史实现
-    async create(data: any): Promise<void> {
+    async create(data: SessionRecord): Promise<void> {
       inMemoryDB.sessions.push({ ...data });
     },
     
-    async findByUserId(userId: string): Promise<any[]> {
+    async findByUserId(userId: string): Promise<SessionRecord[]> {
       return inMemoryDB.sessions
         .filter(s => s.userId === userId)
         .map(s => ({ ...s }));
@@ -160,23 +165,23 @@ export const db = {
   // 用户访问统计
   analytics: {
     // 记录访问IP和使用情况
-    async recordVisit(data: { ip: string, agentId: string, timestamp: Date }): Promise<void> {
+    async recordVisit(data: VisitRecord): Promise<void> {
       inMemoryDB.analytics.push({ ...data });
     },
     
-    async getVisitsByTimeRange(startTime: Date, endTime: Date): Promise<any[]> {
+    async getVisitsByTimeRange(startTime: Date, endTime: Date): Promise<VisitRecord[]> {
       return inMemoryDB.analytics
         .filter(a => a.timestamp >= startTime && a.timestamp <= endTime)
         .map(a => ({ ...a }));
     },
     
-    async getVisitsByAgentId(agentId: string): Promise<any[]> {
+    async getVisitsByAgentId(agentId: string): Promise<VisitRecord[]> {
       return inMemoryDB.analytics
         .filter(a => a.agentId === agentId)
         .map(a => ({ ...a }));
     },
     
-    async getVisitsByIP(ip: string): Promise<any[]> {
+    async getVisitsByIP(ip: string): Promise<VisitRecord[]> {
       return inMemoryDB.analytics
         .filter(a => a.ip === ip)
         .map(a => ({ ...a }));

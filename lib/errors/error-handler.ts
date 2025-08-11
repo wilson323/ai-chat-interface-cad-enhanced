@@ -29,7 +29,7 @@ export enum ApiErrorCode {
 export interface ApiErrorResponse {
   code: ApiErrorCode;
   message: string;
-  details?: any;
+  details?: unknown;
   timestamp: string;
   path?: string;
   requestId?: string;
@@ -39,13 +39,13 @@ export interface ApiErrorResponse {
 export class ApiError extends Error {
   public readonly code: ApiErrorCode;
   public readonly statusCode: number;
-  public readonly details?: any;
+  public readonly details?: unknown;
 
   constructor(
     code: ApiErrorCode,
     message: string,
     statusCode: number = 500,
-    details?: any
+    details?: unknown
   ) {
     super(message);
     this.name = 'ApiError';
@@ -55,31 +55,31 @@ export class ApiError extends Error {
   }
 
   // 常用错误的静态工厂方法
-  static badRequest(message: string, details?: any): ApiError {
+  static badRequest(message: string, details?: unknown): ApiError {
     return new ApiError(ApiErrorCode.BAD_REQUEST, message, 400, details);
   }
 
-  static unauthorized(message: string = '未授权访问', details?: any): ApiError {
+  static unauthorized(message: string = '未授权访问', details?: unknown): ApiError {
     return new ApiError(ApiErrorCode.UNAUTHORIZED, message, 401, details);
   }
 
-  static forbidden(message: string = '权限不足', details?: any): ApiError {
+  static forbidden(message: string = '权限不足', details?: unknown): ApiError {
     return new ApiError(ApiErrorCode.FORBIDDEN, message, 403, details);
   }
 
-  static notFound(message: string = '资源不存在', details?: any): ApiError {
+  static notFound(message: string = '资源不存在', details?: unknown): ApiError {
     return new ApiError(ApiErrorCode.NOT_FOUND, message, 404, details);
   }
 
-  static tooManyRequests(message: string = '请求频率过高', details?: any): ApiError {
+  static tooManyRequests(message: string = '请求频率过高', details?: unknown): ApiError {
     return new ApiError(ApiErrorCode.TOO_MANY_REQUESTS, message, 429, details);
   }
 
-  static internalError(message: string = '服务器内部错误', details?: any): ApiError {
+  static internalError(message: string = '服务器内部错误', details?: unknown): ApiError {
     return new ApiError(ApiErrorCode.INTERNAL_ERROR, message, 500, details);
   }
 
-  static serviceUnavailable(message: string = '服务暂时不可用', details?: any): ApiError {
+  static serviceUnavailable(message: string = '服务暂时不可用', details?: unknown): ApiError {
     return new ApiError(ApiErrorCode.SERVICE_UNAVAILABLE, message, 503, details);
   }
 
