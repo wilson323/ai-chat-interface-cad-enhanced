@@ -27,6 +27,26 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
   const errors: string[] = [];
   const warnings: string[] = [];
 
+  // 环境变量检查：Upstash Redis（限流依赖）
+  const REDIS_URL = process.env.UPSTASH_REDIS_REST_URL;
+  const REDIS_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!REDIS_URL || !REDIS_TOKEN) {
+    checks.push({
+      name: 'Upstash Redis Config',
+      expectedVersion: 'env: UPSTASH_REDIS_REST_URL/UPSTASH_REDIS_REST_TOKEN',
+      status: 'warning',
+      message: 'Missing Upstash Redis env, rate limiter will be disabled.'
+    });
+    warnings.push('Upstash Redis env missing');
+  } else {
+    checks.push({
+      name: 'Upstash Redis Config',
+      expectedVersion: 'env present',
+      status: 'ok',
+      message: 'Upstash Redis env detected'
+    });
+  }
+
   // 检查React版本兼容性
   try {
     // 使用容错的方式读取 react 版本

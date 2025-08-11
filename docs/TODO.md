@@ -22,19 +22,19 @@
 ### 批次A（去重 Hook/组件、限流合并）
 - [x] 适配器中止透传修复
   - [x] `lib/api/ai-provider-adapter.ts`: 为 `chat/speech/transcribe` 增加 `RequestInit`，透传 `signal/headers`，解决 ConnectError aborted
-- [ ] Hook 去重与统一
-  - [ ] 统一为 `components/ui/use-mobile.tsx` 的 `useIsMobile`
-  - [ ] 将所有 `import { useMobile } from '@/hooks/use-mobile'` 替换为 `import { useIsMobile } from '@/components/ui/use-mobile'`
+- [ ] Hook 去重与统一（进行中，可并行）
+  - [x] 统一为 `components/ui/use-mobile.tsx` 的 `useIsMobile`
+  - [x] 将所有 `import { useMobile } from '@/hooks/use-mobile'` 替换为 `import { useIsMobile } from '@/components/ui/use-mobile'`
   - [ ] 删除 `hooks/use-mobile.ts` 并更新文档
-- [ ] `AgentSelector` 组件收敛
+- [ ] `AgentSelector` 组件收敛（进行中，可并行）
   - [ ] 以 `components/chat/agent-selector.tsx` 为唯一实现；合并大写版本差异后移除 `components/chat/AgentSelector.tsx`
   - [ ] `components/chat/index.ts` 改为单一导出：`export { AgentSelector } from './agent-selector'`
-  - [ ] 全局替换导入为 `@/components/chat`
-- [ ] 限流实现合并
-  - [ ] 移除 `lib/rate-limiter.ts` 占位实现
-  - [ ] 在 `middleware/rate-limiter.ts` 暴露轻量 `limit(identifier: string)`/`limitByRequest(req)` 供路由端使用
-  - [ ] `app/api/ag-ui/chat/route.ts` 等路由改为使用合并后的限流方法
-  - [ ] 校验 Upstash 环境变量并在 `app/api/system/env-check/route.ts` 中加入检查项
+  - [x] 全局替换导入为 `@/components/chat`（页面已改：`app/page.tsx`）
+- [ ] 限流实现合并（进行中，可并行）
+  - [x] 移除 `lib/rate-limiter.ts` 占位实现
+  - [x] `app/api/ag-ui/chat/route.ts` 改为使用 `middleware/rate-limiter`
+  - [x] 在环境检查中加入 Upstash Redis 变量校验（`lib/utils/env-validator.ts`）
+  - [ ] `app/api/system/env-check/route.ts` 增加 Upstash 详细提示文案
 
 ### P0+ 真实化 CAD 解析（计划批次B实施，优先级最高）
 - [ ] DXF：服务端使用 `dxf-parser` 替换自研/模拟
