@@ -5,7 +5,7 @@ import type React from "react"
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Send, Mic, ImageIcon, Paperclip, Smile, Sparkles, X } from "lucide-react"
+import { Send, Mic, ImageIcon, Paperclip, Smile, Sparkles, X, Volume2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useMobile } from "@/hooks/use-mobile"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
@@ -24,6 +24,7 @@ export function ChatInput({ onSubmit, isLoading, isMuted }: ChatInputProps) {
   const [showFileUpload, setShowFileUpload] = useState(false)
   const [showCADUpload, setShowCADUpload] = useState(false)
   const [attachments, setAttachments] = useState<File[]>([])
+  const [isSpeaking, setIsSpeaking] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const recordingInterval = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -145,6 +146,48 @@ export function ChatInput({ onSubmit, isLoading, isMuted }: ChatInputProps) {
     setInput((prev) => prev + `\n\n我上传了一个CAD文件 "${fileData.name}"，请帮我分析一下这个文件。`)
   }
 
+  // 调用AG-UI TTS
+  const handleSpeak = async () => {
+    if (!input.trim()) return
+    setIsSpeaking(true)
+    try {
+      const res = await fetch('/api/ag-ui/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: input, model: 'qwen-tts-v1' })
+      })
+      if (!res.ok) throw new Error('TTS request failed')
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      if (!reader) return
+      let buffer = ''
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data: ')) continue
+          const payload = trimmed.slice(6)
+          if (payload === '[DONE]') continue
+          try {
+            const evt = JSON.parse(payload)
+            if (evt?.name === 'AUDIO_RESULT' && evt?.value?.dataUrl) {
+              const audio = new Audio(evt.value.dataUrl)
+              audio.play().catch(() => {})
+            }
+          } catch {}
+        }
+      }
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setIsSpeaking(false)
+    }
+  }
+
   // Remove attachment
   const removeAttachment = (index: number) => {
     setAttachments((prev) => prev.filter((_, i) => i !== index))
@@ -245,8 +288,11 @@ export function ChatInput({ onSubmit, isLoading, isMuted }: ChatInputProps) {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 rounded-full text-gray-500 hover:text-primary-500"
+                  title="朗读(TTS)"
+                  onClick={handleSpeak}
+                  disabled={!input.trim() || isSpeaking}
                 >
-                  <Smile className="h-4 w-4" />
+                  <Volume2 className="h-4 w-4" />
                 </Button>
               </div>
               <div className="flex items-center gap-2">

@@ -87,7 +87,7 @@ export class OpenAICompatibleAdapter {
   /**
    * 标准对话
    */
-  async chat(req: ChatRequest): Promise<Response> {
+  async chat(req: ChatRequest, opts?: { signal?: AbortSignal }): Promise<Response> {
     const schema = z.object({
       model: z.string().min(1),
       messages: z
@@ -138,13 +138,14 @@ export class OpenAICompatibleAdapter {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(normalized),
+      signal: opts?.signal,
     })
   }
 
   /**
    * 文本转语音（OpenAI 兼容 /audio/speech）
    */
-  async speech(req: SpeechRequest): Promise<Response> {
+  async speech(req: SpeechRequest, opts?: { signal?: AbortSignal }): Promise<Response> {
     const payload = {
       model: req.model,
       input: req.input,
@@ -155,13 +156,14 @@ export class OpenAICompatibleAdapter {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(payload),
+      signal: opts?.signal,
     })
   }
 
   /**
    * 语音转文本（OpenAI 兼容 /audio/transcriptions）
    */
-  async transcribe(req: TranscribeRequest): Promise<Response> {
+  async transcribe(req: TranscribeRequest, opts?: { signal?: AbortSignal }): Promise<Response> {
     // 采用 JSON 直传模式（部分兼容端实现支持）。如需 multipart，可后续扩展
     const payload: any = {
       model: req.model,
@@ -174,6 +176,7 @@ export class OpenAICompatibleAdapter {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(payload),
+      signal: opts?.signal,
     })
   }
 

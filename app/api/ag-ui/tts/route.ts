@@ -31,6 +31,18 @@ export async function POST(req: NextRequest) {
     const runId = `run-${Date.now()}`
     await optimizer.writeEventDirect({ type: EventType.RUN_STARTED, runId, timestamp: Date.now() } as any)
 
+    // 中断处理
+    let aborted = false
+    const onAbort = async () => {
+      aborted = true
+      try { await writer.close() } catch {}
+    }
+    if (req.signal.aborted) {
+      await onAbort()
+      return new NextResponse(stream.readable, { headers: { 'Content-Type': 'text/event-stream' } })
+    }
+    req.signal.addEventListener('abort', onAbort)
+
     // 选择适配器（默认 dashscope），按需可扩展
     const adapter = (() => {
       const key = apiKey || process.env.EXTERNAL_AI_API_KEY || ''
@@ -42,11 +54,17 @@ export async function POST(req: NextRequest) {
       }
     })()
 
-    const res = await adapter.speech({ model: model || 'qwen-tts-v1', input: text, voice, format })
+    const res = await adapter.speech({ model: model || 'qwen-tts-v1', input: text, voice, format }, { signal: req.signal })
     if (!res.ok) {
       const err = await res.text().catch(() => res.statusText)
       await optimizer.writeEventDirect({ type: EventType.RUN_ERROR, message: err, code: res.status, timestamp: Date.now() } as any)
       await writer.close()
+      return new NextResponse(stream.readable, { headers: { 'Content-Type': 'text/event-stream' } })
+    }
+
+    // 若已中断则直接结束
+    if (aborted) {
+      try { await writer.close() } catch {}
       return new NextResponse(stream.readable, { headers: { 'Content-Type': 'text/event-stream' } })
     }
 
@@ -61,6 +79,12 @@ export async function POST(req: NextRequest) {
 
     return new NextResponse(stream.readable, { headers: { 'Content-Type': 'text/event-stream' } })
   } catch (error: any) {
+    const isAbort = typeof error?.name === 'string' && error.name === 'AbortError'
+    if (isAbort) {
+      // 客户端中断，返回已打开的SSE避免抛错
+      const stream = new TransformStream()
+      return new NextResponse(stream.readable, { headers: { 'Content-Type': 'text/event-stream' } })
+    }
     return NextResponse.json({ error: error.message || 'unknown_error' }, { status: 500 })
   }
 }
