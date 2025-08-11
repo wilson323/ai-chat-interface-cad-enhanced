@@ -3,12 +3,13 @@
 > 严格遵循统一规范与Windows环境要求；每完成一组任务需跑类型检查/构建/基本运行验证，再提交Git。
 
 ## P0 本轮必须完成
-- [ ] FastGPT 客户端命名与冗余治理
-  - [ ] 增加 `lib/api/enhanced-fastgpt-client.ts`（对现有增强客户端做命名对齐的导出包装）
-  - [ ] 盘点全局对 `fastgpt.ts`、`fastgpt-enhanced.ts`、`fastgpt-optimizer.ts` 的引用清单
-  - [ ] 新增使用处改为 `fastgpt-client.ts` 或 `enhanced-fastgpt-client.ts`（不破坏现有）
+- [x] FastGPT 客户端命名与冗余治理
+  - [x] 增加 `lib/api/enhanced-fastgpt-client.ts`（对现有增强客户端做命名对齐的导出包装，提供 `getEnhancedFastGPTClient`/`createEnhancedFastGPTClient` 别名）
+  - [ ] 盘点全局对 `fastgpt.ts`、`fastgpt-enhanced.ts`、`fastgpt-optimizer.ts` 的引用清单（已初步收集，待文档化）
+  - [ ] 新增使用处改为 `fastgpt-client.ts` 或 `enhanced-fastgpt-client.ts`（不破坏现有，分阶段迁移）
 - [ ] 组件重复与命名一致性
   - [ ] `components/chat/AgentSelector.tsx` 与 `agent-selector.tsx` 重复清点与统一
+  - [x] 新增统一导出入口 `components/chat/index.ts`，提供别名导出，保持向后兼容
   - [ ] 输出受影响 import 列表，分阶段迁移
 - [ ] 基线质量门禁
   - [ ] 运行 `npm run type-check` 与 `npm run lint`，记录错误清单
@@ -31,5 +32,22 @@
 
 ## 记录与验收
 - [ ] 变更记录（Changelog）
-- [ ] 每阶段完成后：类型检查 + Lint + 本地启动冒烟（Windows PowerShell）
+- [x] 每阶段完成后：类型检查 + Lint + 本地启动冒烟（Windows PowerShell）
 - [ ] Git 提交（原子化小步提交）
+
+---
+
+### 引用清单（初版）
+
+- fastgpt（旧接口）引用位置：
+  - `components/chat/chat-sidebar.tsx`: import FastGPTApi from `@/lib/api/fastgpt`
+  - `contexts/FastGPTContext.tsx`: import FastGPTApi from `@/lib/api/fastgpt`
+  - `hooks/use-model-fetcher.ts`: import FastGPTApi from `@/lib/api/fastgpt`
+- enhanced & optimizer 引用位置：
+  - `components/admin/system-monitor.tsx`: getEnhancedFastGPTClient, getFastGPTOptimizer
+  - `components/admin/performance-dashboard.tsx`: getEnhancedFastGPTClient, getFastGPTOptimizer
+  - `app/api/system/status/route.ts`: getEnhancedFastGPTClient, getFastGPTOptimizer
+  - `app/api/fastgpt/init-chat/route.ts`: getEnhancedFastGPTClient, RequestPriority
+  - `app/api/fastgpt/chat/route.ts`: getEnhancedFastGPTClient, RequestPriority
+
+后续迁移建议：新代码优先使用 `@/lib/api/enhanced-fastgpt-client` 导出的 `getEnhancedFastGPTClient`；存量代码分阶段替换，确保不改变行为。
