@@ -44,12 +44,23 @@ const getLocalItem = (key: string) => {
   }
 }
 
-const setLocalItem = (key: string, value: any) => {
+const setLocalItem = (key: string, value: unknown) => {
   try {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (e) {
     console.error(`Failed to set local storage item (${key}):`, e)
   }
+}
+
+// Error message helper
+const toErrorMessage = (err: unknown, fallback: string): string => {
+  if (typeof err === 'string' && err.length > 0) return err
+  if (err && typeof err === 'object') {
+    const anyErr = err as { message?: unknown; details?: unknown }
+    if (typeof anyErr.message === 'string' && anyErr.message.length > 0) return anyErr.message
+    if (typeof anyErr.details === 'string' && anyErr.details.length > 0) return anyErr.details
+  }
+  return fallback
 }
 
 // Local storage operations
@@ -181,7 +192,11 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         const apiConfig = localStorageDB.getApiConfig()
         console.log("Local storage API configuration:", apiConfig)
 
-        if (apiConfig && apiConfig.baseUrl && apiConfig.apiKey) {
+        if (
+          apiConfig !== null &&
+          typeof apiConfig.baseUrl === 'string' && apiConfig.baseUrl.length > 0 &&
+          typeof apiConfig.apiKey === 'string' && apiConfig.apiKey.length > 0
+        ) {
           // Ensure proxy mode is enabled by default
           const useProxy = apiConfig.useProxy === undefined ? true : apiConfig.useProxy
           console.log(`Setting API config with proxy mode: ${useProxy}`)
@@ -201,19 +216,20 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         }
 
         // Get application list
-        if ((apiConfig && apiConfig.baseUrl && apiConfig.apiKey) || isConfigured) {
+        const hasApiCfg = apiConfig !== null && typeof apiConfig.baseUrl === 'string' && apiConfig.baseUrl.length > 0 && typeof apiConfig.apiKey === 'string' && apiConfig.apiKey.length > 0
+        if (hasApiCfg || isConfigured === true) {
           try {
             await fetchApplications()
-          } catch (error: any) {
+          } catch (error: unknown) {
             console.error("Failed to get applications during initialization:", error)
 
-            if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) {
+            if (!hasApiCfg) {
               setIsConfigured(false)
             }
 
             toast({
               title: "API Connection Failed",
-              description: error.message || "Please check if your API configuration is correct",
+              description: toErrorMessage(error, "Please check if your API configuration is correct"),
               variant: "destructive",
             })
           }
@@ -228,12 +244,12 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
                 // Initialize default agent
                 await initializeDefaultAgent()
               }
-            } catch (error) {
+            } catch (error: unknown) {
               console.error("Failed to initialize API with default configuration:", error)
             }
           }
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error("Initialization failed:", error)
         toast({
           title: "Initialization Failed",
@@ -277,12 +293,12 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         title: "Default agent initialized successfully",
         description: `Successfully created "${DEFAULT_AGENT.name}" agent`,
       })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to initialize default agent:", error)
 
       toast({
         title: "Failed to initialize default agent",
-        description: error.message || "Error creating default agent",
+        description: toErrorMessage(error, "Error creating default agent"),
         variant: "destructive",
       })
     }
@@ -324,8 +340,14 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       // Save to local storage，带默认/原则模型（若已有）
       const localCfgRaw = localStorage.getItem(STORAGE_KEYS.API_CONFIG)
-      let prevExtra: any = {}
-      try { prevExtra = localCfgRaw ? JSON.parse(localCfgRaw) : {} } catch {}
+      let prevExtra: { defaultModel?: unknown; principleModel?: unknown } = {}
+      try {
+        const parsed = localCfgRaw ? JSON.parse(localCfgRaw) : {}
+        if (parsed && typeof parsed === 'object') {
+          const obj = parsed as Record<string, unknown>
+          prevExtra = { defaultModel: obj.defaultModel, principleModel: obj.principleModel }
+        }
+      } catch { /* noop */ }
       const config = { baseUrl, apiKey, useProxy: useProxy === undefined ? true : useProxy, defaultModel: prevExtra.defaultModel, principleModel: prevExtra.principleModel }
       localStorageDB.saveApiConfig(config)
 
@@ -348,7 +370,7 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
           try {
             await fetchApplications()
-          } catch (appError: any) {
+          } catch (appError: unknown) {
             console.error("Failed to get applications list:", appError)
             toast({
               title: "Warning",
@@ -361,15 +383,9 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         } else {
           throw new Error(result?.error?.message || "Connection test failed")
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("API connection test failed:", error)
-
-        let errorMessage = ERROR_MESSAGES.CONNECTION_FAILED
-        if (error.details) {
-          errorMessage = error.details
-        } else if (error.message) {
-          errorMessage = error.message
-        }
+        const errorMessage = toErrorMessage(error, ERROR_MESSAGES.CONNECTION_FAILED)
 
         toast({
           title: "API configuration failed",
@@ -378,11 +394,11 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         })
         return false
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("API configuration failed:", error)
       toast({
         title: "API configuration failed",
-        description: error.message || ERROR_MESSAGES.UNKNOWN,
+        description: toErrorMessage(error, ERROR_MESSAGES.UNKNOWN),
         variant: "destructive",
       })
       return false
@@ -443,7 +459,7 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
             agents = mergedAgents
           }
         }
-      } catch (adminError) {
+      } catch (adminError: unknown) {
         console.error("Failed to load agents from admin configuration:", adminError)
       }
 
@@ -452,19 +468,12 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
       console.log("Applications list updated, count:", agents.length)
 
       // If there are applications and none selected, select the first one
-      if (agents.length > 0 && !selectedApp) {
+      if (agents.length > 0 && selectedApp === null) {
         await selectApplication(agents[0].id)
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to get applications list:", error)
-
-      // Build more detailed error message
-      let errorMessage = "Please check network connection or API configuration"
-      if (error.details) {
-        errorMessage = error.details
-      } else if (error.message) {
-        errorMessage = error.message
-      }
+      const errorMessage = toErrorMessage(error, "Please check network connection or API configuration")
 
       toast({
         title: "Failed to get applications list",
@@ -514,9 +523,11 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
   const fetchChatSessions = async (appId?: string, page = 1, limit = 20): Promise<ChatSession[]> => {
     try {
       setIsLoading(true)
-      const targetAppId = appId || selectedApp?.id
+      const targetAppId = (typeof appId === 'string' && appId.length > 0)
+        ? appId
+        : (selectedApp?.id ?? '')
 
-      if (!targetAppId) {
+      if (targetAppId.length === 0) {
         setChatSessions([])
         setHasMoreSessions(false)
         return []
@@ -548,7 +559,7 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
 
       return paginatedSessions
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to get chat sessions list:", error)
       toast({
         title: "Failed to get chat sessions",
@@ -584,7 +595,7 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
       setSelectedSession(newSession)
 
       return newSession
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to create chat session:", error)
       toast({
         title: "Failed to create chat session",
