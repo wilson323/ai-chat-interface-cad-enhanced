@@ -292,21 +292,21 @@ export function isBIMFile(fileType: string): boolean {
  * 检查文件是否为2D文件
  */
 export function is2DFile(fileType: string): boolean {
-  return CAD_FORMAT_CATEGORIES['2D'].includes(fileType.toLowerCase() as any);
+  return CAD_FORMAT_CATEGORIES['2D'].includes(fileType.toLowerCase() as (typeof CAD_FORMAT_CATEGORIES)['2D'][number]);
 }
 
 /**
  * 检查文件是否为参数化3D文件
  */
 export function isParametric3DFile(fileType: string): boolean {
-  return CAD_FORMAT_CATEGORIES['3D_PARAMETRIC'].includes(fileType.toLowerCase() as any);
+  return CAD_FORMAT_CATEGORIES['3D_PARAMETRIC'].includes(fileType.toLowerCase() as (typeof CAD_FORMAT_CATEGORIES)['3D_PARAMETRIC'][number]);
 }
 
 /**
  * 检查文件是否为网格3D文件
  */
 export function isMesh3DFile(fileType: string): boolean {
-  return CAD_FORMAT_CATEGORIES['3D_MESH'].includes(fileType.toLowerCase() as any);
+  return CAD_FORMAT_CATEGORIES['3D_MESH'].includes(fileType.toLowerCase() as (typeof CAD_FORMAT_CATEGORIES)['3D_MESH'][number]);
 }
 
 /**
@@ -467,7 +467,7 @@ export async function batchProcess(
  * 获取CAD测量信息
  * @param modelData 模型数据
  */
-export function extractMeasurements(modelData: any): CADMeasurement[] {
+export function extractMeasurements(modelData: unknown): CADMeasurement[] {
   // 实际项目中应根据文件类型提取测量信息
   return [];
 }

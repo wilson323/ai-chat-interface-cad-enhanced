@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     updateSessionProgress(sessionId, 30, '提取CAD实体数据');
     
     // 2. 计算CAD统计信息
-    const stats = calculateCADStats({});
+    const stats = calculateCADStats(basicResult);
     basicResult.entities = stats.componentCounts;
     
     // 模拟更多分析过程
@@ -119,21 +119,17 @@ export async function POST(request: NextRequest) {
       const prompt = `分析这个${file.name}CAD文件，提供详细的工程见解和建议`;
       
       // 调用AI分析
-      aiAnalysisResult = await createAIAnalysisResult(prompt, undefined, {
-        fileType,
-        fileName: file.name,
-        fileSize: file.size
-      });
+      aiAnalysisResult = await createAIAnalysisResult(prompt, undefined, basicResult);
       
       // 更新进度
       updateSessionProgress(sessionId, 70, '领域专家分析');
       
       // 4. 如果指定了领域，进行领域特定分析
-      if (options.aiModelType && options.aiModelType !== 'general') {
-        domainAnalysis = await createDomainAnalysis(
-          options.aiModelType as any,
-          { fileType, fileName: file.name }
-        );
+      const domainRaw = options.aiModelType as string | undefined;
+      const allowed = ['mechanical','architectural','electrical','plumbing'] as const;
+      if (domainRaw && domainRaw !== 'general' && (allowed as readonly string[]).includes(domainRaw)) {
+        const domain = domainRaw as typeof allowed[number];
+        domainAnalysis = await createDomainAnalysis(domain, basicResult);
       }
     }
     

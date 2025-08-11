@@ -293,9 +293,10 @@ function checkForSolids(cadResult: CADAnalysisResult, issues: ValidationIssue[])
  * 检查是否有外壳
  */
 function checkForShells(cadResult: CADAnalysisResult, issues: ValidationIssue[]): void {
-  if (!cadResult.entities.shells || cadResult.entities.shells === 0) {
-    // 如果没有shells但有solids，这可能不是问题
-    if (!cadResult.entities.solids || cadResult.entities.solids === 0) {
+  const shells = cadResult.entities.shells ?? 0
+  const solids = cadResult.entities.solids ?? 0
+  if (shells === 0) {
+    if (solids === 0) {
       issues.push({
         id: 'no-shells',
         title: '无外壳',

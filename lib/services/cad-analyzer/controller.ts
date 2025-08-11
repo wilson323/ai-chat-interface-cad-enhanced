@@ -7,7 +7,7 @@ import { parseCADFile, ParserOptions, DEFAULT_PARSER_OPTIONS } from './parsers';
 import { AdvancedCADParser } from './parsers/advanced-parser';
 import { CADMultimodalAIAnalyzer, AIMultimodalAnalysisResult } from './ai-analyzer';
 import { generateCADReport } from './report-generator';
-import { validateCADDesign } from './validation';
+import { validateCADDesign, type ValidationResult } from './validation';
 import { cadMetrics } from './metrics';
 import type { 
   CADAnalysisResult, 
@@ -76,9 +76,18 @@ const analysisResults = new Map<string, CADAnalysisResult>();
 export interface CADEnhancedAnalysisResult {
   basicResult: CADAnalysisResult;
   aiResult?: AIMultimodalAnalysisResult;
-  validationResult?: any;
+  validationResult?: ValidationResult;
   report?: Blob;
   thumbnail?: string;
+}
+
+export interface EnhancedAnalysisOptions {
+  generateThumbnail?: boolean
+  validateDesign?: boolean
+  useAI?: boolean
+  modelType?: 'general' | 'mechanical' | 'architecture' | 'electrical' | 'plumbing'
+  generateReport?: boolean
+  reportFormat?: 'html' | 'pdf' | 'json'
 }
 
 /**
@@ -156,7 +165,7 @@ async function analyzeBasicCADFile(
 async function enhancedAnalysis(
   file: File,
   analysisType: CADAnalysisType = 'standard',
-  options: Record<string, any> = {},
+  options: EnhancedAnalysisOptions = {},
   progressCallback?: (progress: number, stage: string) => void
 ): Promise<CADEnhancedAnalysisResult> {
   const startTime = Date.now();
@@ -164,7 +173,7 @@ async function enhancedAnalysis(
   try {
     // 首先执行基本分析
     progressCallback?.(5, '开始基础分析...');
-    const basicResult = await analyzeBasicCADFile(file, analysisType, options, 
+    const basicResult = await analyzeBasicCADFile(file, analysisType, options as Partial<ParserOptions>, 
       (progress, stage) => progressCallback?.(progress * 0.4, stage)
     );
     
@@ -183,17 +192,19 @@ async function enhancedAnalysis(
     }
     
     // 验证设计
-    if (analysisType === 'professional' || options.validateDesign) {
+    if (analysisType === 'professional' || options.validateDesign === true) {
       progressCallback?.(60, '验证设计...');
       enhancedResult.validationResult = await validateCADDesign(basicResult);
     }
     
     // 执行AI增强分析
-    if (analysisType === 'professional' || analysisType === 'detailed' || options.useAI) {
+    if (analysisType === 'professional' || analysisType === 'detailed' || options.useAI === true) {
       progressCallback?.(70, '执行AI增强分析...');
       const analyzer = CADMultimodalAIAnalyzer.getInstance();
+      const normalizedModelType: 'general' | 'mechanical' | 'architecture' | 'electrical' | 'plumbing' =
+        options.modelType ?? 'general';
       enhancedResult.aiResult = await analyzer.analyze(basicResult, enhancedResult.thumbnail, {
-        modelType: options.modelType || 'general',
+        modelType: normalizedModelType,
         detailLevel: analysisType === 'professional' ? 'detailed' : 'standard',
         includeVisualAnalysis: true,
         includeTechnicalValidation: true,
@@ -202,7 +213,7 @@ async function enhancedAnalysis(
     }
     
     // 生成报告
-    if (options.generateReport) {
+    if (options.generateReport === true) {
       progressCallback?.(90, '生成分析报告...');
       enhancedResult.report = await generateCADReport(
         basicResult, 
@@ -236,7 +247,7 @@ async function enhancedAnalysis(
 function createAnalysisSession(
   file: File,
   analysisType: CADAnalysisType = 'standard',
-  options: Record<string, any> = {}
+  options: EnhancedAnalysisOptions = {}
 ): CADAnalysisSession {
   const sessionId = `session_${uuidv4()}`;
   
@@ -264,7 +275,7 @@ function createAnalysisSession(
 export async function analyzeCADFile(
   file: File,
   analysisType: CADAnalysisType = 'standard',
-  options: Record<string, any> = {}
+  options: EnhancedAnalysisOptions = {}
 ): Promise<CADAnalysisSession> {
   // 创建会话
   const session = createAnalysisSession(file, analysisType, options);
@@ -518,7 +529,7 @@ async function convertCADFile(
  * 导出DXF文件
  */
 async function exportToDXF(
-  modelData: any,
+  modelData: unknown,
   fileName: string
 ): Promise<Blob> {
   try {
@@ -724,7 +735,7 @@ export function generateBasicAnalysisResult(
 export function createAIAnalysisResult(
   prompt: string,
   imageUrl?: string,
-  fileData?: any
+  fileData?: CADAnalysisResult
 ): Promise<AIMultimodalAnalysisResult> {
   // 在实际应用中，这里应该调用AI服务进行分析
   // 这里提供一个模拟实现
@@ -786,7 +797,7 @@ export function createAIAnalysisResult(
  */
 export function createDomainAnalysis(
   domain: 'mechanical' | 'architectural' | 'electrical' | 'plumbing',
-  fileData: any
+  fileData: CADAnalysisResult
 ): Promise<DomainSpecificAnalysis> {
   // 在实际应用中，这里应该调用特定领域的分析服务
   // 这里提供一个模拟实现
@@ -836,7 +847,13 @@ export function createDomainAnalysis(
 export async function parseIFCFile(
   file: File,
   options?: IFCAnalysisOptions
-): Promise<any> {
+): Promise<{
+  model: { schema: string; spaces: unknown[]; stories: unknown[]; entities: Record<string, unknown> }
+  spaces: Array<{ id: string; name: string; area: number; volume: number }>
+  stories: Array<{ id: string; name: string; elevation: number }>
+  elements: Array<{ id: string; type: string; material?: string }>
+  propertySet: Record<string, unknown>
+}> {
   // 实际项目中，这里应该调用IFC解析服务
   // 这里提供一个模拟实现
   return {
@@ -868,7 +885,7 @@ export async function parseIFCFile(
  * 提取CAD组件类型
  */
 export function extractComponentTypes(
-  fileData: any
+  fileData: CADAnalysisResult
 ): Record<CADComponentType, number> {
   // 在实际应用中，这里应该从文件数据中提取组件类型
   // 这里提供一个模拟实现
@@ -885,7 +902,7 @@ export function extractComponentTypes(
  * 计算CAD文件统计信息
  */
 export function calculateCADStats(
-  fileData: any
+  fileData: CADAnalysisResult
 ): {
   entityCount: number;
   layerCount: number;
