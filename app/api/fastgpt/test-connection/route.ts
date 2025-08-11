@@ -11,9 +11,12 @@ export async function POST(request: NextRequest) {
     // 目标路径：/api/v1/models
     const modelsPath = "/api/v1/models"
 
-    // 根据是否使用代理构造测试端点
+    // 计算当前服务的 origin（用于代理绝对地址）
+    const origin = request.nextUrl.origin
+
+    // 根据是否使用代理构造测试端点（绝对 URL，避免 Node 端相对路径解析失败）
     const endpoint = useProxy
-      ? `/api/proxy?url=${encodeURIComponent(`${apiUrl.replace(/^https?:\/\//, "")}${modelsPath}`)}`
+      ? `${origin}/api/proxy?url=${encodeURIComponent(`${apiUrl.replace(/^https?:\/\//, "")}${modelsPath}`)}`
       : `${apiUrl}${modelsPath}`
 
     const headers: Record<string, string> = {}
@@ -28,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (!response.ok) {
       // 回退到根路径探测
       const rootEndpoint = useProxy
-        ? `/api/proxy?url=${encodeURIComponent(apiUrl.replace(/^https?:\/\//, ""))}`
+        ? `${origin}/api/proxy?url=${encodeURIComponent(apiUrl.replace(/^https?:\/\//, ""))}`
         : apiUrl
 
       const rootResponse = await fetch(rootEndpoint, { method: "GET", headers })

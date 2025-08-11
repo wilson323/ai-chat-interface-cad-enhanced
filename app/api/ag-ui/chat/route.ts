@@ -2,6 +2,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { rateLimiter } from '@/lib/rate-limiter'
 import { z } from 'zod'
 import { createOptimizedStreamWriter, globalStreamMonitor } from '@/lib/ag-ui/stream-optimizer'
+import { KnownProviders } from '@/lib/api/ai-provider-adapter'
 import type { AgUIEvent } from '@/lib/ag-ui/types'
 import { EventType } from '@/lib/ag-ui/types'
 
@@ -31,17 +32,24 @@ export async function POST(req: NextRequest) {
       context: z.any().optional(),
       variables: z.record(z.string()).optional(),
       systemPrompt: z.string().optional(),
+      provider: z.enum(["dashscope","deepseek","moonshot","zhipu"]).optional(),
+      baseUrl: z.string().url().optional(),
+      apiKey: z.string().optional(),
+      model: z.string().optional(),
       streamConfig: z.object({ bufferSize: z.number().optional(), chunkDelay: z.number().optional(), typewriterSpeed: z.number().optional(), batchSize: z.number().optional(), }).optional()
     })
     const validationResult = schema.safeParse(body)
     if (!validationResult.success) {
       return NextResponse.json({ error: 'Invalid request body', issues: validationResult.error.flatten() }, { status: 400 })
     }
-    const { appId, chatId, messages, variables, systemPrompt, streamConfig } = validationResult.data
+    const { appId, chatId, messages, variables, systemPrompt, streamConfig, provider, baseUrl, apiKey: extKey, model } = validationResult.data
 
-    const targetUrl = "/api/fastgpt/api/v1/chat/completions"
+    // 构建基于当前请求的绝对路径，避免 Node 端相对 URL 解析失败
+    const origin = req.nextUrl.origin
+    const targetUrl = `${origin}/api/fastgpt/api/v1/chat/completions`
     const apiKey = process.env.FASTGPT_API_KEY
-    if (!apiKey) return NextResponse.json({ error: "FastGPT API configuration missing" }, { status: 500 })
+    const useExternal = !!provider
+    if (!useExternal && !apiKey) return NextResponse.json({ error: "FastGPT API configuration missing" }, { status: 500 })
 
     // 构建 TransformStream（Node18 提供 Web Streams API 全局实现）
     const stream = new TransformStream()
@@ -65,24 +73,65 @@ export async function POST(req: NextRequest) {
 
     let firstChunkTime: number | null = null
 
+    // 控制中断与清理
+    let aborted = false
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+    const onAbort = async () => {
+      aborted = true
+      try {
+        await reader?.cancel()
+      } catch {}
+      try {
+        optimizer.destroy()
+      } catch {}
+      try {
+        await writer.close()
+      } catch {}
+    }
+    if (req.signal.aborted) {
+      await onAbort()
+      return new Response(stream.readable, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } })
+    }
+    req.signal.addEventListener('abort', onAbort)
+
     // 调用上游
-    const upstream = await fetch(targetUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'X-Request-Start': requestStartTime.toString(),
-      },
-      body: JSON.stringify({
-        appId,
-        chatId,
-        messages,
-        stream: true,
-        detail: true,
-        system: systemPrompt,
-        variables,
-      })
-    })
+    const upstream = useExternal
+      ? await (async () => {
+          const adapter = (() => {
+            switch (provider) {
+              case 'dashscope': return KnownProviders.dashscope(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
+              case 'deepseek': return KnownProviders.deepseek(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
+              case 'moonshot': return KnownProviders.moonshot(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
+              case 'zhipu': return KnownProviders.zhipu(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
+              default: return KnownProviders.dashscope(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
+            }
+          })()
+          return adapter.chat({
+            model: model || appId,
+            messages,
+            stream: true,
+            temperature: 0.7,
+            max_tokens: 2048,
+          })
+        })()
+      : await fetch(targetUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            'X-Request-Start': requestStartTime.toString(),
+          },
+          body: JSON.stringify({
+            appId,
+            chatId,
+            messages,
+            stream: true,
+            detail: true,
+            system: systemPrompt,
+            variables,
+          }),
+          signal: req.signal,
+        })
 
     if (!upstream.ok || !upstream.body) {
       const errorText = await upstream.text().catch(() => upstream.statusText)
@@ -95,12 +144,16 @@ export async function POST(req: NextRequest) {
 
     // 解析上游 SSE
     const decoder = new TextDecoder()
-    const reader = (upstream.body as any).getReader()
+    reader = (upstream.body as any).getReader()
+    if (!reader) {
+      throw new Error('ReadableStream reader unavailable')
+    }
     let buffer = ''
 
     ;(async () => {
       try {
         while (true) {
+          if (aborted) break
           const { done, value } = await reader.read()
           if (done) break
           const chunk = decoder.decode(value, { stream: true })
@@ -155,13 +208,19 @@ export async function POST(req: NextRequest) {
             }
           }
         }
-      } catch (err) {
-        await optimizer.writeEventDirect({ type: EventType.RUN_ERROR, message: (err as Error).message || 'stream error', code: 500, timestamp: Date.now() })
+      } catch (err: any) {
+        // 对于中断错误不视为异常
+        const message = (typeof err?.name === 'string' && err.name === 'AbortError') ? 'aborted' : (err as Error).message || 'stream error'
+        if (!aborted && message !== 'aborted') {
+          await optimizer.writeEventDirect({ type: EventType.RUN_ERROR, message, code: 500, timestamp: Date.now() })
+        }
       } finally {
         try {
-          await optimizer.flush()
-          await optimizer.writeEventDirect({ type: EventType.TEXT_MESSAGE_END, messageId, timestamp: Date.now() })
-          await optimizer.writeEventDirect({ type: EventType.RUN_FINISHED, threadId, runId, timestamp: Date.now() })
+          if (!aborted) {
+            await optimizer.flush()
+            await optimizer.writeEventDirect({ type: EventType.TEXT_MESSAGE_END, messageId, timestamp: Date.now() })
+            await optimizer.writeEventDirect({ type: EventType.RUN_FINISHED, threadId, runId, timestamp: Date.now() })
+          }
           optimizer.destroy()
           await writer.close()
         } catch {}
