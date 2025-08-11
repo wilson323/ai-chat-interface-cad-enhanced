@@ -31,7 +31,7 @@ import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
 import { useIsMobile } from "@/components/ui/use-mobile"
 import { useToast } from "@/hooks/use-toast"
-import FastGPTApi from "@/lib/api/fastgpt"
+import { getEnhancedFastGPTClient } from "@/lib/api/enhanced-fastgpt-client"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { useInView } from "react-intersection-observer"
 
@@ -645,7 +645,10 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
 
         // 模拟分页加载收藏消息
         const limit = 20
-        const favorites = await FastGPTApi.getFavoriteMessages(selectedApp.id, page, limit)
+        const client = getEnhancedFastGPTClient({})
+        // TODO: 若增强客户端不含该方法，应在 API 层补充；此处先做兼容处理
+        const favorites = await (client as any).getFavoriteMessages?.(selectedApp.id, page, limit)
+          ?? []
 
         if (page === 1) {
           setFavoriteMessages(favorites)
