@@ -43,12 +43,9 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.FASTGPT_API_KEY
     if (!apiKey) return NextResponse.json({ error: "FastGPT API configuration missing" }, { status: 500 })
 
-    // 构建 TransformStream（Node18 可用）
-    // 在类型层面避免 Node 与 DOM ReadableStream 冲突，统一经 unknown->BodyInit 转换
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { TransformStream } = require('stream/web')
+    // 构建 TransformStream（Node18 提供 Web Streams API 全局实现）
     const stream = new TransformStream()
-    const writer = (stream as any).writable.getWriter()
+    const writer = stream.writable.getWriter()
 
     const optimizer = createOptimizedStreamWriter(writer, {
       bufferSize: streamConfig?.bufferSize,
@@ -93,8 +90,7 @@ export async function POST(req: NextRequest) {
       await optimizer.writeEventDirect(errorEvent)
       optimizer.destroy()
       await writer.close()
-      const sseBody = ((stream as any).readable as unknown) as BodyInit
-      return new Response(sseBody, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } })
+      return new Response(stream.readable, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } })
     }
 
     // 解析上游 SSE
@@ -172,8 +168,7 @@ export async function POST(req: NextRequest) {
       }
     })()
 
-    const sseBody = ((stream as any).readable as unknown) as BodyInit
-    return new Response(sseBody, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } })
+    return new Response(stream.readable, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } })
   } catch (error) {
     console.error("AG-UI chat route error:", error)
     return NextResponse.json({ error: (error as Error).message || 'Unknown error' }, { status: 500 })

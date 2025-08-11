@@ -5,37 +5,33 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { baseUrl, useProxy } = body
 
-    // Use server-side environment variable for API key
-    const apiKey = process.env.FASTGPT_API_KEY
+    const apiKey = process.env.FASTGPT_API_KEY || ""
+    const apiUrl = (process.env.FASTGPT_API_URL || baseUrl || "https://zktecoaihub.com").replace(/\/$/, "")
 
-    // Use server-side or provided API URL
-    const apiUrl = process.env.FASTGPT_API_URL || baseUrl || "https://zktecoaihub.com"
+    // 目标路径：/api/v1/models
+    const modelsPath = "/api/v1/models"
 
-    // Determine the actual API endpoint for testing
+    // 根据是否使用代理构造测试端点
     const endpoint = useProxy
-      ? `/api/proxy?url=${encodeURIComponent(apiUrl.replace(/^https?:\/\//, ""))}/api/v1/models`
-      : `${apiUrl}/api/v1/models`
+      ? `/api/proxy?url=${encodeURIComponent(`${apiUrl.replace(/^https?:\/\//, "")}${modelsPath}`)}`
+      : `${apiUrl}${modelsPath}`
 
-    // Make the request to test the connection
+    const headers: Record<string, string> = {}
+    if (apiKey) headers.Authorization = `Bearer ${apiKey}`
+
+    // 请求 models 以测试连通性
     const response = await fetch(endpoint, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-      },
+      headers,
     })
 
     if (!response.ok) {
-      // Try with root endpoint if models endpoint fails
+      // 回退到根路径探测
       const rootEndpoint = useProxy
         ? `/api/proxy?url=${encodeURIComponent(apiUrl.replace(/^https?:\/\//, ""))}`
         : apiUrl
 
-      const rootResponse = await fetch(rootEndpoint, {
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-        },
-      })
+      const rootResponse = await fetch(rootEndpoint, { method: "GET", headers })
 
       if (!rootResponse.ok) {
         const errorData = await rootResponse.json().catch(() => ({ error: { message: rootResponse.statusText } }))
@@ -50,7 +46,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: rootData, useProxy })
     }
 
-    const data = await response.json()
+    const data = await response.json().catch(() => ({}))
     return NextResponse.json({ success: true, data, useProxy })
   } catch (error) {
     console.error("Error in FastGPT test connection API route:", error)
