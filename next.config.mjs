@@ -43,8 +43,8 @@ const nextConfig = {
     'puppeteer-core'
   ],
   experimental: {
-    // 生产环境优化
-    optimizeCss: process.env.NODE_ENV === 'production',
+    // 固定关闭以避免引入 critters 依赖
+    optimizeCss: false,
     optimizePackageImports: [
       '@radix-ui/react-icons',
       'lucide-react',
@@ -94,8 +94,6 @@ const nextConfig = {
     } : false,
   },
   
-  // 构建时优化（Next.js 15 默认使用 SWC，无需 swcMinify 显式配置）
-  
   // 压缩配置
   compress: process.env.NODE_ENV === 'production',
   
@@ -111,76 +109,8 @@ const nextConfig = {
     pagesBufferLength: 5,
   },
   
-  // Webpack配置优化
-  webpack: (config, { buildId, dev, isServer, defaultLoaders, webpack }) => {
-    // 外部依赖优化
-    if (!isServer) {
-      config.externals = {
-        ...config.externals,
-        'utf-8-validate': 'commonjs utf-8-validate',
-        'bufferutil': 'commonjs bufferutil',
-        'supports-color': 'commonjs supports-color',
-      };
-    }
-    
-    // 生产环境优化
-    if (!dev) {
-      config.optimization = {
-        ...config.optimization,
-        usedExports: true,
-        sideEffects: false,
-        splitChunks: {
-          chunks: 'all',
-          cacheGroups: {
-            framework: {
-              chunks: 'all',
-              name: 'framework',
-              test: /(?<!node_modules.*)[\\/]node_modules[\\/](react|react-dom|scheduler|prop-types|use-subscription)[\\/]/,
-              priority: 40,
-              enforce: true,
-            },
-            lib: {
-              test(module) {
-                return module.size() > 160000 && /node_modules[/\\]/.test(module.identifier());
-              },
-              chunks: 'all',
-              name: 'lib',
-              priority: 30,
-              minChunks: 1,
-              reuseExistingChunk: true,
-            },
-            commons: {
-              chunks: 'all',
-              name: 'commons',
-              minChunks: 2,
-              priority: 20,
-            },
-            shared: {
-              chunks: 'all',
-              name: 'shared',
-              test: /[\\/]node_modules[\\/]/,
-              priority: 10,
-              minChunks: 1,
-              reuseExistingChunk: true,
-            },
-          },
-        },
-      };
-      
-      // Tree shaking优化
-      config.optimization.usedExports = true;
-      config.optimization.providedExports = true;
-    }
-    
-    // 文件加载优化
-    config.module.rules.push({
-      test: /\.(woff|woff2|eot|ttf|otf)$/i,
-      type: 'asset/resource',
-      generator: {
-        filename: 'static/fonts/[name].[hash][ext]',
-      },
-    });
-    
+  // Webpack配置精简为最小实现，避免影响Next内部runtime
+  webpack: (config) => {
     return config;
   },
   
@@ -190,56 +120,13 @@ const nextConfig = {
       {
         source: '/(.*)',
         headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'geolocation=(), microphone=(), camera=()' },
         ],
       },
-      {
-        source: '/api/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
-          },
-        ],
-      },
-      {
-        source: '/_next/static/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      {
-        source: '/public/(.*)',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=86400',
-          },
-        ],
-      },
-    ];
+    ]
   },
   
   // 环境变量配置
@@ -248,17 +135,11 @@ const nextConfig = {
     NEXT_PUBLIC_BUILD_TIME: new Date().toISOString(),
   },
   
-  // 重定向和重写规则
+  // 重写规则
   async rewrites() {
     return [
-      {
-        source: '/health',
-        destination: '/api/health',
-      },
-      {
-        source: '/monitoring',
-        destination: '/admin/dashboard/performance',
-      },
+      { source: '/health', destination: '/api/health' },
+      { source: '/monitoring', destination: '/admin/dashboard/performance' },
     ];
   },
 }

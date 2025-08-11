@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import type { FastGPTModel, VoiceModel } from '@/types/fastgpt';
-import FastGPTApi from '@/lib/api/fastgpt';
 import { isApiConfigured } from '@/lib/utils';
 
 export function useModelFetcher() {
@@ -33,11 +32,26 @@ export function useModelFetcher() {
           return;
         }
 
-        const modelList = await FastGPTApi.getModels();
-        setModels(Array.isArray(modelList) ? modelList : []);
+        // Prefer calling our own API routes that proxy/back the FastGPT service
+        const [modelsResp, voicesResp] = await Promise.all([
+          fetch('/api/fastgpt/api/v1/models', { method: 'GET' }),
+          fetch('/api/fastgpt/api/v1/voice/models', { method: 'GET' })
+        ]);
 
-        const voiceModelList = await FastGPTApi.getVoiceModels();
-        setVoiceModels(Array.isArray(voiceModelList) ? voiceModelList : []);
+        if (modelsResp.ok) {
+          const modelList = await modelsResp.json().catch(() => ([]));
+          setModels(Array.isArray(modelList) ? modelList : []);
+        } else {
+          throw new Error(`Get models failed: ${modelsResp.status}`);
+        }
+
+        if (voicesResp.ok) {
+          const voiceModelList = await voicesResp.json().catch(() => ([]));
+          setVoiceModels(Array.isArray(voiceModelList) ? voiceModelList : []);
+        } else {
+          // non-fatal: fall back to empty
+          setVoiceModels([]);
+        }
 
         setIsInitialized(true);
       } catch (error) {

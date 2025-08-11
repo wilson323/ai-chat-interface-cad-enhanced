@@ -47,6 +47,43 @@ export function validateCriticalDependencies(): EnvironmentValidationResult {
     });
   }
 
+  // 新增：OCCT 导入与 DWG 转换服务校验
+  const OCCT_ENABLED = process.env.OCCT_IMPORT_ENABLED === 'true';
+  if (!OCCT_ENABLED) {
+    checks.push({
+      name: 'OCCT Import',
+      expectedVersion: 'env: OCCT_IMPORT_ENABLED=true',
+      status: 'warning',
+      message: 'occt-import-js disabled; STEP/IGES parsing requires OCCT_IMPORT_ENABLED=true.'
+    });
+    warnings.push('OCCT_IMPORT_ENABLED not enabled');
+  } else {
+    checks.push({
+      name: 'OCCT Import',
+      expectedVersion: 'enabled',
+      status: 'ok',
+      message: 'occt-import-js enabled'
+    });
+  }
+
+  const DWG_URL = process.env.DWG_CONVERTER_URL;
+  if (!DWG_URL) {
+    checks.push({
+      name: 'DWG Converter Service',
+      expectedVersion: 'env: DWG_CONVERTER_URL',
+      status: 'warning',
+      message: 'DWG converter URL missing; DWG->DXF conversion will be unavailable.'
+    });
+    warnings.push('DWG_CONVERTER_URL missing');
+  } else {
+    checks.push({
+      name: 'DWG Converter Service',
+      expectedVersion: 'env present',
+      status: 'ok',
+      message: 'DWG converter configured'
+    });
+  }
+
   // 检查React版本兼容性
   try {
     // 使用容错的方式读取 react 版本

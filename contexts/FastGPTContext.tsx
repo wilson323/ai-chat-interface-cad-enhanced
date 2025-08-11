@@ -5,7 +5,7 @@ import type { FastGPTApp, ChatSession, User, ApiConfig } from "@/types/fastgpt"
 import { useToast } from "@/hooks/use-toast"
 import { STORAGE_KEYS, ERROR_MESSAGES } from "@/config/fastgpt"
 import { DEFAULT_AGENT } from "@/config/default-agent"
-import FastGPTApi from "@/lib/api/fastgpt"
+// FastGPTApi default client removed from direct usage in context; calls go through server routes
 import React from "react"
 
 // FastGPTContextType interface with pagination methods
@@ -182,13 +182,11 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         console.log("Local storage API configuration:", apiConfig)
 
         if (apiConfig && apiConfig.baseUrl && apiConfig.apiKey) {
-          // Set API configuration
           // Ensure proxy mode is enabled by default
           const useProxy = apiConfig.useProxy === undefined ? true : apiConfig.useProxy
           console.log(`Setting API config with proxy mode: ${useProxy}`)
 
-          // Update FastGPT client configuration
-          FastGPTApi.setApiConfig(apiConfig.baseUrl, apiConfig.apiKey, useProxy)
+          // Mark configured (actual calls will use server routes)
           setIsConfigured(true)
         }
 
@@ -209,8 +207,6 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
           } catch (error: any) {
             console.error("Failed to get applications during initialization:", error)
 
-            // Don't set isConfigured to false if we already have a configuration
-            // This prevents losing access to the admin interface
             if (!apiConfig || !apiConfig.baseUrl || !apiConfig.apiKey) {
               setIsConfigured(false)
             }
@@ -297,7 +293,6 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
     try {
       setIsLoading(true)
 
-      // Validate input
       if (!baseUrl || !apiKey) {
         toast({
           title: "API configuration failed",
@@ -307,7 +302,6 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         return false
       }
 
-      // Validate URL format
       if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
         toast({
           title: "API configuration failed",
@@ -318,7 +312,6 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
       }
 
       try {
-        // Validate URL is valid
         new URL(baseUrl)
       } catch (e) {
         toast({
@@ -329,9 +322,6 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
         return false
       }
 
-      // Set API configuration in client
-      FastGPTApi.setApiConfig(baseUrl, apiKey, useProxy === undefined ? true : useProxy)
-
       // Save to local storage，带默认/原则模型（若已有）
       const localCfgRaw = localStorage.getItem(STORAGE_KEYS.API_CONFIG)
       let prevExtra: any = {}
@@ -339,11 +329,16 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const config = { baseUrl, apiKey, useProxy: useProxy === undefined ? true : useProxy, defaultModel: prevExtra.defaultModel, principleModel: prevExtra.principleModel }
       localStorageDB.saveApiConfig(config)
 
-      // Test connection
+      // Test connection via server route
       try {
-        const result = await FastGPTApi.testConnection()
+        const resp = await fetch("/api/fastgpt/test-connection", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ baseUrl, useProxy }),
+        })
+        const result = await resp.json()
 
-        if ((result as any).ok) {
+        if (result?.success) {
           toast({
             title: "API configuration successful",
             description: "Successfully connected to FastGPT API",
@@ -351,39 +346,29 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
           setIsConfigured(true)
 
-          // Get applications list
           try {
             await fetchApplications()
           } catch (appError: any) {
             console.error("Failed to get applications list:", appError)
-
-            // Show warning but don't prevent configuration success
             toast({
               title: "Warning",
-              description:
-                "API connection successful, but failed to get applications list. Please refresh the page later.",
+              description: "API connection successful, but failed to get applications list. Please refresh the page later.",
               variant: "warning",
             })
           }
 
           return true
         } else {
-          throw new Error(result.message || "Connection test failed")
+          throw new Error(result?.error?.message || "Connection test failed")
         }
       } catch (error: any) {
         console.error("API connection test failed:", error)
 
-        // Build error message
         let errorMessage = ERROR_MESSAGES.CONNECTION_FAILED
         if (error.details) {
           errorMessage = error.details
         } else if (error.message) {
           errorMessage = error.message
-        }
-
-        // Add suggested action if available
-        if (error.suggestedAction) {
-          errorMessage += `\n\nSuggested action: ${error.suggestedAction}`
         }
 
         toast({

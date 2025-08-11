@@ -49,7 +49,6 @@ export const MODELS: UnifiedModelsConfig = {
   llm: [
     { id: 'qwen-plus-2025-01-12', name: 'Qwen Plus', provider: 'dashscope', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKeyEnv: 'EXTERNAL_AI_API_KEY', kind: 'llm', supportsStream: true, default: true },
     { id: 'qwen-max-latest', name: 'Qwen Max', provider: 'dashscope', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', apiKeyEnv: 'EXTERNAL_AI_API_KEY', kind: 'llm', supportsStream: true },
-    { id: 'deepseek-chat', name: 'DeepSeek Chat', provider: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', apiKeyEnv: 'EXTERNAL_AI_API_KEY', kind: 'llm', supportsStream: true },
   ],
   embedding: [
     { id: 'text-embedding-v1', name: 'Text Embedding', provider: 'deepseek', baseUrl: 'https://api.deepseek.com/v1', apiKeyEnv: 'EXTERNAL_AI_API_KEY', kind: 'embedding', dimension: 1536 },

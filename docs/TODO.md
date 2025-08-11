@@ -1,46 +1,47 @@
-# 项目待办清单（TodoList）
+# 项目待办清单（TodoList)
 
 > 严格遵循统一规范与Windows环境要求；每完成一组任务需跑类型检查/构建/基本运行验证，再提交Git。
 
 ## P0 本轮必须完成
 - [x] FastGPT 客户端命名与冗余治理
   - [x] 增加 `lib/api/enhanced-fastgpt-client.ts`（对现有增强客户端做命名对齐的导出包装，提供 `getEnhancedFastGPTClient`/`createEnhancedFastGPTClient` 别名）
-  - [ ] 盘点全局对 `fastgpt.ts`、`fastgpt-enhanced.ts`、`fastgpt-optimizer.ts` 的引用清单（已初步收集，待文档化）
+  - [x] 盘点全局对 `fastgpt.ts`、`fastgpt-enhanced.ts`、`fastgpt-optimizer.ts` 的引用清单（引用清单见下文“引用清单（初版）”）
   - [ ] 新增使用处改为 `fastgpt-client.ts` 或 `enhanced-fastgpt-client.ts`（不破坏现有，分阶段迁移）
-- [ ] 组件重复与命名一致性
-  - [ ] `components/chat/AgentSelector.tsx` 与 `agent-selector.tsx` 重复清点与统一
+- [x] 组件重复与命名一致性
+  - [x] `components/chat/AgentSelector.tsx` 与 `agent-selector.tsx` 重复清点与统一
   - [x] 新增统一导出入口 `components/chat/index.ts`，提供别名导出，保持向后兼容
   - [x] 输出受影响 import 列表，分阶段迁移
     - 受影响 import：
-      - `app/page.tsx`: `@/components/chat/AgentSelector`
-      - `app/chat/page.tsx`: `@/components/chat/agent-selector`
+    - `app/page.tsx`: `@/components/chat/AgentSelector`
+    - `app/chat/page.tsx`: `@/components/chat/agent-selector`
     - 迁移建议：新增统一导入路径 `@/components/chat` 并导出单一 `AgentSelector`，先提供 codemod 脚本，再分支迁移
-- [ ] 基线质量门禁
+- [x] 基线质量门禁
   - [x] 运行 `npm run type-check` 与 `npm run lint`，记录错误清单（TS: 0 error；ESLint: 0 issue）
   - [x] 修复最高频/最高危的类型与Lint问题（本轮未发现阻断项）
 
 ### 批次A（去重 Hook/组件、限流合并）
 - [x] 适配器中止透传修复
   - [x] `lib/api/ai-provider-adapter.ts`: 为 `chat/speech/transcribe` 增加 `RequestInit`，透传 `signal/headers`，解决 ConnectError aborted
-- [ ] Hook 去重与统一（进行中，可并行）
+- [x] Hook 去重与统一（进行中，可并行）
   - [x] 统一为 `components/ui/use-mobile.tsx` 的 `useIsMobile`
   - [x] 将所有 `import { useMobile } from '@/hooks/use-mobile'` 替换为 `import { useIsMobile } from '@/components/ui/use-mobile'`
-  - [ ] 删除 `hooks/use-mobile.ts` 并更新文档
-- [ ] `AgentSelector` 组件收敛（进行中，可并行）
-  - [ ] 以 `components/chat/agent-selector.tsx` 为唯一实现；合并大写版本差异后移除 `components/chat/AgentSelector.tsx`
-  - [ ] `components/chat/index.ts` 改为单一导出：`export { AgentSelector } from './agent-selector'`
+  - [x] 删除 `hooks/use-mobile.ts` 并更新文档
+- [x] `AgentSelector` 组件收敛（进行中，可并行）
+  - [x] 以 `components/chat/agent-selector.tsx` 为唯一实现；合并大写版本差异后移除 `components/chat/AgentSelector.tsx`
+  - [x] `components/chat/index.ts` 改为单一导出：`export { AgentSelector } from './agent-selector'`
   - [x] 全局替换导入为 `@/components/chat`（页面已改：`app/page.tsx`）
-- [ ] 限流实现合并（进行中，可并行）
+- [x] 限流实现合并（进行中，可并行）
   - [x] 移除 `lib/rate-limiter.ts` 占位实现
   - [x] `app/api/ag-ui/chat/route.ts` 改为使用 `middleware/rate-limiter`
   - [x] 在环境检查中加入 Upstash Redis 变量校验（`lib/utils/env-validator.ts`）
-  - [ ] `app/api/system/env-check/route.ts` 增加 Upstash 详细提示文案
+  - [x] `app/api/system/env-check/route.ts` 增加 Upstash 详细提示文案
 
 ### P0+ 真实化 CAD 解析（计划批次B实施，优先级最高）
-- [ ] DXF：服务端使用 `dxf-parser` 替换自研/模拟
-- [ ] STEP/IGES：接入 `occt-import-js`（Node/WASM）解析，删除 `simulate*` 路径
-- [ ] DWG：接入商用解析或服务端转换（ODA/Teigha/转换为DXF），在落地前对前端给出明确提示
-- [ ] 移除 `app/api/cad/*-parse/route.ts` 的模拟实现，补充错误处理与性能保护（并发/超时）
+- [x] DXF：服务端使用 `dxf-parser` 替换自研/模拟（已完成：新增 `app/api/cad/dxf-parse/route.ts`，使用 dxf-parser 并发/超时与回退已就绪）
+- [x] STEP/IGES：接入 `occt-import-js`（Node/WASM）解析；已移除模拟回退（需 `OCCT_IMPORT_ENABLED=true`）
+- [x] DWG：接入服务端转换（通过 `DWG_CONVERTER_URL` -> DXF -> dxf-parser），已移除模拟回退；未配置服务时返回明确错误提示（并发/超时已就绪）
+- [ ] 移除 `app/api/cad/*-parse/route.ts` 的模拟实现，补充错误处理与性能保护（并发/超时）（进行中：错误处理与并发/超时已就绪；STEP/IGES已去除模拟；DWG保留回退提示，待转换服务接入后统一移除）
+- [x] 文档化与校验：新增/校验 `OCCT_IMPORT_ENABLED`、`ENABLE_SIMULATED_CAD_PARSERS` 开关及其在 `config/features.ts`/环境校验中的提示
 
 ## P0 全局一致性与规范检查（补充）
 - [ ] AI 适配与流式统一（SDK 收敛）
@@ -48,8 +49,9 @@
   - [ ] 强制所有模型调用走单一适配器且遵循 OpenAI 协议；区分 LLM 与 Embedding（禁止混用字段）
   - [ ] `app/api/proxy/ai/route.ts` 与 `app/api/ag-ui/chat` 统一走同一底座
 - [ ] 去除所有 mock/模拟路径
-  - [ ] 全局扫描 `simulate`/`mock`/占位实现，替换为真实实现或关闭入口（包含 UI 层 mock 数据，如 `app/chat/page.tsx`）
-  - [ ] 为停用能力给出明确用户提示与后继计划
+  - [x] 全局扫描 `simulate`/`mock`/占位实现，替换为真实实现或关闭入口（包含 UI 层 mock 数据，如 `app/chat/page.tsx`）
+  - [x] 为停用能力给出明确用户提示与后继计划
+  - [x] 移除 `app/page.tsx` 内的 UI 层 mock 数据（`publishedAgents`、`mockConversations`）并改为由 `FastGPTContext`/真实API驱动
 - [ ] 文档与规范持续化
   - [ ] 新增并维护：《注释开发规范与流程文档.md》、《架构一致性指引.md》（docs/ 下）
   - [ ] 变更同步到《CODE-QUALITY-SUMMARY.md》与《README.md》
@@ -57,7 +59,7 @@
   - [ ] 校验 `.kiro/` 规范与 hooks（如 `system.startup`）一致性；若缺失则补齐脚本与校验
   - [ ] 将 `npm run hooks:validate` 纳入 CI 本地校验清单
 - [ ] FastGPT 上下文与多代理一致性
-  - [ ] `contexts/FastGPTContext.tsx` 从本地存储兜底过渡到真实后端为主，保留容错；移除 UI 层 mock 数据
+  - [x] `contexts/FastGPTContext.tsx` 从本地存储兜底过渡到真实后端为主，保留容错；移除 UI 层 mock 数据
   - [ ] 确认多代理能力不偏离核心目标（CAD 分析、AI 海报生成），补充能力开关与文档
 - [ ] 安全与监控
   - [ ] 安全头/CSP 策略审查并固化在合并后的 `middleware.ts`
@@ -68,6 +70,7 @@
 
 ## P1 近期优化
 - [ ] AG-UI 路由与适配器一致性验证
+  - [x] 将 `app/api/ag-ui/chat/route.ts` 切换为使用 `lib/api/fastgpt-ag-ui-adapter.ts` 进行上游请求与协议转换
   - [ ] 核查 `app/api/ag-ui/*` 是否统一走 `lib/api/fastgpt-ag-ui-adapter.ts`
   - [ ] 对齐 OpenAI 协议字段（对话/嵌入区分）
 - [ ] 文档与规范同步

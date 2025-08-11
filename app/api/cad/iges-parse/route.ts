@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       // 解析表单
       const formData = await request.formData();
       const file = formData.get("file") as File | null;
-      const precision = formData.get("precision") as string || "standard";
+      const precision = (formData.get("precision") as string) || "standard";
 
       if (!file) {
         throw ApiError.badRequest("未提供文件");
@@ -44,15 +44,11 @@ export async function POST(request: NextRequest) {
       await fs.writeFile(tempFilePath, Buffer.from(fileBuffer));
 
       try {
-        // 调用IGES解析服务
-        // 在实际实现中，可以使用专业库如OpenCascade或WebAssembly包装的IGES解析器
-        
-        // 模拟解析结果 - 在实际实现中替换为真实处理
-        const result = await simulateIgesParsing(tempFilePath, precision);
-        
+        const result = await parseIgesWithOcct(tempFilePath, precision);
+
         // 删除临时文件
         await fs.unlink(tempFilePath);
-        
+
         return NextResponse.json(result);
       } catch (error) {
         // 删除临时文件
@@ -61,21 +57,21 @@ export async function POST(request: NextRequest) {
         } catch (unlinkError) {
           console.error(`删除临时文件失败: ${tempFilePath}`, unlinkError);
         }
-        
+
         throw error;
       }
     } catch (error) {
       console.error("IGES解析错误:", error);
-      
+
       if (error instanceof ApiError) {
         return NextResponse.json(
           { error: error.message, code: error.code },
           { status: error.statusCode }
         );
       }
-      
+
       return NextResponse.json(
-        { 
+        {
           error: `IGES解析失败: ${error instanceof Error ? error.message : String(error)}`,
           code: ApiErrorCode.FILE_PROCESSING_ERROR
         },
@@ -85,100 +81,112 @@ export async function POST(request: NextRequest) {
   });
 }
 
-// 模拟IGES解析函数 - 实际项目中替换为真实解析逻辑
-async function simulateIgesParsing(filePath: string, precision: string): Promise<any> {
-  // 模拟处理延迟
-  await new Promise(resolve => setTimeout(resolve, 2500));
-  
-  // IGES通常包含曲面和曲线
-  const surfaceCount = Math.floor(Math.random() * 2000) + 500;
-  const curveCount = Math.floor(Math.random() * 5000) + 1000;
-  const pointCount = Math.floor(Math.random() * 3000) + 500;
-  
-  // IGES格式也可能包含一些实体信息
-  const faceCount = Math.floor(surfaceCount * 0.8);
-  const edgeCount = Math.floor(curveCount * 0.8);
-  
-  // 随机尺寸 (毫米)
-  const width = Math.floor(Math.random() * 500) + 100;
-  const height = Math.floor(Math.random() * 400) + 100;
-  const depth = Math.floor(Math.random() * 300) + 50;
-  
-  // 返回模拟结果
-  return {
-    fileInfo: {
-      id: path.basename(filePath, path.extname(filePath)),
-      name: path.basename(filePath),
-      type: 'iges'
-    },
-    entities: {
-      // IGES特有的实体类型
-      surfaces: surfaceCount,
-      curves: curveCount,
-      points: pointCount,
-      
-      // 映射到标准类型
-      faces: faceCount,
-      edges: edgeCount,
-      vertices: pointCount,
-      
-      // 2D元素 (IGES可以包含2D和3D数据)
-      lines: Math.floor(curveCount * 0.5),
-      circles: Math.floor(Math.random() * 200),
-      arcs: Math.floor(Math.random() * 150),
-    },
-    assemblies: ['默认'], // IGES通常不包含装配体信息
-    dimensions: {
-      width,
-      height,
-      depth,
-      unit: 'mm'
-    },
-    metadata: {
-      author: 'Unknown',
-      createdAt: new Date(Date.now() - Math.random() * 20000000000).toISOString(), // IGES是较老的格式
-      modifiedAt: new Date(Date.now() - Math.random() * 5000000000).toISOString(),
-      software: generateRandomSoftware(),
-      version: `${Math.floor(Math.random() * 10) + 5}.0` // 较旧版本
-    },
-    // 详细分析结果 (基于精度设置)
-    analysis: precision === 'high' ? {
-      // 包含的元素类型
-      entityTypes: [
-        { type: 110, name: '直线', count: Math.floor(Math.random() * 1000) + 100 },
-        { type: 126, name: 'B样条曲线', count: Math.floor(Math.random() * 500) + 50 },
-        { type: 128, name: 'B样条曲面', count: Math.floor(Math.random() * 300) + 30 },
-        { type: 100, name: '圆弧', count: Math.floor(Math.random() * 200) + 20 },
-      ]
-    } : null,
-    // IGES格式特有的警告
-    warnings: [
-      {
-        message: 'IGES是较老的格式，可能存在精度和兼容性问题',
-        level: 'low',
-        solution: '考虑转换为STEP格式以获得更好的兼容性'
+/* eslint-disable @typescript-eslint/no-var-requires */
+async function parseIgesWithOcct(filePath: string, precision: string): Promise<any> {
+  const occtEnabled = process.env.OCCT_IMPORT_ENABLED === 'true';
+
+  if (!occtEnabled) {
+    throw ApiError.serviceUnavailable(
+      'IGES解析未启用：请设置 OCCT_IMPORT_ENABLED=true 并安装/配置 occt-import-js',
+      { hint: 'Enable occt-import-js (WASM/Node) with OCCT_IMPORT_ENABLED=true' }
+    );
+  }
+
+  try {
+    const fileData = await fs.readFile(filePath);
+    const occtModule: any = await import('occt-import-js');
+    const occt: any = (occtModule as any).default || occtModule;
+
+    const importFn: any = occt?.importIges || occt?.importIGES || occt?.readIges || occt?.readIGES;
+    if (typeof importFn !== 'function') {
+      throw ApiError.internalError('occt-import-js 不可用：未找到 IGES 导入函数');
+    }
+
+    const doc: any = await importFn.call(occt, fileData);
+
+    const entities = extractEntitiesFromOcct(doc) || getDefaultEntities();
+    const dimensions = extractBoundingBoxFromOcct(doc) || getDefaultDimensions();
+
+    return {
+      fileInfo: {
+        id: path.basename(filePath, path.extname(filePath)),
+        name: path.basename(filePath),
+        type: 'iges',
       },
-      {
-        message: Math.random() > 0.5 ? '检测到部分曲面定义不完整' : null,
-        level: 'medium',
-        solution: '检查原始模型或使用修复工具'
-      }
-    ].filter(w => w.message)
+      entities,
+      assemblies: ['默认'],
+      dimensions,
+      metadata: {
+        author: doc?.metadata?.author || '未知',
+        createdAt: doc?.metadata?.createdAt || new Date().toISOString(),
+        modifiedAt: doc?.metadata?.modifiedAt,
+        software: doc?.metadata?.software || 'OpenCascade',
+        version: doc?.metadata?.version || 'unknown',
+      },
+      analysis: precision === 'high' ? { detail: 'high' } : null,
+      warnings: [],
+    };
+  } catch (err) {
+    console.error('occt-import-js IGES 解析异常:', err);
+    throw ApiError.serviceUnavailable(
+      'IGES解析失败：请确认 OCCT_IMPORT_ENABLED 已启用且 occt-import-js 可用',
+    );
+  }
+}
+
+function extractEntitiesFromOcct(doc: any): any | null {
+  try {
+    const counts = doc?.entities || doc?.counts || doc?.statistics;
+    if (!counts) return null;
+    return {
+      lines: counts.lines ?? 0,
+      circles: counts.circles ?? 0,
+      arcs: counts.arcs ?? 0,
+      polylines: counts.polylines ?? 0,
+      text: counts.text ?? 0,
+      dimensions: counts.dimensions ?? 0,
+      blocks: counts.blocks ?? 0,
+      faces: counts.faces ?? 0,
+      edges: counts.edges ?? 0,
+      vertices: counts.vertices ?? 0,
+      shells: counts.shells ?? 0,
+      solids: counts.solids ?? 0,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function getDefaultEntities() {
+  return {
+    lines: 0,
+    circles: 0,
+    arcs: 0,
+    polylines: 0,
+    text: 0,
+    dimensions: 0,
+    blocks: 0,
+    faces: 0,
+    edges: 0,
+    vertices: 0,
+    shells: 0,
+    solids: 0,
   };
 }
 
-// 生成随机CAD软件名称 (偏向老旧软件，因为IGES是较老的格式)
-function generateRandomSoftware(): string {
-  const softwares = [
-    'CATIA V4',
-    'AutoCAD',
-    'Pro/ENGINEER',
-    'I-DEAS',
-    'CADDS',
-    'Unigraphics',
-    'EUCLID',
-    'CADAM'
-  ];
-  
-  return softwares[Math.floor(Math.random() * softwares.length)];
+function extractBoundingBoxFromOcct(doc: any): any | null {
+  try {
+    const bbox = doc?.bbox || doc?.boundingBox || doc?.aabb;
+    if (!bbox) return null;
+    const width = bbox.width ?? Math.abs((bbox.max?.x ?? 0) - (bbox.min?.x ?? 0));
+    const height = bbox.height ?? Math.abs((bbox.max?.y ?? 0) - (bbox.min?.y ?? 0));
+    const depth = bbox.depth ?? Math.abs((bbox.max?.z ?? 0) - (bbox.min?.z ?? 0));
+    return { width, height, depth, unit: 'mm' };
+  } catch {
+    return null;
+  }
+}
+
+function getDefaultDimensions() {
+  return { width: 100, height: 100, depth: 100, unit: 'mm' };
 } 

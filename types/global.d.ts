@@ -97,3 +97,8 @@ declare module 'next/font/google' {
     className: string
   }
 } 
+
+declare module 'occt-import-js' {
+  const mod: any
+  export default mod
+} 

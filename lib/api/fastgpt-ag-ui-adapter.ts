@@ -1,6 +1,7 @@
 // 轻量版 FastGPT AG-UI 适配器（移除外部依赖）
 import FastGPTApi from "./fastgpt"
-import { generateImageFromChat } from "../utils/image-generator"
+// 移除顶层导入，改为函数内动态导入避免在服务端打包期引入浏览器依赖
+// import { generateImageFromChat } from "../utils/image-generator"
 
 interface AgentStateInternal {
   threadId: string
@@ -72,6 +73,7 @@ export class FastGptAgUiAdapter {
     const { chatId } = this.state
     if (!chatId) throw new Error("聊天会话未初始化")
     const history = await FastGPTApi.getChatSessions(chatId)
+    const { generateImageFromChat } = await import("../utils/image-generator")
     return await generateImageFromChat(history, includeWelcome)
   }
 
@@ -92,4 +94,43 @@ export class FastGptAgUiAdapter {
     })
     return await response.json()
   }
+}
+
+export interface FastGptUpstreamParams {
+  origin: string
+  apiKey: string
+  appId: string
+  chatId?: string
+  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>
+  variables?: Record<string, string>
+  systemPrompt?: string
+  signal?: AbortSignal
+}
+
+/**
+ * 在服务端创建到 FastGPT 的上游 SSE 请求
+ */
+export async function createFastGptUpstream(params: FastGptUpstreamParams): Promise<Response> {
+  const { origin, apiKey, appId, chatId, messages, variables, systemPrompt, signal } = params
+  if (!origin || !apiKey) {
+    throw new Error('Missing origin or apiKey for FastGPT upstream')
+  }
+  const targetUrl = `${origin}/api/fastgpt/api/v1/chat/completions`
+  return fetch(targetUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      appId,
+      chatId,
+      messages,
+      stream: true,
+      detail: true,
+      system: systemPrompt,
+      variables,
+    }),
+    signal,
+  })
 }

@@ -6,6 +6,9 @@ import { KnownProviders } from '@/lib/api/ai-provider-adapter'
 import type { AgUIEvent } from '@/lib/ag-ui/types'
 import { EventType } from '@/lib/ag-ui/types'
 
+export const runtime = 'edge'
+export const dynamic = 'force-dynamic'
+
 /**
  * AG-UI聊天API路由 - 提供AG-UI协议支持，同时保持与后端代理的对接
  * AG-UI Chat API Route - Provides AG-UI protocol support while maintaining backend proxy integration
@@ -44,14 +47,26 @@ export async function POST(req: NextRequest) {
     }
     const { appId, chatId, messages, variables, systemPrompt, streamConfig, provider, baseUrl, apiKey: extKey, model } = validationResult.data
 
+    // env overrides to force DashScope
+    const forceDashscope = process.env.EXTERNAL_AI_FORCE_DASHSCOPE === 'true'
+    const externalBaseUrl = process.env.EXTERNAL_AI_BASE_URL || 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    const externalApiKey = process.env.EXTERNAL_AI_API_KEY || ''
+
+    // 允许仅测试 Qwen 模型时的安全映射
+    const resolvedModel = (() => {
+      const requested = model || appId
+      if (requested === 'qwen-plus-2025-01-12' || requested === 'qwen-max-latest') return requested
+      // 当仅测试Qwen时，默认落到 qwen-plus-2025-01-12
+      return 'qwen-plus-2025-01-12'
+    })()
+
     // 构建基于当前请求的绝对路径，避免 Node 端相对 URL 解析失败
     const origin = req.nextUrl.origin
-    const targetUrl = `${origin}/api/fastgpt/api/v1/chat/completions`
     const apiKey = process.env.FASTGPT_API_KEY
-    const useExternal = !!provider
+    const useExternal = forceDashscope || !!provider
     if (!useExternal && !apiKey) return NextResponse.json({ error: "FastGPT API configuration missing" }, { status: 500 })
 
-    // 构建 TransformStream（Node18 提供 Web Streams API 全局实现）
+    // 构建 TransformStream（Edge 运行时提供 Web Streams API）
     const stream = new TransformStream()
     const writer = stream.writable.getWriter()
 
@@ -98,38 +113,31 @@ export async function POST(req: NextRequest) {
     const upstream = useExternal
       ? await (async () => {
           const adapter = (() => {
-            switch (provider) {
-              case 'dashscope': return KnownProviders.dashscope(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
+            const forcedProvider = forceDashscope ? 'dashscope' : provider
+            switch (forcedProvider) {
+              case 'dashscope': return KnownProviders.dashscope(extKey || externalApiKey, baseUrl || externalBaseUrl)
               case 'deepseek': return KnownProviders.deepseek(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
               case 'moonshot': return KnownProviders.moonshot(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
               case 'zhipu': return KnownProviders.zhipu(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
-              default: return KnownProviders.dashscope(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
+              default: return KnownProviders.dashscope(extKey || externalApiKey, baseUrl || externalBaseUrl)
             }
           })()
           return adapter.chat({
-            model: model || appId,
+            model: resolvedModel,
             messages,
             stream: true,
             temperature: 0.7,
             max_tokens: 2048,
           })
         })()
-      : await fetch(targetUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-            'X-Request-Start': requestStartTime.toString(),
-          },
-          body: JSON.stringify({
-            appId,
-            chatId,
-            messages,
-            stream: true,
-            detail: true,
-            system: systemPrompt,
-            variables,
-          }),
+      : await (await import('@/lib/api/server-fastgpt-upstream')).createFastGptUpstream({
+          origin,
+          apiKey: apiKey!,
+          appId,
+          chatId,
+          messages,
+          variables,
+          systemPrompt,
           signal: req.signal,
         })
 
