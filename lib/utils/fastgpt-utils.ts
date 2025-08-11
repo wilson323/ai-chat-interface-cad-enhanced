@@ -130,3 +130,13 @@ export default {
   sendChatMessage,
   getQuestionSuggestions,
 }
+
+export const getGlobalModelConfig = () => {
+  try {
+    const json = process.env.NEXT_PUBLIC_GLOBAL_MODELS || ''
+    if (!json) return null
+    return JSON.parse(json)
+  } catch {
+    return null
+  }
+}
