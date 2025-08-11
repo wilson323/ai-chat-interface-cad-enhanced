@@ -340,15 +340,23 @@ const FastGPTProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
       // Save to local storage，带默认/原则模型（若已有）
       const localCfgRaw = localStorage.getItem(STORAGE_KEYS.API_CONFIG)
-      let prevExtra: { defaultModel?: unknown; principleModel?: unknown } = {}
+      let prevExtra: { defaultModel?: string; principleModel?: string } = {}
       try {
         const parsed = localCfgRaw ? JSON.parse(localCfgRaw) : {}
         if (parsed && typeof parsed === 'object') {
           const obj = parsed as Record<string, unknown>
-          prevExtra = { defaultModel: obj.defaultModel, principleModel: obj.principleModel }
+          const defaultModel = typeof obj.defaultModel === 'string' ? obj.defaultModel : undefined
+          const principleModel = typeof obj.principleModel === 'string' ? obj.principleModel : undefined
+          prevExtra = { defaultModel, principleModel }
         }
       } catch { /* noop */ }
-      const config = { baseUrl, apiKey, useProxy: useProxy === undefined ? true : useProxy, defaultModel: prevExtra.defaultModel, principleModel: prevExtra.principleModel }
+      const config: ApiConfig = {
+        baseUrl,
+        apiKey,
+        useProxy: useProxy === undefined ? true : useProxy,
+        defaultModel: prevExtra.defaultModel,
+        principleModel: prevExtra.principleModel,
+      }
       localStorageDB.saveApiConfig(config)
 
       // Test connection via server route
