@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button"
 import { Sparkles } from "lucide-react"
 import { useState, useEffect } from "react"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/components/ui/use-mobile"
 
 interface SuggestedQuestionsProps {
   questions: string[]
@@ -14,7 +14,7 @@ interface SuggestedQuestionsProps {
 
 export function SuggestedQuestions({ questions, onSelectQuestion, className = "", onSelect }: SuggestedQuestionsProps) {
   const [isVisible, setIsVisible] = useState(true)
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
 
   // Auto-hide on mobile after a delay
   useEffect(() => {

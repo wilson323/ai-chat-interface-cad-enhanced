@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Send, Mic, ImageIcon, Paperclip, Smile, Sparkles, X, Volume2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/components/ui/use-mobile"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CADFileUploader } from "@/components/cad/cad-file-uploader"
 
@@ -28,7 +28,7 @@ export function ChatInput({ onSubmit, isLoading, isMuted }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const recordingInterval = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
 
   // Auto-adjust height
   useEffect(() => {

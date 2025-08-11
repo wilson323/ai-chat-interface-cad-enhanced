@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Copy, MoreHorizontal, Star } from "lucide-react"
 import { MessageFeedback } from "./message-feedback"
 import { cn } from "@/lib/utils"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/components/ui/use-mobile"
 
 interface Message {
   id: string
@@ -43,7 +43,7 @@ export function EnhancedChatMessage({
   formatTime = (date: Date) => date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
 }: EnhancedChatMessageProps) {
   const [showActions, setShowActions] = useState(false)
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
 
   const handleCopy = () => {
     if (onCopy) {

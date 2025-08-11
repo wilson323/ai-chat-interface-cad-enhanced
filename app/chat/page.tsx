@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useToast } from "@/hooks/use-toast"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/components/ui/use-mobile"
 import { Sun, Moon, Menu, LogOut, Sparkles, User } from "lucide-react"
 import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface"
 import { ChatSidebar } from "@/components/chat/chat-sidebar"
@@ -176,7 +176,7 @@ export default function ChatPage() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isAgentSelectorOpen, setIsAgentSelectorOpen] = useState(false)
   const { toast } = useToast()
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
   const router = useRouter()
 
   const { isConfigured, isLoading, currentUser, selectedApp, setCurrentUser } = useFastGPT()

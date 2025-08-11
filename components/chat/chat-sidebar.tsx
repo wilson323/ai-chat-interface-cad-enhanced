@@ -29,7 +29,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { formatDistanceToNow } from "date-fns"
 import { zhCN } from "date-fns/locale"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/components/ui/use-mobile"
 import { useToast } from "@/hooks/use-toast"
 import FastGPTApi from "@/lib/api/fastgpt"
 import { useVirtualizer } from "@tanstack/react-virtual"
@@ -380,7 +380,7 @@ export function ChatSidebar({ isOpen, onClose }: ChatSidebarProps) {
   } = useFastGPT()
   const [searchQuery, setSearchQuery] = useState("")
   const [isSearchFocused, setIsSearchFocused] = useState(false)
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
   const { toast } = useToast()
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null)
   const [newTitle, setNewTitle] = useState("")

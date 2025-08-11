@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Send, ImageIcon, Loader2, BarChart3, Settings } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/components/ui/use-mobile"
 import { WelcomeScreen } from "./welcome-screen"
 import { AgentSelector } from "./agent-selector"
 import { SuggestedQuestions } from "./suggested-questions"
@@ -137,7 +137,7 @@ export function UnifiedChatInterface({
   performanceConfig = {},
 }: UnifiedChatInterfaceProps) {
   const { toast } = useToast()
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
 
   // Configuration with defaults
   const config = {

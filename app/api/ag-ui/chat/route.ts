@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { rateLimiter } from '@/lib/rate-limiter'
+import { rateLimiterMiddleware } from '@/middleware/rate-limiter'
 import { z } from 'zod'
 import { createOptimizedStreamWriter, globalStreamMonitor } from '@/lib/ag-ui/stream-optimizer'
 import { KnownProviders } from '@/lib/api/ai-provider-adapter'
@@ -19,9 +19,9 @@ export async function POST(req: NextRequest) {
   const requestStartTime = Date.now()
   
   try {
-    const identifier = req.headers.get('x-real-ip') || 'anonymous'
-    const { success } = await rateLimiter.limit(identifier)
-    if (!success) return new Response('Too many requests', { status: 429 })
+    // 复用中间件限流逻辑（最小包装）
+    const limited = await rateLimiterMiddleware(req)
+    if (limited && (limited as any).status === 429) return limited
 
     const body = await req.json()
     const schema = z.object({

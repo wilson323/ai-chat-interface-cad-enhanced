@@ -3,7 +3,7 @@
 import { ArrowLeft, MoreVertical } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useMobile } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/components/ui/use-mobile"
 import { useRouter } from "next/navigation"
 
 interface MobileHeaderProps {
@@ -15,7 +15,7 @@ interface MobileHeaderProps {
 }
 
 export function MobileHeader({ title, subtitle, avatarSrc, onBackClick, showBackButton = true }: MobileHeaderProps) {
-  const isMobile = useMobile()
+  const isMobile = useIsMobile()
   const router = useRouter()
 
   const handleBackClick = () => {
