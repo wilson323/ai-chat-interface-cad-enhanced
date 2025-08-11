@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
       status = 'healthy';
     }
     
-    const response: EnvironmentStatus = {
+    const response: EnvironmentStatus & { hints?: string[] } = {
       status,
       timestamp: new Date().toISOString(),
       dependencies: {
@@ -47,6 +47,13 @@ export async function GET(request: NextRequest) {
         errors: errorCount
       }
     };
+    
+    const hints: string[] = [];
+    const hasUpstash = !!process.env.UPSTASH_REDIS_REST_URL && !!process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!hasUpstash) {
+      hints.push('缺少 Upstash Redis 配置（UPSTASH_REDIS_REST_URL / UPSTASH_REDIS_REST_TOKEN），限流将自动禁用。');
+    }
+    if (hints.length > 0) response.hints = hints;
     
     // 如果请求详细报告
     const searchParams = request.nextUrl.searchParams;
