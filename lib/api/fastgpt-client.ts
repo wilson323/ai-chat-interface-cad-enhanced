@@ -45,10 +45,18 @@ export class FastGPTClient {
    * Make API request
    */
   private async request(endpoint: string, options: RequestInit = {}) {
-    // 若 endpoint 以 http(s) 或 / 开头，则认为是完整或相对路径，直接使用
+    // 若 endpoint 以 http(s) 开头，直接使用；
+    // 若以 / 开头：浏览器使用相对路径；服务端拼接 baseUrl
     const isAbsolute = /^https?:\/\//i.test(endpoint)
     const isRelativeFromRoot = endpoint.startsWith("/")
-    const url = isAbsolute || isRelativeFromRoot ? endpoint : `${this.baseUrl}${endpoint}`
+    let url: string
+    if (isAbsolute) {
+      url = endpoint
+    } else if (isRelativeFromRoot) {
+      url = this.isBrowser ? endpoint : `${this.baseUrl}${endpoint}`
+    } else {
+      url = `${this.baseUrl}${endpoint}`
+    }
     const headers = this.getHeaders()
 
     const response = await fetch(url, {
