@@ -3,6 +3,23 @@
  * Smart Retry System - Handle temporary failures and network issues
  */
 
+// 错误类型守卫
+interface RetryableErrorShape {
+  status?: number
+  code?: string
+  message?: string
+}
+
+function isRetryableErrorShape(error: unknown): error is RetryableErrorShape {
+  if (typeof error !== 'object' || error === null) return false
+  const e = error as Record<string, unknown>
+  return (
+    (typeof e.status === 'number' || typeof e.status === 'undefined') &&
+    (typeof e.code === 'string' || typeof e.code === 'undefined') &&
+    (typeof e.message === 'string' || typeof e.message === 'undefined')
+  )
+}
+
 // 重试配置
 export interface RetryConfig {
   enabled: boolean
@@ -12,8 +29,8 @@ export interface RetryConfig {
   backoffFactor: number
   retryableStatusCodes: number[]
   retryableErrors: string[]
-  retryCondition?: (error: any) => boolean
-  onRetry?: (error: any, retryCount: number, delay: number) => void
+  retryCondition?: (error: unknown) => boolean
+  onRetry?: (error: unknown, retryCount: number, delay: number) => void
   debug: boolean
   logLevel: "error" | "warn" | "info" | "debug"
 }
@@ -50,15 +67,16 @@ export class RetryManager {
    * @returns 操作结果
    */
   public async execute<T>(operation: () => Promise<T>, options: Partial<RetryConfig> = {}): Promise<T> {
-    if (!this.config.enabled) {
+    if (this.config.enabled !== true) {
       return operation()
     }
 
     // 合并配置
     const config = { ...this.config, ...options }
     let retries = 0
-    let lastError: any
+    let lastError: unknown
 
+    // eslint-disable-next-line no-constant-condition
     while (true) {
       try {
         const result = await operation()
@@ -78,7 +96,7 @@ export class RetryManager {
         const delay = this.calculateDelay(retries, config)
 
         // 调用重试回调
-        if (config.onRetry) {
+        if (typeof config.onRetry === 'function') {
           config.onRetry(error, retries + 1, delay)
         }
 
@@ -131,30 +149,32 @@ export class RetryManager {
    * @param config 配置
    * @returns 是否应该重试
    */
-  private shouldRetry(error: any, retries: number, config: RetryConfig): boolean {
+  private shouldRetry(error: unknown, retries: number, config: RetryConfig): boolean {
     // 如果已达到最大重试次数，不再重试
     if (retries >= config.maxRetries) {
       return false
     }
 
     // 如果提供了自定义重试条件，使用它
-    if (config.retryCondition) {
+    if (typeof config.retryCondition === 'function') {
       return config.retryCondition(error)
     }
 
-    // 检查HTTP状态码
-    if (error.status && config.retryableStatusCodes.includes(error.status)) {
-      return true
-    }
+    if (isRetryableErrorShape(error)) {
+      // 检查HTTP状态码
+      if (typeof error.status === 'number' && config.retryableStatusCodes.includes(error.status)) {
+        return true
+      }
 
-    // 检查错误代码
-    if (error.code && config.retryableErrors.includes(error.code)) {
-      return true
-    }
+      // 检查错误代码
+      if (typeof error.code === 'string' && config.retryableErrors.includes(error.code)) {
+        return true
+      }
 
-    // 检查网络错误
-    if (error.message && config.retryableErrors.some((e) => error.message.includes(e))) {
-      return true
+      // 检查网络错误
+      if (typeof error.message === 'string' && config.retryableErrors.some((e) => error.message!.includes(e))) {
+        return true
+      }
     }
 
     return false
@@ -183,9 +203,9 @@ export class RetryManager {
    * @param message 日志消息
    * @param data 附加数据
    */
-  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: any): void {
+  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: unknown): void {
     // 根据配置的日志级别过滤日志
-    const levelPriority = { error: 0, warn: 1, info: 2, debug: 3 }
+    const levelPriority = { error: 0, warn: 1, info: 2, debug: 3 } as const
     if (levelPriority[level] > levelPriority[this.config.logLevel]) {
       return
     }

@@ -13,20 +13,23 @@ export type AgUIEventType =
   | 'RUN_FINISHED'
   | 'RUN_ERROR';
 
-export interface AgUIEvent {
+export interface AgUIEventBase {
   type: AgUIEventType;
   timestamp: number;
-  [key: string]: any;
 }
+
+export type AgUIEvent = AgUIEventBase & Partial<Record<string, unknown>>;
 
 export class AgUIEventEmitter {
   private events$ = new Subject<AgUIEvent>();
   
-  emit(event: AgUIEvent) {
+  emit(event: { type: AgUIEventType } & Partial<Record<string, unknown>> & { timestamp?: number }) {
+    const ts = typeof event.timestamp === 'number' ? event.timestamp : Date.now();
     this.events$.next({
-      ...event,
-      timestamp: event.timestamp || Date.now()
-    });
+      ...(event as Record<string, unknown>),
+      type: event.type,
+      timestamp: ts
+    } as AgUIEvent);
   }
   
   getEventStream(): Observable<AgUIEvent> {
