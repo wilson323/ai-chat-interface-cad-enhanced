@@ -4,7 +4,6 @@ import fs from "fs/promises";
 import { v4 as uuidv4 } from "uuid";
 import { createQueue } from '@/lib/utils/processingQueue';
 import { ApiError, ApiErrorCode } from '@/lib/errors/error-handler';
-import { isSimulatedCadParsersEnabled } from '@/config/features'
 
 // 使用处理队列限制并发
 const dxfProcessingQueue = createQueue({
@@ -136,28 +135,10 @@ async function parseDxfFile(filePath: string, originalName: string, precision: s
     };
   } catch (err) {
     console.error('DXF真实解析失败:', err);
-    if (!isSimulatedCadParsersEnabled()) {
-      throw ApiError.serviceUnavailable(
-        'DXF解析失败且未允许模拟，请上传有效DXF文件或临时设置 ENABLE_SIMULATED_CAD_PARSERS=true',
-      );
-    }
-    return simulateLikeFallback(filePath, originalName);
+    throw ApiError.serviceUnavailable(
+      'DXF解析失败：请上传有效DXF文件。系统已禁用任何模拟回退。',
+    );
   }
 }
 
-async function simulateLikeFallback(filePath: string, originalName: string): Promise<any> {
-  return {
-    fileInfo: {
-      id: path.basename(filePath, '.dxf'),
-      name: originalName,
-      type: 'dxf',
-    },
-    entities: { lines: 0, circles: 0, arcs: 0, polylines: 0, text: 0, dimensions: 0, blocks: 0 },
-    layers: [],
-    dimensions: { width: 841, height: 594, unit: 'mm' },
-    metadata: { software: '未知', createdAt: new Date().toISOString() },
-    devices: [],
-    wiring: { totalLength: 0, details: [] },
-    warnings: [{ message: '使用回退结果：请上传有效DXF文件或关闭模拟', level: 'low' }],
-  };
-}
+ 
