@@ -42,6 +42,30 @@
 - [ ] DWG：接入商用解析或服务端转换（ODA/Teigha/转换为DXF），在落地前对前端给出明确提示
 - [ ] 移除 `app/api/cad/*-parse/route.ts` 的模拟实现，补充错误处理与性能保护（并发/超时）
 
+## P0 全局一致性与规范检查（补充）
+- [ ] AI 适配与流式统一（SDK 收敛）
+  - [ ] 采用 OpenAI 官方 SDK 或 Vercel AI SDK 统一对话流与函数调用；`lib/api/ai-provider-adapter.ts` 精简为供应商配置映射层
+  - [ ] 强制所有模型调用走单一适配器且遵循 OpenAI 协议；区分 LLM 与 Embedding（禁止混用字段）
+  - [ ] `app/api/proxy/ai/route.ts` 与 `app/api/ag-ui/chat` 统一走同一底座
+- [ ] 去除所有 mock/模拟路径
+  - [ ] 全局扫描 `simulate`/`mock`/占位实现，替换为真实实现或关闭入口（包含 UI 层 mock 数据，如 `app/chat/page.tsx`）
+  - [ ] 为停用能力给出明确用户提示与后继计划
+- [ ] 文档与规范持续化
+  - [ ] 新增并维护：《注释开发规范与流程文档.md》、《架构一致性指引.md》（docs/ 下）
+  - [ ] 变更同步到《CODE-QUALITY-SUMMARY.md》与《README.md》
+- [ ] .kiro 钩子与系统启动规范
+  - [ ] 校验 `.kiro/` 规范与 hooks（如 `system.startup`）一致性；若缺失则补齐脚本与校验
+  - [ ] 将 `npm run hooks:validate` 纳入 CI 本地校验清单
+- [ ] FastGPT 上下文与多代理一致性
+  - [ ] `contexts/FastGPTContext.tsx` 从本地存储兜底过渡到真实后端为主，保留容错；移除 UI 层 mock 数据
+  - [ ] 确认多代理能力不偏离核心目标（CAD 分析、AI 海报生成），补充能力开关与文档
+- [ ] 安全与监控
+  - [ ] 安全头/CSP 策略审查并固化在合并后的 `middleware.ts`
+  - [ ] 接入 Sentry/Logtail（二选一）用于错误上报；`app/api/monitoring/error/route.ts` 与前端上报一致
+- [ ] 缓存与性能
+  - [ ] 统一 `lib/cache/*` 与 Redis/Upstash 使用方式，移除重复封装；明确失效策略与键前缀
+  - [ ] 评估 `lib/ag-ui/stream-optimizer.ts` 与 SDK 能力的重叠度，能复用则收敛
+
 ## P1 近期优化
 - [ ] AG-UI 路由与适配器一致性验证
   - [ ] 核查 `app/api/ag-ui/*` 是否统一走 `lib/api/fastgpt-ag-ui-adapter.ts`
