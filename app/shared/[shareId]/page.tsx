@@ -14,7 +14,7 @@ import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
 import { CADAnalysisResult } from "@/lib/types/cad"
 import { formatFileSize } from "@/lib/utils"
 import { LayerInfo } from "@/lib/types/cad"
-import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils"
+import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils-browser"
 import { 
   Loader2, 
   AlertTriangle, 

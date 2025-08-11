@@ -1,5 +1,4 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { fetchEventSource } from "@microsoft/fetch-event-source"
 import { rateLimiter } from '@/lib/rate-limiter'
 import { z } from 'zod'
 import { createOptimizedStreamWriter, globalStreamMonitor } from '@/lib/ag-ui/stream-optimizer'
@@ -19,106 +18,62 @@ export async function POST(req: NextRequest) {
   const requestStartTime = Date.now()
   
   try {
-    // 增加速率限制
     const identifier = req.headers.get('x-real-ip') || 'anonymous'
     const { success } = await rateLimiter.limit(identifier)
-    
-    if (!success) {
-      return new Response('Too many requests', { status: 429 })
-    }
+    if (!success) return new Response('Too many requests', { status: 429 })
 
-    // 解析并验证输入
     const body = await req.json()
-    
     const schema = z.object({
       appId: z.string().min(1),
       chatId: z.string().optional(),
-      messages: z.array(z.object({
-        role: z.enum(["user", "assistant", "system"]),
-        content: z.string().max(10000)
-      })).min(1),
+      messages: z.array(z.object({ role: z.enum(["user", "assistant", "system"]), content: z.string().max(10000) })).min(1),
       tools: z.array(z.any()).optional(),
       context: z.any().optional(),
       variables: z.record(z.string()).optional(),
       systemPrompt: z.string().optional(),
-      // 流式优化配置
-      streamConfig: z.object({
-        bufferSize: z.number().optional(),
-        chunkDelay: z.number().optional(),
-        typewriterSpeed: z.number().optional(),
-        batchSize: z.number().optional(),
-      }).optional()
+      streamConfig: z.object({ bufferSize: z.number().optional(), chunkDelay: z.number().optional(), typewriterSpeed: z.number().optional(), batchSize: z.number().optional(), }).optional()
     })
-    
     const validationResult = schema.safeParse(body)
     if (!validationResult.success) {
-      return NextResponse.json(
-        { error: 'Invalid request body', issues: validationResult.error.flatten() },
-        { status: 400 }
-      )
+      return NextResponse.json({ error: 'Invalid request body', issues: validationResult.error.flatten() }, { status: 400 })
     }
-    
-    const { appId, chatId, messages, tools, context, variables, systemPrompt, streamConfig } = validationResult.data
+    const { appId, chatId, messages, variables, systemPrompt, streamConfig } = validationResult.data
 
-    // 获取目标本地路由（统一走本地转发，避免外部路径差异）
     const targetUrl = "/api/fastgpt/api/v1/chat/completions"
     const apiKey = process.env.FASTGPT_API_KEY
+    if (!apiKey) return NextResponse.json({ error: "FastGPT API configuration missing" }, { status: 500 })
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "FastGPT API configuration missing" }, { status: 500 })
-    }
-
-    // 创建优化的响应流
+    // 构建 TransformStream（Node18 可用）
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const { TransformStream } = require('stream/web')
     const stream = new TransformStream()
-    const writer = stream.writable.getWriter()
-    
-    // 创建流式优化器
+    const writer = (stream as any).writable.getWriter()
+
     const optimizer = createOptimizedStreamWriter(writer, {
-      // 根据配置或使用默认值
       bufferSize: streamConfig?.bufferSize,
       chunkDelay: streamConfig?.chunkDelay,
       typewriterSpeed: streamConfig?.typewriterSpeed,
       batchSize: streamConfig?.batchSize,
     })
 
-    // 生成唯一ID
     const threadId = `thread-${Date.now()}`
     const runId = `run-${Date.now()}`
     const messageId = `msg-${Date.now()}`
     const sessionId = `session-${requestStartTime}`
-
-    // 添加到性能监控
     globalStreamMonitor.addOptimizer(sessionId, optimizer)
 
-    // 发送运行开始事件 - 使用直接写入确保立即发送
-    const runStartedEvent: AgUIEvent = {
-      type: EventType.RUN_STARTED,
-      threadId,
-      runId,
-      timestamp: Date.now(),
-    }
-    await optimizer.writeEventDirect(runStartedEvent)
+    await optimizer.writeEventDirect({ type: EventType.RUN_STARTED, threadId, runId, timestamp: Date.now() })
+    await optimizer.addEvent({ type: EventType.TEXT_MESSAGE_START, messageId, role: 'assistant', timestamp: Date.now() })
 
-    // 发送消息开始事件
-    const messageStartEvent: AgUIEvent = {
-      type: EventType.TEXT_MESSAGE_START,
-      messageId,
-      role: "assistant",
-      timestamp: Date.now(),
-    }
-    await optimizer.addEvent(messageStartEvent)
-
-    // 首字时间追踪
     let firstChunkTime: number | null = null
 
-    // 调用FastGPT API
-    fetchEventSource(targetUrl, {
-      method: "POST",
+    // 调用上游
+    const upstream = await fetch(targetUrl, {
+      method: 'POST',
       headers: {
-        "Content-Type": "application/json",
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${apiKey}`,
-        // 添加性能相关头部
-        "X-Request-Start": requestStartTime.toString(),
+        'X-Request-Start': requestStartTime.toString(),
       },
       body: JSON.stringify({
         appId,
@@ -128,207 +83,96 @@ export async function POST(req: NextRequest) {
         detail: true,
         system: systemPrompt,
         variables,
-      }),
-      async onmessage(event) {
-        try {
-          if (event.data === "[DONE]") return
+      })
+    })
 
-          // 记录首字时间
-          if (!firstChunkTime) {
-            firstChunkTime = Date.now()
-            console.log(`First chunk latency: ${firstChunkTime - requestStartTime}ms`)
-          }
+    if (!upstream.ok || !upstream.body) {
+      const errorText = await upstream.text().catch(() => upstream.statusText)
+      const errorEvent: AgUIEvent = { type: EventType.RUN_ERROR, message: errorText || 'Upstream error', code: upstream.status || 500, timestamp: Date.now() }
+      await optimizer.writeEventDirect(errorEvent)
+      optimizer.destroy()
+      await writer.close()
+      return new Response((stream as any).readable, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } })
+    }
 
-          const data = JSON.parse(event.data)
+    // 解析上游 SSE
+    const decoder = new TextDecoder()
+    const reader = (upstream.body as any).getReader()
+    let buffer = ''
 
-          // 转换为AG-UI事件并写入流
-          if (data.choices && data.choices[0].delta) {
-            const delta = data.choices[0].delta
+    ;(async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const chunk = decoder.decode(value, { stream: true })
+          buffer += chunk
 
-            // 处理文本内容 - 使用优化器的打字机效果
-            if (delta.content) {
-              const contentEvent: AgUIEvent = {
-                type: EventType.TEXT_MESSAGE_CONTENT,
-                messageId,
-                delta: delta.content,
-                timestamp: Date.now(),
-              }
-              await optimizer.addEvent(contentEvent)
-            }
-
-            // 处理工具调用
-            if (delta.tool_calls && delta.tool_calls.length > 0) {
-              const toolCall = delta.tool_calls[0]
-              const toolCallId = `tool-${toolCall.index}-${runId}`
-
-              // 工具调用开始
-              if (toolCall.function && toolCall.function.name) {
-                const toolStartEvent: AgUIEvent = {
-                  type: EventType.TOOL_CALL_START,
-                  toolCallId,
-                  toolCallName: toolCall.function.name,
-                  parentMessageId: messageId,
-                  timestamp: Date.now(),
+          // SSE 按行解析
+          const lines = buffer.split(/\n/)
+          buffer = lines.pop() || ''
+          for (const line of lines) {
+            const trimmed = line.trim()
+            if (!trimmed) continue
+            if (trimmed.startsWith('data: ')) {
+              const dataStr = trimmed.slice(6)
+              if (dataStr === '[DONE]') continue
+              try {
+                if (!firstChunkTime) {
+                  firstChunkTime = Date.now()
+                  console.log(`First chunk latency: ${firstChunkTime - requestStartTime}ms`)
                 }
-                await optimizer.addEvent(toolStartEvent)
-              }
+                const data = JSON.parse(dataStr)
 
-              // 工具调用参数
-              if (toolCall.function && toolCall.function.arguments) {
-                const toolArgsEvent: AgUIEvent = {
-                  type: EventType.TOOL_CALL_ARGS,
-                  toolCallId,
-                  delta: toolCall.function.arguments,
-                  timestamp: Date.now(),
+                if (data.choices && data.choices[0]?.delta) {
+                  const delta = data.choices[0].delta
+                  if (delta.content) {
+                    await optimizer.addEvent({ type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: delta.content, timestamp: Date.now() })
+                  }
+                  if (delta.tool_calls && delta.tool_calls.length > 0) {
+                    const toolCall = delta.tool_calls[0]
+                    const toolCallId = `tool-${toolCall.index}-${runId}`
+                    if (toolCall.function?.name) {
+                      await optimizer.addEvent({ type: EventType.TOOL_CALL_START, toolCallId, toolCallName: toolCall.function.name, parentMessageId: messageId, timestamp: Date.now() })
+                    }
+                    if (toolCall.function?.arguments) {
+                      await optimizer.addEvent({ type: EventType.TOOL_CALL_ARGS, toolCallId, delta: toolCall.function.arguments, timestamp: Date.now() })
+                    }
+                    await optimizer.addEvent({ type: EventType.TOOL_CALL_END, toolCallId, timestamp: Date.now() })
+                  }
                 }
-                await optimizer.addEvent(toolArgsEvent)
-              }
 
-              // 工具调用结束
-              const toolEndEvent: AgUIEvent = {
-                type: EventType.TOOL_CALL_END,
-                toolCallId,
-                timestamp: Date.now(),
-              }
-              await optimizer.addEvent(toolEndEvent)
-            }
-          }
+                if (data.event) {
+                  if (data.event === 'flowNodeStatus') {
+                    await optimizer.addEvent({ type: 'STEP_STARTED', stepName: data.data?.name || 'unknown', timestamp: Date.now() } as any)
+                  } else if (data.event === 'interactive') {
+                    await optimizer.addEvent({ type: EventType.CUSTOM, name: 'interactive', value: data.data, timestamp: Date.now() })
+                  }
+                }
 
-          // 处理FastGPT特有的事件类型
-          if (data.event) {
-            switch (data.event) {
-              case 'flowNodeStatus':
-                const stepEvent: AgUIEvent = {
-                  type: "STEP_STARTED",
-                  stepName: data.data?.name || 'unknown',
-                  timestamp: Date.now(),
-                }
-                await optimizer.addEvent(stepEvent)
-                break
-              
-              case 'interactive':
-                // 处理交互节点
-                const interactiveEvent: AgUIEvent = {
-                  type: EventType.CUSTOM,
-                  name: "interactive",
-                  value: data.data,
-                  timestamp: Date.now(),
-                }
-                await optimizer.addEvent(interactiveEvent)
-                break
+                await optimizer.addEvent({ type: 'RAW', event: data, source: 'fastgpt', timestamp: Date.now() } as any)
+              } catch (e) {
+                await optimizer.addEvent({ type: EventType.RUN_ERROR, message: (e as Error).message, code: 500, timestamp: Date.now() })
+              }
             }
           }
-
-          // 保持向后兼容 - 写入原始数据
-          const rawEvent: AgUIEvent = {
-            type: "RAW",
-            event: data,
-            source: "fastgpt",
-            timestamp: Date.now(),
-          }
-          await optimizer.addEvent(rawEvent)
-
-        } catch (error) {
-          console.error("Error processing message:", error)
-          const errorEvent: AgUIEvent = {
-            type: EventType.RUN_ERROR,
-            message: `Error processing message: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            code: 500,
-            timestamp: Date.now(),
-          }
-          await optimizer.addEvent(errorEvent)
         }
-      },
-      async onclose() {
+      } catch (err) {
+        await optimizer.writeEventDirect({ type: EventType.RUN_ERROR, message: (err as Error).message || 'stream error', code: 500, timestamp: Date.now() })
+      } finally {
         try {
-          // 刷新所有缓冲的事件
           await optimizer.flush()
-
-          // 发送消息结束和运行结束事件
-          const messageEndEvent: AgUIEvent = {
-            type: EventType.TEXT_MESSAGE_END,
-            messageId,
-            timestamp: Date.now(),
-          }
-          await optimizer.writeEventDirect(messageEndEvent)
-
-          const runFinishedEvent: AgUIEvent = {
-            type: EventType.RUN_FINISHED,
-            threadId,
-            runId,
-            timestamp: Date.now(),
-          }
-          await optimizer.writeEventDirect(runFinishedEvent)
-
-          // 记录性能指标
-          const totalTime = Date.now() - requestStartTime
-          const firstChunkLatency = firstChunkTime ? firstChunkTime - requestStartTime : 0
-          
-          console.log(`Session ${sessionId} completed:`, {
-            totalTime,
-            firstChunkLatency,
-            metrics: optimizer.getMetrics(),
-          })
-
-          // 清理资源
+          await optimizer.writeEventDirect({ type: EventType.TEXT_MESSAGE_END, messageId, timestamp: Date.now() })
+          await optimizer.writeEventDirect({ type: EventType.RUN_FINISHED, threadId, runId, timestamp: Date.now() })
           optimizer.destroy()
           await writer.close()
-
-        } catch (error) {
-          console.error("Error in onclose:", error)
-        }
-      },
-      onerror(error) {
-        console.error("Error from FastGPT API:", error)
-        const errorEvent: AgUIEvent = {
-          type: EventType.RUN_ERROR,
-          message: (error as any)?.message || "Unknown error from FastGPT API",
-          code: 500,
-          timestamp: Date.now(),
-        }
-        
-        optimizer.writeEventDirect(errorEvent)
-          .then(() => {
-            optimizer.destroy()
-            return writer.close()
-          })
-          .catch(console.error)
-      },
-    }).catch(async (error) => {
-      console.error("Error fetching from FastGPT API:", error)
-      const errorEvent: AgUIEvent = {
-        type: EventType.RUN_ERROR,
-        message: (error as any)?.message || "Failed to connect to FastGPT API",
-        code: 500,
-        timestamp: Date.now(),
+        } catch {}
       }
-      
-      try {
-        await optimizer.writeEventDirect(errorEvent)
-        optimizer.destroy()
-        await writer.close()
-      } catch (closeError) {
-        console.error("Error closing stream:", closeError)
-      }
-    })
+    })()
 
-    // 返回优化的流式响应
-    return new NextResponse(stream.readable, {
-      headers: {
-        "Content-Type": "text/event-stream",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "Connection": "keep-alive",
-        "X-Accel-Buffering": "no", // 禁用Nginx缓冲
-        "X-Session-ID": sessionId,
-        "X-Request-Start": requestStartTime.toString(),
-      },
-    })
-  } catch (error: any) {
-    console.error("Error in AG-UI chat route:", error)
-    return NextResponse.json({ 
-      error: error.message || "Internal server error",
-      timestamp: Date.now(),
-      requestId: `req-${Date.now()}`,
-    }, { status: 500 })
+    return new Response((stream as any).readable, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' } })
+  } catch (error) {
+    console.error("AG-UI chat route error:", error)
+    return NextResponse.json({ error: (error as Error).message || 'Unknown error' }, { status: 500 })
   }
 }

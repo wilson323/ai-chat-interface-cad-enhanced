@@ -1,8 +1,4 @@
 import { CAD_FILE_TYPES, PARSER_CONFIG, ANALYZER_CONFIG } from '@/config/cad-analyzer.config';
-import { existsSync, mkdirSync } from 'fs';
-import { unlink } from 'fs/promises';
-import { join, dirname } from 'path';
-import { v4 as uuidv4 } from 'uuid';
 
 /**
  * 检查文件类型是否受支持
@@ -75,39 +71,6 @@ export function getFileTypeDescription(fileExtension: string): string {
   }
   
   return '未知文件类型';
-}
-
-/**
- * 生成临时文件路径
- * @param directory 目录
- * @param extension 文件扩展名
- * @returns 临时文件路径
- */
-export function generateTempFilePath(directory: string, extension: string): string {
-  const fileId = uuidv4();
-  const normalizedExt = extension.toLowerCase().replace(/^\./, '');
-  const tempDir = join(process.cwd(), directory);
-  
-  // 确保目录存在
-  if (!existsSync(tempDir)) {
-    mkdirSync(tempDir, { recursive: true });
-  }
-  
-  return join(tempDir, `${fileId}.${normalizedExt}`);
-}
-
-/**
- * 安全地删除临时文件
- * @param filePath 文件路径
- */
-export async function cleanupTempFile(filePath: string): Promise<void> {
-  try {
-    if (filePath && existsSync(filePath)) {
-      await unlink(filePath);
-    }
-  } catch (error) {
-    console.warn(`清理临时文件失败: ${filePath}`, error);
-  }
 }
 
 /**
@@ -209,7 +172,7 @@ export function getSafeFileName(fileName: string): string {
  */
 export function hasSensitiveContent(fileName: string): boolean {
   const sensitivePatterns = [
-    /\.\.\//, // 相对路径操作
+    /\.{2}\//, // 相对路径操作
     /^\//,    // 绝对路径
     /^\\$/,   // Windows路径
     /^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i // Windows保留名称

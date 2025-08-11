@@ -24,14 +24,14 @@ import { CADAnalysisResult } from "@/lib/types/cad"
 import { useDropzone } from "react-dropzone"
 import { useToast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
-import { 
-  isSupportedFileType, 
-  validateFileSize, 
-  getFileAcceptString, 
+import {
+  isSupportedFileType,
+  validateFileSize,
+  getFileAcceptString,
   getFileTypeDescription,
   is3DFileType,
-  is2DFileType
-} from "@/lib/utils/cad-file-utils"
+  is2DFileType,
+} from "@/lib/utils/cad-file-utils-browser"
 import { ANALYZER_CONFIG } from "@/config/cad-analyzer.config"
 import type React from "react"
 

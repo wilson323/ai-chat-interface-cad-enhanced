@@ -36,7 +36,7 @@ import { CADAnalysisViewer } from "@/components/cad/cad-analysis-viewer"
 import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
 import { CADAnalysisResult } from "@/lib/types/cad"
 import { formatFileSize } from "@/lib/utils"
-import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils"
+import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils-browser"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/components/ui/use-toast"
 

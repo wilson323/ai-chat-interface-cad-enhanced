@@ -33,7 +33,7 @@ import {
 } from "lucide-react"
 import { CADAnalysisResult } from "@/lib/types/cad"
 import { formatFileSize } from "@/lib/utils"
-import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils"
+import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils-browser"
 import { LayerInfo } from "@/lib/types/cad"
 
 interface CADAnalysisViewerProps {

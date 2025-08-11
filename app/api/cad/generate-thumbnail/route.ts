@@ -11,9 +11,9 @@ import { CAD_FILE_TYPES } from '@/config/cad-analyzer.config';
 import { 
   is2DFileType, 
   is3DFileType, 
-  getFileTypeCategory,
-  cleanupTempFile
+  getFileTypeCategory
 } from '@/lib/utils/cad-file-utils';
+import { cleanupTempFile } from '@/lib/utils/cad-file-utils.server';
 
 const execPromise = promisify(exec);
 
