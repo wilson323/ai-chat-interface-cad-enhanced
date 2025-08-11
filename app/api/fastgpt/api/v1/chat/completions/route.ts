@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 
-const FASTGPT_API_URL = process.env.FASTGPT_API_URL || "https://zktecoaihub.com/api"
+const FASTGPT_API_URL = process.env.FASTGPT_API_URL || "https://zktecoaihub.com"
 const FASTGPT_API_KEY = process.env.FASTGPT_API_KEY || ""
 
 export async function POST(request: NextRequest) {

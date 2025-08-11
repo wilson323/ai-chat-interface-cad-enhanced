@@ -3,7 +3,7 @@
  * This client handles all interactions with the FastGPT API
  */
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_FASTGPT_API_URL || "https://zktecoaihub.com/api"
+const API_BASE_URL = process.env.NEXT_PUBLIC_FASTGPT_API_URL || "https://zktecoaihub.com"
 const API_KEY = process.env.NEXT_PUBLIC_FASTGPT_API_KEY || ""
 
 export class FastGPTClient {
@@ -45,7 +45,10 @@ export class FastGPTClient {
    * Make API request
    */
   private async request(endpoint: string, options: RequestInit = {}) {
-    const url = `${this.baseUrl}${endpoint}`
+    // 若 endpoint 以 http(s) 或 / 开头，则认为是完整或相对路径，直接使用
+    const isAbsolute = /^https?:\/\//i.test(endpoint)
+    const isRelativeFromRoot = endpoint.startsWith("/")
+    const url = isAbsolute || isRelativeFromRoot ? endpoint : `${this.baseUrl}${endpoint}`
     const headers = this.getHeaders()
 
     const response = await fetch(url, {

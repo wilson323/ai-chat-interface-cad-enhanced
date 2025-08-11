@@ -10,10 +10,14 @@
 - [ ] 组件重复与命名一致性
   - [ ] `components/chat/AgentSelector.tsx` 与 `agent-selector.tsx` 重复清点与统一
   - [x] 新增统一导出入口 `components/chat/index.ts`，提供别名导出，保持向后兼容
-  - [ ] 输出受影响 import 列表，分阶段迁移
+  - [x] 输出受影响 import 列表，分阶段迁移
+    - 受影响 import：
+      - `app/page.tsx`: `@/components/chat/AgentSelector`
+      - `app/chat/page.tsx`: `@/components/chat/agent-selector`
+    - 迁移建议：新增统一导入路径 `@/components/chat` 并导出单一 `AgentSelector`，先提供 codemod 脚本，再分支迁移
 - [ ] 基线质量门禁
-  - [ ] 运行 `npm run type-check` 与 `npm run lint`，记录错误清单
-  - [ ] 修复最高频/最高危的类型与Lint问题（不改变行为）
+  - [x] 运行 `npm run type-check` 与 `npm run lint`，记录错误清单（TS: 0 error；ESLint: 0 issue）
+  - [x] 修复最高频/最高危的类型与Lint问题（本轮未发现阻断项）
 
 ## P1 近期优化
 - [ ] AG-UI 路由与适配器一致性验证
@@ -51,3 +55,11 @@
   - `app/api/fastgpt/chat/route.ts`: getEnhancedFastGPTClient, RequestPriority
 
 后续迁移建议：新代码优先使用 `@/lib/api/enhanced-fastgpt-client` 导出的 `getEnhancedFastGPTClient`；存量代码分阶段替换，确保不改变行为。
+
+### AG-UI 路由与适配器一致性（初查）
+
+- 现状：`app/api/ag-ui/*` 多数路由直接调用本地代理/服务，并未统一引入 `lib/api/fastgpt-ag-ui-adapter.ts`
+- 建议：
+  1) 在服务层封装一层适配器调用（保持现有路由签名不变），实现协议字段对齐（对话/嵌入区分）。
+  2) 渐进改造，新增 feature flag 控制是否走适配器。
+  3) 为关键路由补充 zod 校验与错误码对齐。

@@ -60,8 +60,8 @@ export async function POST(req: NextRequest) {
     
     const { appId, chatId, messages, tools, context, variables, systemPrompt, streamConfig } = validationResult.data
 
-    // 获取环境变量
-    const apiUrl = process.env.FASTGPT_API_URL || "/api/proxy/fastgpt"
+    // 获取目标本地路由（统一走本地转发，避免外部路径差异）
+    const targetUrl = "/api/fastgpt/api/v1/chat/completions"
     const apiKey = process.env.FASTGPT_API_KEY
 
     if (!apiKey) {
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
     let firstChunkTime: number | null = null
 
     // 调用FastGPT API
-    fetchEventSource(`${apiUrl}/chat`, {
+    fetchEventSource(targetUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

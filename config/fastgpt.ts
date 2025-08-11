@@ -5,7 +5,7 @@
 // Default API configuration
 export const DEFAULT_API_CONFIG = {
   // API endpoint URL - using public URL, not sensitive
-  baseUrl: "https://zktecoaihub.com/api",
+  baseUrl: "https://zktecoaihub.com",
 
   // Whether to use proxy - default enabled
   useProxy: true,
