@@ -2,19 +2,56 @@
 import type { CADAnalysisResult } from '@/lib/types/cad';
 import type { ParserOptions } from './index';
 
+interface RawEntities {
+  lines?: unknown;
+  circles?: unknown;
+  arcs?: unknown;
+  polylines?: unknown;
+  text?: unknown;
+  dimensions?: unknown;
+  blocks?: unknown;
+  [key: string]: unknown;
+}
+
+interface RawDimensions {
+  width?: unknown;
+  height?: unknown;
+  unit?: unknown;
+}
+
+interface RawResultShape {
+  entities?: RawEntities;
+  layers?: Array<string>;
+  dimensions?: RawDimensions;
+  metadata?: Record<string, unknown>;
+  devices?: Array<unknown>;
+  wiring?: { totalLength?: unknown; details?: Array<unknown> };
+  risks?: Array<unknown>;
+}
+
+function toNumber(value: unknown, fallback = 0): number {
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function toStringSafe(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
 export class DWGParser {
   async parse(fileData: File | ArrayBuffer, options: ParserOptions): Promise<CADAnalysisResult> {
-    // 转换为ArrayBuffer处理
     const buffer = fileData instanceof File 
       ? await fileData.arrayBuffer()
       : fileData;
     
-    // 基本信息提取
     const fileName = fileData instanceof File ? fileData.name : 'unknown.dwg';
     const id = Date.now().toString();
     
     try {
-      // DWG是AutoCAD的原生格式，需要专用服务解析
       const formData = new FormData();
       const file = fileData instanceof File 
         ? fileData 
@@ -28,13 +65,13 @@ export class DWGParser {
         body: formData
       });
       
-      if (!response.ok) {
+      if (response.ok !== true) {
         throw new Error(`DWG解析服务返回错误: ${response.status}`);
       }
       
-      const result = await response.json();
+      const resultJson = (await response.json()) as unknown;
+      const result: RawResultShape = isRecord(resultJson) ? (resultJson as RawResultShape) : {};
       
-      // 整合解析结果
       const entities = this.processEntities(result.entities);
       
       return {
@@ -45,78 +82,75 @@ export class DWGParser {
         fileSize: buffer.byteLength,
         url: fileData instanceof File ? URL.createObjectURL(fileData) : '',
         entities,
-        layers: result.layers || ['默认'],
+        layers: Array.isArray(result.layers) ? result.layers : ['默认'],
         dimensions: this.processDimensions(result.dimensions),
         metadata: {
-          author: result.metadata?.author || '未知',
-          createdAt: result.metadata?.createdAt || new Date().toISOString(),
-          modifiedAt: result.metadata?.modifiedAt,
-          software: result.metadata?.software || 'AutoCAD',
-          version: result.metadata?.version || '未知',
+          author: toStringSafe(result.metadata?.author, '未知'),
+          createdAt: toStringSafe(result.metadata?.createdAt, new Date().toISOString()),
+          modifiedAt: isRecord(result.metadata) ? toStringSafe(result.metadata.modifiedAt) : undefined,
+          software: toStringSafe(result.metadata?.software, 'AutoCAD'),
+          version: toStringSafe(result.metadata?.version, '未知'),
         },
-        devices: result.devices || [],
-        wiring: result.wiring || {
-          totalLength: 0,
-          details: []
-        },
+        devices: Array.isArray(result.devices) ? (result.devices as Array<unknown>) : [],
+        wiring: isRecord(result.wiring)
+          ? {
+              totalLength: toNumber((result.wiring as Record<string, unknown>).totalLength, 0),
+              details: Array.isArray((result.wiring as Record<string, unknown>).details)
+                ? ((result.wiring as Record<string, unknown>).details as Array<unknown>)
+                : [],
+            }
+          : { totalLength: 0, details: [] },
         risks: this.identifyRisks(result),
         originalFile: fileData instanceof File ? fileData : undefined,
         aiInsights: {
-          summary: this.generateSummary(entities, result.dimensions),
+          summary: this.generateSummary(entities, this.processDimensions(result.dimensions)),
           recommendations: this.generateRecommendations(entities),
         },
       };
     } catch (error) {
       console.error('DWG解析失败:', error);
-      
-      // 如果服务解析失败，返回基本结果
       return this.createFallbackResult(fileData, buffer, id, fileName);
     }
   }
   
-  // 处理实体数据
-  private processEntities(rawEntities: any): CADAnalysisResult['entities'] {
-    if (!rawEntities) {
+  private processEntities(rawEntities: unknown): CADAnalysisResult['entities'] {
+    if (!isRecord(rawEntities)) {
       return this.getDefaultEntities();
     }
-    
-    // DWG文件实体类型映射到标准格式
+    const e = rawEntities as RawEntities;
     return {
-      lines: rawEntities.lines || 0,
-      circles: rawEntities.circles || 0,
-      arcs: rawEntities.arcs || 0,
-      polylines: rawEntities.polylines || 0,
-      text: rawEntities.text || 0,
-      dimensions: rawEntities.dimensions || 0,
-      blocks: rawEntities.blocks || 0,
+      lines: toNumber(e.lines),
+      circles: toNumber(e.circles),
+      arcs: toNumber(e.arcs),
+      polylines: toNumber(e.polylines),
+      text: toNumber(e.text),
+      dimensions: toNumber(e.dimensions),
+      blocks: toNumber(e.blocks),
     };
   }
   
-  // 处理尺寸信息
-  private processDimensions(rawDimensions: any): any {
-    if (!rawDimensions) {
+  private processDimensions(rawDimensions: unknown): { width: number; height: number; unit: string } {
+    if (!isRecord(rawDimensions)) {
       return this.getDefaultDimensions();
     }
-    
-    // 提取尺寸信息
+    const d = rawDimensions as RawDimensions;
     return {
-      width: rawDimensions.width || 0,
-      height: rawDimensions.height || 0,
-      unit: rawDimensions.unit || 'mm',
+      width: toNumber(d.width, 0),
+      height: toNumber(d.height, 0),
+      unit: toStringSafe(d.unit, 'mm'),
     };
   }
   
-  // 识别潜在问题
-  private identifyRisks(result: any): any[] {
-    const risks = [];
+  private identifyRisks(result: RawResultShape): Array<{ description: string; level: 'low' | 'medium' | 'high'; solution: string }> {
+    const risks: Array<{ description: string; level: 'low' | 'medium' | 'high'; solution: string }> = [];
     
-    // 检查实体数量
-    const entityCount = result.entities ? (
-      (result.entities.lines || 0) + 
-      (result.entities.circles || 0) + 
-      (result.entities.arcs || 0) + 
-      (result.entities.polylines || 0)
-    ) : 0;
+    const e = result.entities;
+    const entityCount = isRecord(e)
+      ? toNumber((e as RawEntities).lines) +
+        toNumber((e as RawEntities).circles) +
+        toNumber((e as RawEntities).arcs) +
+        toNumber((e as RawEntities).polylines)
+      : 0;
     
     if (entityCount > 50000) {
       risks.push({
@@ -126,8 +160,7 @@ export class DWGParser {
       });
     }
     
-    // 检查文本实体 - 可能包含重要信息
-    if ((result.entities?.text || 0) > 500) {
+    if (isRecord(e) && toNumber((e as RawEntities).text) > 500) {
       risks.push({
         description: '图纸包含大量文本，确保重要注释不被忽略',
         level: 'low',
@@ -135,15 +168,21 @@ export class DWGParser {
       });
     }
     
-    // 从后端返回的风险
-    if (result.risks && Array.isArray(result.risks)) {
-      risks.push(...result.risks);
+    if (Array.isArray(result.risks)) {
+      for (const r of result.risks) {
+        if (isRecord(r)) {
+          risks.push({
+            description: toStringSafe(r.description, '潜在风险'),
+            level: (toStringSafe(r.level, 'low') as 'low' | 'medium' | 'high'),
+            solution: toStringSafe(r.solution, '审查并处理')
+          });
+        }
+      }
     }
     
     return risks;
   }
   
-  // 创建后备结果
   private createFallbackResult(
     fileData: File | ArrayBuffer, 
     buffer: ArrayBuffer, 
@@ -183,15 +222,14 @@ export class DWGParser {
       aiInsights: {
         summary: 'DWG是AutoCAD的原生文件格式，包含完整的设计数据，但需要专业软件完全解析。',
         recommendations: [
-          "使用AutoCAD或DWG查看器打开此文件",
-          "考虑转换为DXF格式以获得更好的兼容性",
-          "查找文件关联的其他资源（如参照文件或外部引用）"
+          '使用AutoCAD或DWG查看器打开此文件',
+          '考虑转换为DXF格式以获得更好的兼容性',
+          '查找文件关联的其他资源（如参照文件或外部引用）'
         ],
       },
     };
   }
   
-  // 默认实体
   private getDefaultEntities(): CADAnalysisResult['entities'] {
     return {
       lines: 0,
@@ -204,17 +242,11 @@ export class DWGParser {
     };
   }
   
-  // 默认尺寸
-  private getDefaultDimensions(): any {
-    return {
-      width: 841,
-      height: 594,
-      unit: 'mm'
-    };
+  private getDefaultDimensions(): { width: number; height: number; unit: string } {
+    return { width: 841, height: 594, unit: 'mm' };
   }
   
-  // 生成摘要
-  private generateSummary(entities: CADAnalysisResult['entities'], dimensions: any): string {
+  private generateSummary(entities: CADAnalysisResult['entities'], dimensions: { width: number; height: number; unit: string }): string {
     const totalEntities = 
       (entities.lines || 0) + 
       (entities.circles || 0) + 
@@ -224,19 +256,18 @@ export class DWGParser {
     return `这是一个DWG格式的AutoCAD图纸，包含约${totalEntities}个绘图实体。图纸尺寸约为${dimensions.width}x${dimensions.height}${dimensions.unit}。DWG是AutoCAD的原生格式，包含完整的绘图数据和属性。`;
   }
   
-  // 生成建议
   private generateRecommendations(entities: CADAnalysisResult['entities']): string[] {
-    const recommendations = [
-      "使用AutoCAD或兼容软件查看完整内容",
-      "检查图纸比例和测量单位是否正确"
+    const recommendations: string[] = [
+      '使用AutoCAD或兼容软件查看完整内容',
+      '检查图纸比例和测量单位是否正确',
     ];
     
     if ((entities.blocks || 0) > 10) {
-      recommendations.push("注意图纸中包含多个块引用，可能表示标准组件或复杂结构");
+      recommendations.push('注意图纸中包含多个块引用，可能表示标准组件或复杂结构');
     }
     
     if ((entities.dimensions || 0) > 0) {
-      recommendations.push("图纸包含尺寸标注，确保解析正确");
+      recommendations.push('图纸包含尺寸标注，确保解析正确');
     }
     
     return recommendations;
