@@ -13,6 +13,21 @@ export interface ChatRequest {
   max_tokens?: number
 }
 
+export interface SpeechRequest {
+  model: string
+  input: string
+  voice?: string
+  format?: 'mp3' | 'wav' | 'ogg'
+}
+
+export interface TranscribeRequest {
+  model: string
+  // 以下二选一：
+  fileBase64?: string // data url 或 纯 base64
+  fileUrl?: string
+  mimeType?: string
+}
+
 export interface ProviderConfig {
   baseUrl: string
   apiKey: string
@@ -123,6 +138,42 @@ export class OpenAICompatibleAdapter {
       method: "POST",
       headers: this.headers(),
       body: JSON.stringify(normalized),
+    })
+  }
+
+  /**
+   * 文本转语音（OpenAI 兼容 /audio/speech）
+   */
+  async speech(req: SpeechRequest): Promise<Response> {
+    const payload = {
+      model: req.model,
+      input: req.input,
+      voice: req.voice || 'female',
+      format: req.format || 'mp3',
+    }
+    return fetch(this.url('/audio/speech'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(payload),
+    })
+  }
+
+  /**
+   * 语音转文本（OpenAI 兼容 /audio/transcriptions）
+   */
+  async transcribe(req: TranscribeRequest): Promise<Response> {
+    // 采用 JSON 直传模式（部分兼容端实现支持）。如需 multipart，可后续扩展
+    const payload: any = {
+      model: req.model,
+    }
+    if (req.fileUrl) payload.file_url = req.fileUrl
+    if (req.fileBase64) payload.file_base64 = req.fileBase64
+    if (req.mimeType) payload.mime_type = req.mimeType
+
+    return fetch(this.url('/audio/transcriptions'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(payload),
     })
   }
 
