@@ -39,7 +39,7 @@ import { ChatInput } from "@/components/chat/chat-input"
 import { AgentCard } from "@/components/chat/agent-card"
 import { WelcomeScreen } from "@/components/chat/welcome-screen"
 import { ThreeDAvatar } from "@/components/chat/three-d-avatar"
-import { AgentSelector } from '@/components/chat/AgentSelector'
+import { AgentSelector } from '@/components/chat/agent-selector'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { useAgentStore } from '@/lib/stores/agent-store'
 
