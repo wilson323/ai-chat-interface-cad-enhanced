@@ -87,7 +87,7 @@ export class OpenAICompatibleAdapter {
   /**
    * 标准对话
    */
-  async chat(req: ChatRequest, opts?: { signal?: AbortSignal }): Promise<Response> {
+  async chat(req: ChatRequest, init?: RequestInit): Promise<Response> {
     const schema = z.object({
       model: z.string().min(1),
       messages: z
@@ -134,36 +134,38 @@ export class OpenAICompatibleAdapter {
       })),
     }
 
+    const mergedHeaders = { ...(this.headers()), ...(init?.headers as Record<string, string> | undefined) }
     return fetch(this.url("/chat/completions"), {
       method: "POST",
-      headers: this.headers(),
+      headers: mergedHeaders,
       body: JSON.stringify(normalized),
-      signal: opts?.signal,
+      signal: init?.signal,
     })
   }
 
   /**
    * 文本转语音（OpenAI 兼容 /audio/speech）
    */
-  async speech(req: SpeechRequest, opts?: { signal?: AbortSignal }): Promise<Response> {
+  async speech(req: SpeechRequest, init?: RequestInit): Promise<Response> {
     const payload = {
       model: req.model,
       input: req.input,
       voice: req.voice || 'female',
       format: req.format || 'mp3',
     }
+    const mergedHeaders = { ...(this.headers()), ...(init?.headers as Record<string, string> | undefined) }
     return fetch(this.url('/audio/speech'), {
       method: 'POST',
-      headers: this.headers(),
+      headers: mergedHeaders,
       body: JSON.stringify(payload),
-      signal: opts?.signal,
+      signal: init?.signal,
     })
   }
 
   /**
    * 语音转文本（OpenAI 兼容 /audio/transcriptions）
    */
-  async transcribe(req: TranscribeRequest, opts?: { signal?: AbortSignal }): Promise<Response> {
+  async transcribe(req: TranscribeRequest, init?: RequestInit): Promise<Response> {
     // 采用 JSON 直传模式（部分兼容端实现支持）。如需 multipart，可后续扩展
     const payload: any = {
       model: req.model,
@@ -172,11 +174,12 @@ export class OpenAICompatibleAdapter {
     if (req.fileBase64) payload.file_base64 = req.fileBase64
     if (req.mimeType) payload.mime_type = req.mimeType
 
+    const mergedHeaders = { ...(this.headers()), ...(init?.headers as Record<string, string> | undefined) }
     return fetch(this.url('/audio/transcriptions'), {
       method: 'POST',
-      headers: this.headers(),
+      headers: mergedHeaders,
       body: JSON.stringify(payload),
-      signal: opts?.signal,
+      signal: init?.signal,
     })
   }
 
