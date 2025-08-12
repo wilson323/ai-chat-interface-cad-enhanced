@@ -1,7 +1,8 @@
-import axios, { AxiosResponse, AxiosRequestConfig } from "axios"
-import { DEFAULT_API_CONFIG, STORAGE_KEYS, PROXY_CONFIG, ERROR_MESSAGES, MODEL_TYPES } from "@/config/fastgpt"
+import axios, { AxiosRequestConfig,AxiosResponse } from "axios"
 // This is a client-side file, so we don't use any sensitive environment variables here
 import { v4 as uuidv4 } from "uuid"
+
+import { DEFAULT_API_CONFIG, ERROR_MESSAGES, MODEL_TYPES,PROXY_CONFIG, STORAGE_KEYS } from "@/config/fastgpt"
 
 // FastGPT API 响应类型
 export interface FastGPTResponse {
@@ -22,8 +23,8 @@ export interface FastGPTResponse {
     completion_tokens: number
     total_tokens: number
   }
-  detail?: any
-  responseData?: any[]
+  detail?: unknown
+  responseData?: Array<unknown>
 }
 
 // FastGPT API 错误响应类型
@@ -85,15 +86,15 @@ export class FastGPTClient {
     stream?: boolean
     temperature?: number
     max_tokens?: number
-    tools?: any[]
-    tool_choice?: string | object
-    files?: any[]
+    tools?: Array<Record<string, unknown>>
+    tool_choice?: string | Record<string, unknown>
+    files?: Array<Record<string, unknown>>
     detail?: boolean
     system?: string
     user?: string
     chatId?: string
     responseChatItemId?: string
-    variables?: Record<string, any>
+    variables?: Record<string, unknown>
   }): Promise<FastGPTResponse | ReadableStream> {
     // Use server-side API route instead of direct API call
     const url = "/api/fastgpt/chat"
@@ -147,7 +148,7 @@ export class FastGPTClient {
     agent_id?: string
     knowledge_id?: string
     user?: string
-  }): Promise<any> {
+  }): Promise<Record<string, unknown>> {
     // Use server-side API route
     const url = "/api/fastgpt/init-chat"
 
@@ -339,28 +340,28 @@ const getApiPath = (path: string) => {
 
 // Override axios methods to use path adapter
 const originalGet = apiClient.get
-apiClient.get = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
+apiClient.get = function<T = unknown, R = AxiosResponse<T, unknown>, D = unknown>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] GET: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalGet.call(this, adaptedUrl, config) as unknown as Promise<R>
 }
 
 const originalPost = apiClient.post
-apiClient.post = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
+apiClient.post = function<T = unknown, R = AxiosResponse<T, unknown>, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] POST: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalPost.call(this, adaptedUrl, data, config) as unknown as Promise<R>
 }
 
 const originalPut = apiClient.put
-apiClient.put = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
+apiClient.put = function<T = unknown, R = AxiosResponse<T, unknown>, D = unknown>(url: string, data?: D, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] PUT: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalPut.call(this, adaptedUrl, data, config) as unknown as Promise<R>
 }
 
 const originalDelete = apiClient.delete
-apiClient.delete = function<T = any, R = AxiosResponse<T, any>, D = any>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
+apiClient.delete = function<T = unknown, R = AxiosResponse<T, unknown>, D = unknown>(url: string, config?: AxiosRequestConfig<D>) : Promise<R> {
   const adaptedUrl = getApiPath(url)
   console.log(`[API] DELETE: Original path ${url} -> Adapted path ${adaptedUrl}`)
   return originalDelete.call(this, adaptedUrl, config) as unknown as Promise<R>
@@ -971,7 +972,7 @@ const FastGPTApi = {
 }
 
 // Function to call the server-side API route for chat
-export async function chatWithFastGPT(params: any): Promise<ChatResponse> {
+export async function chatWithFastGPT(params: Record<string, unknown>): Promise<ChatResponse> {
   try {
     const response = await fetch("/api/fastgpt/chat", {
       method: "POST",
@@ -994,7 +995,7 @@ export async function chatWithFastGPT(params: any): Promise<ChatResponse> {
 }
 
 // Function to test the FastGPT connection
-export async function testFastGPTConnection(baseUrl?: string, useProxy?: boolean): Promise<any> {
+export async function testFastGPTConnection(baseUrl?: string, useProxy?: boolean): Promise<Record<string, unknown>> {
   try {
     const response = await fetch("/api/fastgpt/test-connection", {
       method: "POST",
@@ -1012,7 +1013,7 @@ export async function testFastGPTConnection(baseUrl?: string, useProxy?: boolean
 }
 
 // Function to initialize a chat
-export async function initFastGPTChat(params: any): Promise<any> {
+export async function initFastGPTChat(params: Record<string, unknown>): Promise<Record<string, unknown>> {
   try {
     const response = await fetch("/api/fastgpt/init-chat", {
       method: "POST",
