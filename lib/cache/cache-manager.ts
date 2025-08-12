@@ -97,7 +97,7 @@ export class CacheManager {
     }
 
     // 连接Redis缓存
-    if (this.config.useRedisCache && this.redisAdapter) {
+    if (this.config.useRedisCache === true && this.redisAdapter !== null) {
       this.redisAdapter
         .connect()
         .then((connected) => {
@@ -150,7 +150,7 @@ export class CacheManager {
 
       // 如果强制刷新或绕过缓存，直接获取新数据
       if (bypassCache === true || forceRefresh === true) {
-        if (fetchFn) {
+        if (typeof fetchFn === 'function') {
           const value = await this.fetchAndCache(cacheKey, fetchFn, ttl, options.tags, options.metadata)
           return value
         }
@@ -176,10 +176,10 @@ export class CacheManager {
       }
 
       // 3. 如果本地缓存未命中，检查Redis缓存
-      if (!item && this.redisAdapter && this.config.useRedisCache) {
+      if (item == null && this.redisAdapter !== null && this.config.useRedisCache === true) {
         try {
           const redisItem = await this.redisAdapter.get<T>(cacheKey)
-          if (redisItem && typeof redisItem.expiry === 'number' && redisItem.expiry > now) {
+          if (redisItem != null && typeof redisItem.expiry === 'number' && redisItem.expiry > now) {
             // 如果Redis缓存有效，添加到内存缓存
             this.memoryCache.set(cacheKey, redisItem)
             item = redisItem
@@ -192,15 +192,15 @@ export class CacheManager {
       }
 
       // 4. 处理缓存命中
-      if (item) {
+      if (item != null) {
         this.hitCount++
 
         // 检查是否需要在后台刷新（stale-while-revalidate）
-        if (this.config.staleWhileRevalidate === true && fetchFn && item.expiry < now) {
+        if (this.config.staleWhileRevalidate === true && typeof fetchFn === 'function' && item.expiry < now) {
           this.revalidateInBackground(cacheKey, fetchFn, ttl, options.tags, options.metadata)
         }
         // 检查是否需要预取
-        else if (fetchFn && this.shouldPrefetch(item as CacheItem<unknown>)) {
+        else if (typeof fetchFn === 'function' && this.shouldPrefetch(item as CacheItem<unknown>)) {
           this.prefetchInBackground(cacheKey, fetchFn, ttl, options.tags, options.metadata)
         }
 
@@ -211,7 +211,7 @@ export class CacheManager {
       this.missCount++
       this.log("debug", `Cache: miss for ${cacheKey}`)
 
-      if (fetchFn) {
+      if (typeof fetchFn === 'function') {
         // 检查是否已有相同的请求正在进行中（请求合并）
         if (this.revalidationQueue.has(cacheKey)) {
           this.log("debug", `Cache: reusing in-flight request for ${cacheKey}`)
@@ -227,7 +227,7 @@ export class CacheManager {
       this.errorCount++
 
       // 如果提供了fetchFn，尝试直接调用它作为降级策略
-      if (fetchFn) {
+      if (typeof fetchFn === 'function') {
         try {
           return await fetchFn()
         } catch (fetchError) {
@@ -278,7 +278,7 @@ export class CacheManager {
       }
 
       // 设置Redis缓存
-      if (this.redisAdapter && this.config.useRedisCache) {
+      if (this.redisAdapter !== null && this.config.useRedisCache === true) {
         try {
           await this.redisAdapter.set(cacheKey, item, Math.ceil(ttl / 1000))
         } catch (error) {
@@ -316,7 +316,7 @@ export class CacheManager {
       }
 
       // 从Redis缓存中删除
-      if (this.redisAdapter && this.config.useRedisCache) {
+      if (this.redisAdapter !== null && this.config.useRedisCache === true) {
         try {
           await this.redisAdapter.delete(cacheKey)
         } catch (error) {
@@ -359,10 +359,10 @@ export class CacheManager {
           const localKeysToDelete: string[] = []
           for (let i = 0; i < localStorage.length; i++) {
             const storageKey = localStorage.key(i)
-            if (storageKey && storageKey.startsWith("cache:")) {
+            if (typeof storageKey === 'string' && storageKey.startsWith("cache:")) {
               try {
                 const item = JSON.parse(localStorage.getItem(storageKey) || "")
-                if (item && item.tags && item.tags.includes(tag)) {
+                if (item != null && Array.isArray(item.tags) && item.tags.includes(tag)) {
                   localKeysToDelete.push(storageKey)
                 }
               } catch (e) {
@@ -381,7 +381,7 @@ export class CacheManager {
       }
 
       // 从Redis缓存中删除
-      if (this.redisAdapter && this.config.useRedisCache) {
+      if (this.redisAdapter !== null && this.config.useRedisCache === true) {
         try {
           await this.redisAdapter.deleteByTag(tag)
         } catch (error) {
@@ -411,7 +411,7 @@ export class CacheManager {
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i)
-            if (key && key.startsWith("cache:")) {
+            if (typeof key === 'string' && key.startsWith("cache:")) {
               localStorage.removeItem(key)
             }
           }
@@ -421,7 +421,7 @@ export class CacheManager {
       }
 
       // 清除Redis缓存
-      if (this.redisAdapter && this.config.useRedisCache) {
+      if (this.redisAdapter !== null && this.config.useRedisCache === true) {
         try {
           await this.redisAdapter.clear()
         } catch (error) {
@@ -523,7 +523,7 @@ export class CacheManager {
   private getFromLocalStorage<T>(key: string): CacheItem<T> | null {
     try {
       const data = localStorage.getItem(`cache:${key}`)
-      if (!data) return null
+      if (data == null) return null
 
       // 尝试解压缩（如果启用了压缩）
       let parsed: unknown
@@ -570,13 +570,13 @@ export class CacheManager {
       // 遍历所有localStorage项
       for (let i = 0; i < localStorage.length; i++) {
         const storageKey = localStorage.key(i)
-        if (storageKey && storageKey.startsWith("cache:")) {
+        if (typeof storageKey === 'string' && storageKey.startsWith("cache:")) {
           try {
             const raw = localStorage.getItem(storageKey)
             const item = raw ? (JSON.parse(raw) as { expiry?: number }) : null
 
             // 如果项目已过期或进行激进清理，则标记为删除
-            if (aggressive === true || (item && typeof item.expiry === 'number' && item.expiry < now)) {
+            if (aggressive === true || (item !== null && typeof item.expiry === 'number' && item.expiry < now)) {
               keysToRemove.push(storageKey)
             }
           } catch {
@@ -718,7 +718,7 @@ export class CacheManager {
     metadata?: Record<string, unknown>,
   ): void {
     // 如果已经在预取队列中，则跳过
-    if (this.prefetchQueue.has(key) || this.revalidationQueue.has(key)) return
+    if (this.prefetchQueue.has(key) === true || this.revalidationQueue.has(key) === true) return
 
     this.prefetchCount++
     this.prefetchQueue.add(key)
