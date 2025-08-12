@@ -1,18 +1,19 @@
 "use client"
 
+import { AlertCircle,Check, Copy, Info, Loader2 } from "lucide-react"
+import type React from "react"
 import { useState } from "react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Switch } from "@/components/ui/switch"
-import { Loader2, Copy, Check, Info, AlertCircle } from "lucide-react"
-import { FastGPTConfig } from "@/config/fastgpt"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { FastGPTConfig } from "@/config/fastgpt"
 import { useToast } from "@/hooks/use-toast"
-import type React from "react"
 
 interface TestResult {
   success: boolean

@@ -2,7 +2,7 @@
 // 这里提供一个抽象层，可以根据实际使用的数据库进行替换实现
 
 import { AgentConfig, AgentType } from '../agents/base-agent';
-import { CADFile, CADAnalysisResult } from '../services/cad-analyzer-service';
+import { CADAnalysisResult,CADFile } from '../services/cad-analyzer-service';
 
 // 辅助类型（基础占位，不绑定具体业务字段）
 interface PosterRecord { id: string; userId: string; [key: string]: unknown }

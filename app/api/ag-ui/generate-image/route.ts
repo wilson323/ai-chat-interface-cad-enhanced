@@ -7,6 +7,7 @@
  */
 
 import { type NextRequest, NextResponse } from "next/server"
+
 import { generateImageFromChat } from "@/lib/utils/image-generator"
 
 export async function POST(req: NextRequest) {

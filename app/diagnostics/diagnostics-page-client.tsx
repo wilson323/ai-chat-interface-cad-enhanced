@@ -1,10 +1,11 @@
 "use client"
 
 import type React from "react"
+import { useEffect,useState } from "react"
 
-import { useState, useEffect } from "react"
-import { useToast } from "@/hooks/use-toast"
 import { useFastGPT } from "@/contexts/FastGPTContext"
+import { useToast } from "@/hooks/use-toast"
+
 import FastGPTConnectionDiagnostic from "./fastgpt-connection"
 
 export default function DiagnosticsPageClient() {

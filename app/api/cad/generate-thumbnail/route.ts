@@ -1,18 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
-import { mkdir, writeFile, readFile, unlink } from 'fs/promises';
-import { join, dirname } from 'path';
-import { v4 as uuidv4 } from 'uuid';
 import { exec } from 'child_process';
-import { promisify } from 'util';
 import { existsSync } from 'fs';
+import { mkdir, readFile, unlink,writeFile } from 'fs/promises';
+import { NextRequest, NextResponse } from 'next/server';
+import { dirname,join } from 'path';
 import sharp from 'sharp';
+import { promisify } from 'util';
+import { v4 as uuidv4 } from 'uuid';
+
 import { CAD_FILE_TYPES } from '@/config/cad-analyzer.config';
+import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
 import { 
+  getFileTypeCategory,
   is2DFileType, 
-  is3DFileType, 
-  getFileTypeCategory
-} from '@/lib/utils/cad-file-utils';
+  is3DFileType} from '@/lib/utils/cad-file-utils';
 import { cleanupTempFile } from '@/lib/utils/cad-file-utils.server';
 
 const execPromise = promisify(exec);

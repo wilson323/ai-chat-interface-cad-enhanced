@@ -1,12 +1,13 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import { Download, FileUp, History, Share2,Sparkles, Trash2 } from "lucide-react"
+import React, { useEffect,useState } from 'react'
+
+import { PosterGeneratorInterface } from "@/components/poster/poster-generator-interface"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { FileUp, Sparkles, History, Trash2, Download, Share2 } from "lucide-react"
 import { Separator } from "@/components/ui/separator"
-import { PosterGeneratorInterface } from "@/components/poster/poster-generator-interface"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function PosterGeneratorPage() {
   const [activeTab, setActiveTab] = useState("create")

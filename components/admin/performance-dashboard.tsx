@@ -1,21 +1,22 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
+import { Activity, AlertTriangle, RefreshCw, Wifi } from "lucide-react"
+import { useEffect,useState } from "react"
+
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { getEnhancedFastGPTClient } from "@/lib/api/enhanced-fastgpt-client"
 import { getFastGPTOptimizer } from "@/lib/api/fastgpt-optimizer"
-import { getCacheManager } from "@/lib/cache/cache-manager"
-import { getPrefetchService } from "@/lib/prefetch/prefetch-service"
 import { getBatchProcessor } from "@/lib/batch/batch-processor"
-import { getRetryManager } from "@/lib/retry/retry-manager"
-import { getPreloadManager } from "@/lib/preload/preload-manager"
+import { getCacheManager } from "@/lib/cache/cache-manager"
 import { getFallbackManager } from "@/lib/fallback/fallback-manager"
-import { Activity, AlertTriangle, RefreshCw, Wifi } from "lucide-react"
+import { getPrefetchService } from "@/lib/prefetch/prefetch-service"
+import { getPreloadManager } from "@/lib/preload/preload-manager"
+import { getRetryManager } from "@/lib/retry/retry-manager"
 
 export function PerformanceDashboard() {
   const [activeTab, setActiveTab] = useState("overview")

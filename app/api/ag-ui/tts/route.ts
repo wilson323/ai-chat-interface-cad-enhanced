@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { KnownProviders } from '@/lib/api/ai-provider-adapter'
+
 import { createOptimizedStreamWriter } from '@/lib/ag-ui/stream-optimizer'
 import { EventType } from '@/lib/ag-ui/types'
+import { KnownProviders } from '@/lib/api/ai-provider-adapter'
 
 const bodySchema = z.object({
   text: z.string().min(1),

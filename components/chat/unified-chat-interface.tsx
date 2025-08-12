@@ -1,21 +1,23 @@
 "use client"
 
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react"
-import { useAgUI } from "@/hooks/use-ag-ui"
+import { BarChart3, ImageIcon, Loader2, Send, Settings } from "lucide-react"
+import React, { useCallback, useEffect, useMemo,useRef, useState } from "react"
+
 import { AgUIEventListener } from "@/components/ag-ui/event-listener"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Textarea } from "@/components/ui/textarea"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Send, ImageIcon, Loader2, BarChart3, Settings } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Textarea } from "@/components/ui/textarea"
 import { useIsMobile } from "@/components/ui/use-mobile"
-import { WelcomeScreen } from "./welcome-screen"
+import { useAgUI } from "@/hooks/use-ag-ui"
+import { useToast } from "@/hooks/use-toast"
+
 import { AgentSelector } from "./agent-selector"
-import { SuggestedQuestions } from "./suggested-questions"
-import { MessageFeedback } from "./message-feedback"
 import { EnhancedChatMessage } from "./enhanced-chat-message"
-import { Badge } from "@/components/ui/badge"
+import { MessageFeedback } from "./message-feedback"
+import { SuggestedQuestions } from "./suggested-questions"
+import { WelcomeScreen } from "./welcome-screen"
 
 /**
  * Unified Chat Interface - A high-performance, feature-rich chat component

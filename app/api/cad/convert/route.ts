@@ -1,10 +1,11 @@
+import fs from "fs/promises";
 import { NextRequest, NextResponse } from "next/server";
 import path from "path";
-import fs from "fs/promises";
 import { v4 as uuidv4 } from "uuid";
-import { createQueue } from '@/lib/utils/processingQueue';
+
 import { ApiError, ApiErrorCode } from '@/lib/errors/error-handler';
 import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
+import { createQueue } from '@/lib/utils/processingQueue';
 
 // 使用处理队列限制并发
 const convertQueue = createQueue({

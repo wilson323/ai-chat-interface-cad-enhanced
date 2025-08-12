@@ -1,24 +1,21 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { CADViewer3D } from './renderer/CADViewer3D';
-import { CADResultPanel } from './renderer/CADResultPanel';
-import { useCADAnalyzerService } from '@/hooks/useCADAnalyzerService';
-import { CADAnalysisResult } from '@/lib/types/cad';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  Loader2, 
-  Upload, 
+  Download,
   FileText, 
   History,
-  Download,
-  Share2,
   Info,
-  Settings
-} from 'lucide-react';
+  Loader2, 
+  Settings,
+  Share2,
+  Upload} from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import React, { useEffect,useState } from 'react';
+
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription,CardHeader, CardTitle } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { 
   Select,
   SelectContent,
@@ -26,14 +23,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { Badge } from '@/components/ui/badge';
+import { useCADAnalyzerService } from '@/hooks/useCADAnalyzerService';
+import { CADAnalysisResult } from '@/lib/types/cad';
+
+import { CADResultPanel } from './renderer/CADResultPanel';
+import { CADViewer3D } from './renderer/CADViewer3D';
 
 export function CADAnalyzerContainer() {
   const [file, setFile] = useState<File | null>(null);

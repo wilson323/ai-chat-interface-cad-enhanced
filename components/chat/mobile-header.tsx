@@ -1,10 +1,11 @@
 "use client"
 
 import { ArrowLeft, MoreVertical } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useIsMobile } from "@/components/ui/use-mobile"
 import { useRouter } from "next/navigation"
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { useIsMobile } from "@/components/ui/use-mobile"
 
 interface MobileHeaderProps {
   title: string

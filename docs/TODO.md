@@ -48,14 +48,16 @@
 - [x] STEP/IGES：接入 `occt-import-js`（Node/WASM）解析；已移除模拟回退（需 `OCCT_IMPORT_ENABLED=true`）
 - [x] DWG：接入服务端转换（通过 `DWG_CONVERTER_URL` -> DXF -> dxf-parser），已移除模拟回退；未配置服务时返回明确错误提示（并发/超时已就绪）
 - [x] 移除 `app/api/cad/dxf-parse/route.ts` 的模拟回退；保留严格错误提示与并发/超时
-- [ ] 统一DWG回退提示逻辑，待转换服务接入后移除
+- [x] 统一DWG回退提示逻辑：前端捕获并转换为引导性提示（需配置 `DWG_CONVERTER_URL`）
 - [x] 文档化与校验：新增/校验 `OCCT_IMPORT_ENABLED`、`ENABLE_SIMULATED_CAD_PARSERS` 开关及其在 `config/features.ts`/环境校验中的提示
 
 ## P0 全局一致性与规范检查（补充）
 - [ ] AI 适配与流式统一（SDK 收敛）
-  - [ ] 采用 OpenAI 官方 SDK 或 Vercel AI SDK 统一对话流与函数调用；`lib/api/ai-provider-adapter.ts` 精简为供应商配置映射层
-  - [ ] 强制所有模型调用走单一适配器且遵循 OpenAI 协议；区分 LLM 与 Embedding（禁止混用字段）
-  - [ ] `app/api/proxy/ai/route.ts` 与 `app/api/ag-ui/chat` 统一走同一底座
+  - [x] 统一 Embeddings 到 OpenAI 兼容端点（`app/api/proxy/ai/embeddings`）
+  - [x] 统一 TTS/STT 到 OpenAI 兼容端点（`app/api/proxy/ai/audio/speech`、`/audio/transcriptions`）
+  - [x] 采用 OpenAI 官方 SDK 统一对话流与函数调用；新增 `lib/api/openai-provider.ts` 作为单一适配器底座；`app/api/proxy/ai/route.ts` 与 `app/api/ag-ui/chat/route.ts` 已统一到底座
+  - [x] 强制所有模型调用走单一适配器且遵循 OpenAI 协议；区分 LLM 与 Embedding（禁止混用字段）。已完成：`app/api/proxy/ai/route.ts`、`app/api/proxy/ai/embeddings/route.ts`、`app/api/proxy/ai/audio/*`、`app/api/ag-ui/chat/route.ts`。仍保留 `lib/api/ai-provider-adapter.ts` 作为兼容映射层。
+  - [x] `app/api/proxy/ai/route.ts` 与 `app/api/ag-ui/chat` 统一走同一底座（`lib/api/openai-provider.ts`）
 - [ ] 去除所有 mock/模拟路径
   - [x] 全局扫描 `simulate`/`mock`/占位实现，替换为真实实现或关闭入口（包含 UI 层 mock 数据，如 `app/chat/page.tsx`）
   - [x] 为停用能力给出明确用户提示与后继计划
@@ -73,6 +75,7 @@
   - [ ] 安全头/CSP 策略审查并固化在合并后的 `middleware.ts`
   - [ ] 接入 Sentry/Logtail（二选一）用于错误上报；`app/api/monitoring/error/route.ts` 与前端上报一致
 - [ ] 缓存与性能
+  - [x] 统一 Upstash 前缀：支持 `CACHE_KEY_PREFIX` 环境变量，默认 `acx:cache:`
   - [ ] 统一 `lib/cache/*` 与 Redis/Upstash 使用方式，移除重复封装；明确失效策略与键前缀
   - [ ] 评估 `lib/ag-ui/stream-optimizer.ts` 与 SDK 能力的重叠度，能复用则收敛
 
@@ -85,15 +88,16 @@
   - [ ] 在 `docs/` 更新改动点与统一使用方式
   - [ ] 在 `CODE-QUALITY-SUMMARY.md` 增补“冗余治理”章节
 - [ ] 聊天流与TTS/STT统一
+  - [x] TTS：统一 `/audio/speech`（Proxy 路由已接入）
+  - [x] STT：统一 `/audio/transcriptions`（Proxy 路由已接入）
   - [ ] 使用 OpenAI 官方 SDK 或 Vercel AI SDK 统一 SSE/函数调用（保持 OpenAI 兼容协议）
-  - [ ] TTS：统一 `/audio/speech`；STT：统一 `/audio/transcriptions`；由适配层切换 `baseUrl/apiKey`
 
 ## P2 测试体系搭建（分阶段）
 - [ ] 单元测试基础
   - [ ] 引入 Vitest 与基础配置（Windows 兼容）
   - [ ] 针对 `lib/utils/*` 与纯函数先行补测
-- [ ] E2E 基线
-  - [ ] 引入 Playwright 并添加 smoke 用例：主页可打开、`/api/health` 200
+- [x] E2E 基线
+  - [x] 引入 Playwright 并添加 smoke 用例：主页可打开、`/api/health` 200
   - [ ] AG-UI：会话初始化、消息流式、错误事件
   - [ ] TTS：请求->返回音频事件->前端播放
   - [ ] CAD：上传->解析->报告生成（HTML/PDF/JSON）

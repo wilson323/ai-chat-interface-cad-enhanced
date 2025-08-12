@@ -1,39 +1,39 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import {
+  AlertTriangle,
+  Check,
+  FileCode,
+  FileSymlink,
+  FileWarning,
+  Loader2,
+  MessageSquarePlus,
+  RotateCw,
+  UploadCloud,
+  X} from "lucide-react"
+import type React from "react"
+import { useCallback,useEffect, useState } from "react"
+import { useDropzone } from "react-dropzone"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import {
-  Loader2,
-  UploadCloud,
-  FileSymlink,
-  AlertTriangle,
-  RotateCw,
-  FileCode,
-  MessageSquarePlus,
-  Check,
-  X,
-  FileWarning
-} from "lucide-react"
-import { CADAnalysisResult } from "@/lib/types/cad"
-import { useDropzone } from "react-dropzone"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/components/ui/use-toast"
+import { ANALYZER_CONFIG } from "@/config/cad-analyzer.config"
+import { CADAnalysisResult } from "@/lib/types/cad"
 import { cn } from "@/lib/utils"
 import {
-  isSupportedFileType,
-  validateFileSize,
   getFileAcceptString,
   getFileTypeDescription,
-  is3DFileType,
   is2DFileType,
+  is3DFileType,
+  isSupportedFileType,
+  validateFileSize,
 } from "@/lib/utils/cad-file-utils-browser"
-import { ANALYZER_CONFIG } from "@/config/cad-analyzer.config"
-import type React from "react"
 
 interface CADChatUploadProps {
   onAnalysisComplete: (result: CADAnalysisResult) => void

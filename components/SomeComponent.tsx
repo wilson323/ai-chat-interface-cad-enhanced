@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useEffect } from 'react'
+import React, { useEffect,useState } from 'react'
 
 export function SomeComponent() {
   // 错误方式 - 会在服务器和客户端产生不同结果

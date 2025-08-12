@@ -2,8 +2,9 @@
  * 对话管理器 - 负责对话的创建、保存和加载
  * Conversation Manager - Responsible for creating, saving, and loading conversations
  */
-import { v4 as uuidv4 } from "uuid"
 import { BehaviorSubject, type Observable } from "rxjs"
+import { v4 as uuidv4 } from "uuid"
+
 import { getSyncManager } from "../sync/sync-manager"
 
 // 对话类型
@@ -16,7 +17,7 @@ export interface Conversation {
   pinned?: boolean
   unread?: number
   tags?: string[]
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 // 消息类型
@@ -83,13 +84,13 @@ export class ConversationManager {
 
   // 初始化
   private async init(): Promise<void> {
-    if (this.isInitialized) return
+    if (this.isInitialized === true) return
 
     // 从本地存储加载对话
     await this.loadFromLocalStorage()
 
     // 启动自动保存
-    if (this.config.autoSave) {
+    if (this.config.autoSave === true) {
       this.startAutoSave()
     }
 
@@ -136,11 +137,11 @@ export class ConversationManager {
   public setActiveConversation(conversationId: string | null): void {
     this.activeConversationId = conversationId
 
-    const conversation = conversationId ? this.conversations.get(conversationId) || null : null
+    const conversation = conversationId !== null ? this.conversations.get(conversationId) ?? null : null
     this.activeConversationSubject.next(conversation)
 
     // 清除未读消息
-    if (conversation && conversation.unread) {
+    if (conversation !== null && typeof conversation.unread === "number" && conversation.unread > 0) {
       this.updateConversation(conversation.id, { unread: 0 })
     }
   }
@@ -148,14 +149,14 @@ export class ConversationManager {
   // 添加消息到对话
   public addMessage(conversationId: string, message: Message): void {
     const conversation = this.conversations.get(conversationId)
-    if (!conversation) return
+    if (conversation == null) return
 
     conversation.messages.push(message)
     conversation.timestamp = new Date()
 
     // 如果不是当前活动对话，增加未读计数
     if (conversationId !== this.activeConversationId) {
-      conversation.unread = (conversation.unread || 0) + 1
+      conversation.unread = (conversation.unread ?? 0) + 1
     }
 
     this.updateConversationsSubject()
@@ -166,7 +167,7 @@ export class ConversationManager {
     }
 
     // 同步到服务器
-    if (this.config.syncEnabled) {
+    if (this.config.syncEnabled === true) {
       this.syncManager.addItem("message", {
         ...message,
         conversationId,
@@ -177,7 +178,7 @@ export class ConversationManager {
   // 更新对话
   public updateConversation(conversationId: string, updates: Partial<Conversation>): void {
     const conversation = this.conversations.get(conversationId)
-    if (!conversation) return
+    if (conversation == null) return
 
     // 应用更新
     Object.assign(conversation, updates)
@@ -190,14 +191,14 @@ export class ConversationManager {
     }
 
     // 同步到服务器
-    if (this.config.syncEnabled) {
+    if (this.config.syncEnabled === true) {
       this.syncManager.addItem("conversation", conversation)
     }
   }
 
   // 删除对话
   public deleteConversation(conversationId: string): void {
-    if (!this.conversations.has(conversationId)) return
+    if (this.conversations.has(conversationId) === false) return
 
     this.conversations.delete(conversationId)
 
@@ -210,7 +211,7 @@ export class ConversationManager {
     this.updateConversationsSubject()
 
     // 同步到服务器（标记为删除）
-    if (this.config.syncEnabled) {
+    if (this.config.syncEnabled === true) {
       this.syncManager.addItem("conversation", {
         id: conversationId,
         deleted: true,
@@ -225,10 +226,10 @@ export class ConversationManager {
   // 添加反馈
   public addFeedback(conversationId: string, messageId: string, feedback: Feedback): void {
     const conversation = this.conversations.get(conversationId)
-    if (!conversation) return
+    if (conversation == null) return
 
     const message = conversation.messages.find((m) => m.id === messageId)
-    if (!message) return
+    if (message == null) return
 
     message.feedback = feedback
 
@@ -240,7 +241,7 @@ export class ConversationManager {
     }
 
     // 同步到服务器
-    if (this.config.syncEnabled) {
+    if (this.config.syncEnabled === true) {
       this.syncManager.addItem("feedback", {
         messageId,
         conversationId,
@@ -252,7 +253,7 @@ export class ConversationManager {
   // 更新消息
   public updateMessage(conversationId: string, messageId: string, updates: Partial<Message>): void {
     const conversation = this.conversations.get(conversationId)
-    if (!conversation) return
+    if (conversation == null) return
 
     const messageIndex = conversation.messages.findIndex((m) => m.id === messageId)
     if (messageIndex === -1) return
@@ -268,7 +269,7 @@ export class ConversationManager {
     }
 
     // 同步到服务器
-    if (this.config.syncEnabled) {
+    if (this.config.syncEnabled === true) {
       this.syncManager.addItem("message", {
         ...conversation.messages[messageIndex],
         conversationId,
@@ -284,9 +285,9 @@ export class ConversationManager {
   // 切换对话置顶状态
   public togglePinned(conversationId: string): void {
     const conversation = this.conversations.get(conversationId)
-    if (!conversation) return
+    if (conversation == null) return
 
-    this.updateConversation(conversationId, { pinned: !conversation.pinned })
+    this.updateConversation(conversationId, { pinned: conversation.pinned === true ? false : true })
   }
 
   // 更新对话标签
@@ -303,7 +304,7 @@ export class ConversationManager {
         .slice(0, this.config.maxLocalConversations)
 
       localStorage.setItem("conversations", JSON.stringify(conversationsArray))
-      localStorage.setItem("activeConversationId", this.activeConversationId || "")
+      localStorage.setItem("activeConversationId", this.activeConversationId ?? "")
     } catch (error) {
       console.error("Error saving conversations to localStorage:", error)
     }
@@ -315,7 +316,7 @@ export class ConversationManager {
       const storedConversations = localStorage.getItem("conversations")
       const storedActiveId = localStorage.getItem("activeConversationId")
 
-      if (storedConversations) {
+      if (storedConversations !== null) {
         const conversations = JSON.parse(storedConversations) as Conversation[]
 
         // 转换日期字符串为Date对象
@@ -335,7 +336,7 @@ export class ConversationManager {
       }
 
       // 设置活动对话
-      if (storedActiveId && this.conversations.has(storedActiveId)) {
+      if (storedActiveId !== null && this.conversations.has(storedActiveId)) {
         this.setActiveConversation(storedActiveId)
       }
     } catch (error) {
@@ -354,7 +355,7 @@ export class ConversationManager {
 
   // 启动自动保存
   private startAutoSave(): void {
-    if (this.autoSaveIntervalId) {
+    if (this.autoSaveIntervalId !== null) {
       clearInterval(this.autoSaveIntervalId)
     }
 
@@ -365,7 +366,7 @@ export class ConversationManager {
 
   // 停止自动保存
   private stopAutoSave(): void {
-    if (this.autoSaveIntervalId) {
+    if (this.autoSaveIntervalId !== null) {
       clearInterval(this.autoSaveIntervalId)
       this.autoSaveIntervalId = null
     }

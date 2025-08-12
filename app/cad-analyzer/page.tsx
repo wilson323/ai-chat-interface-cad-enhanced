@@ -1,5 +1,6 @@
-import { CADAnalyzerContainer } from '@/components/cad/CADAnalyzerContainer';
 import { Metadata } from 'next';
+
+import { CADAnalyzerContainer } from '@/components/cad/CADAnalyzerContainer';
 
 export const metadata: Metadata = {
   title: 'CAD解读智能体 - AI助手',

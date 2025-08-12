@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { createOptimizedStreamWriter, globalStreamMonitor } from '@/lib/ag-ui/stream-optimizer'
 import type { AgUIEvent } from '@/lib/ag-ui/types'
 import { EventType } from '@/lib/ag-ui/types'
-import { KnownProviders } from '@/lib/api/ai-provider-adapter'
+import { createOpenAIClient, normalizeMessages, resolveProviderConfig } from '@/lib/api/openai-provider'
 import { rateLimiterMiddleware } from '@/middleware/rate-limiter'
 
 export const runtime = 'edge'
@@ -113,23 +113,22 @@ export async function POST(req: NextRequest) {
     // 调用上游
     const upstream = useExternal
       ? await (async () => {
-          const adapter = (() => {
-            const forcedProvider = forceDashscope ? 'dashscope' : provider
-            switch (forcedProvider) {
-              case 'dashscope': return KnownProviders.dashscope(extKey || externalApiKey, baseUrl || externalBaseUrl)
-              case 'deepseek': return KnownProviders.deepseek(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
-              case 'moonshot': return KnownProviders.moonshot(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
-              case 'zhipu': return KnownProviders.zhipu(extKey || process.env.EXTERNAL_AI_API_KEY || '', baseUrl)
-              default: return KnownProviders.dashscope(extKey || externalApiKey, baseUrl || externalBaseUrl)
-            }
-          })()
-                     return adapter.chat({
+          const forcedProvider = forceDashscope ? 'dashscope' : provider
+          const resolved = resolveProviderConfig(forcedProvider as any, extKey || externalApiKey, baseUrl || externalBaseUrl)
+          const client = createOpenAIClient(resolved)
+          const normalized = normalizeMessages(messages, resolved.useContentArray)
+          const res = await client.chat.completions.create({
             model: resolvedModel,
-            messages,
+            messages: normalized as any,
             stream: true,
             temperature: 0.7,
             max_tokens: 2048,
-          }, { signal: req.signal })
+          }) as any
+          if (res && res.toReadableStream) {
+            return new Response(res.toReadableStream(), { headers: { 'Content-Type': 'text/event-stream' } })
+          }
+          // 兼容：如果 SDK 返回非流对象
+          return new Response(JSON.stringify(res), { headers: { 'Content-Type': 'application/json' } })
         })()
       : await (await import('@/lib/api/server-fastgpt-upstream')).createFastGptUpstream({
           origin,

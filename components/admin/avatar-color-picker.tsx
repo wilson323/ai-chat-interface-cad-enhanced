@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Label } from "@/components/ui/label"
-import { Button } from "@/components/ui/button"
 import { Check } from "lucide-react"
+import { useEffect,useState } from "react"
+
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
 
 // 预定义的主题色，与系统主题相协调
 const themeColors = [

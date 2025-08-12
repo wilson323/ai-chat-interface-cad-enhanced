@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useRef } from 'react';
+import { AlertCircle,CheckCircle, File, Loader2, UploadCloud } from 'lucide-react';
+import React, { useRef,useState } from 'react';
+
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { CheckCircle, File, Loader2, UploadCloud, AlertCircle } from 'lucide-react';
 import { CADFileType } from '@/lib/types/cad'
 import { formatFileSize } from '@/lib/utils';
 

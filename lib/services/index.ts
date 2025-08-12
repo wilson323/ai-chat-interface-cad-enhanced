@@ -7,16 +7,13 @@ export * from '../protocol/ag-ui-client';
 export * from '../conversation/conversation-tree';
 
 // 数据同步与备份
-import { getSyncManager } from '../sync/sync-manager';
-
-// 系统监控与指标
-import { MonitoringService } from './monitoring-service';
-
-// API权限与安全
-import { ApiSecurityService } from './api-security-service';
-
 // 批处理服务
 import { BatchProcessor } from '../batch/batch-processor';
+import { getSyncManager } from '../sync/sync-manager';
+// API权限与安全
+import { ApiSecurityService } from './api-security-service';
+// 系统监控与指标
+import { MonitoringService } from './monitoring-service';
 
 // 移动端优化
 export { useMobileOptimization } from '../hooks/useMobileOptimization';

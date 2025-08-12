@@ -1,8 +1,8 @@
+import { BatchProcessor } from '../batch/batch-processor';
+import { ConversationTreeManager } from '../conversation/conversation-tree';
+import { getSyncManager } from '../sync/sync-manager';
 import { ApiSecurityService } from './api-security-service';
 import { MonitoringService } from './monitoring-service';
-import { BatchProcessor } from '../batch/batch-processor';
-import { getSyncManager } from '../sync/sync-manager';
-import { ConversationTreeManager } from '../conversation/conversation-tree';
 
 // 系统配置接口
 export interface SystemConfig {

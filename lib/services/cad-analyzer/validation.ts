@@ -1,5 +1,6 @@
 // CAD设计验证模块
 import type { CADAnalysisResult } from '@/lib/types/cad';
+
 import { cadMetrics } from './metrics';
 
 // 验证规则类型

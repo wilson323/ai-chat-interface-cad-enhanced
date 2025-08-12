@@ -9,6 +9,7 @@
  */
 
 import { useEffect } from "react"
+
 import type { BaseEvent } from "@/lib/ag-ui/types"
 
 interface EventListenerProps {

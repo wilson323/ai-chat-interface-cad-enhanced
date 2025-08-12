@@ -1,4 +1,4 @@
-import { BehaviorSubject, Observable, Subject, interval } from 'rxjs';
+import { BehaviorSubject, interval,Observable, Subject } from 'rxjs';
 import { takeUntil, tap } from 'rxjs/operators';
 
 // 系统性能指标接口

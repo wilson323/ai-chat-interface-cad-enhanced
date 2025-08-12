@@ -1,18 +1,19 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useToast } from "@/hooks/use-toast"
-import { useIsMobile } from "@/components/ui/use-mobile"
-import { Sun, Moon, Menu, LogOut, Sparkles, User } from "lucide-react"
-import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface"
-import { ChatSidebar } from "@/components/chat/chat-sidebar"
-import { AgentSelector } from "@/components/chat"
-import { useFastGPT } from "@/contexts/FastGPTContext"
+import { LogOut, Menu, Moon, Sparkles, Sun, User } from "lucide-react"
 import { useRouter } from "next/navigation"
+import { useEffect,useState } from "react"
+
+import { AgentSelector } from "@/components/chat"
+import { ChatSidebar } from "@/components/chat/chat-sidebar"
+import { UnifiedChatInterface } from "@/components/chat/unified-chat-interface"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { useIsMobile } from "@/components/ui/use-mobile"
 import { isUiMockAllowed } from "@/config/features"
+import { useFastGPT } from "@/contexts/FastGPTContext"
+import { useToast } from "@/hooks/use-toast"
 
 // 当未允许UI层 mock 时，直接移除所有本地 mock 数据
 

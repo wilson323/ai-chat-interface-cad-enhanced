@@ -1,36 +1,37 @@
 "use client"
 
-import React, { useState, useRef, useEffect } from "react"
+import {
+  AlertCircle,
+  CheckCircle2,
+  FileText,
+  History,
+  ImageIcon,
+  Info,
+  Layout,
+  Loader2,
+  Palette,
+  RefreshCw,
+  Send,
+  Settings,
+  Sparkles,
+  Tag,
+  Zap,
+} from "lucide-react"
+import React, { useEffect,useRef, useState } from "react"
+
+import { ImageUploader } from "@/components/poster/image-uploader"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Progress } from "@/components/ui/progress"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import {
-  Loader2,
-  Send,
-  ImageIcon,
-  RefreshCw,
-  Sparkles,
-  Info,
-  Zap,
-  Settings,
-  History,
-  Palette,
-  Layout,
-  Tag,
-  FileText,
-  CheckCircle2,
-  AlertCircle,
-} from "lucide-react"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { toast } from "@/components/ui/use-toast"
 import { cn } from "@/lib/utils"
-import { ImageUploader } from "@/components/poster/image-uploader"
 
 // 海报风格选项
 const POSTER_STYLES = [

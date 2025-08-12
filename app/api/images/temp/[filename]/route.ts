@@ -1,7 +1,7 @@
-import { type NextRequest, NextResponse } from "next/server"
 import fs from "fs/promises"
-import path from "path"
+import { type NextRequest, NextResponse } from "next/server"
 import os from "os"
+import path from "path"
 
 export async function GET(request: NextRequest, { params }: { params: { filename: string } }) {
   const filename = params.filename

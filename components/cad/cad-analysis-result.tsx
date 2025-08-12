@@ -1,29 +1,30 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
 import {
+  AlertTriangle,
   BarChart,
-  PieChart,
-  FileText,
-  Download,
-  Copy,
-  Share2,
-  Layers,
-  Ruler,
-  Type,
   Circle,
-  Square,
+  Copy,
+  Download,
+  FileText,
   Hexagon,
   Info,
-  AlertTriangle,
+  Layers,
   Lightbulb,
+  PieChart,
+  Ruler,
+  Share2,
+  Square,
+  Type,
 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { useState } from "react"
+
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { cn } from "@/lib/utils"
 
 interface CADAnalysisResultProps {
   data: {

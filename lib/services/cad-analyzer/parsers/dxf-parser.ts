@@ -1,5 +1,6 @@
 // DXF专用解析器
 import type { CADAnalysisResult } from '@/lib/types/cad';
+
 import type { ParserOptions } from './index';
 
 interface DxfEntities {

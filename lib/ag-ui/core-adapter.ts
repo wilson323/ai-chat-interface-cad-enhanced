@@ -7,6 +7,7 @@
  */
 
 import { type Observable, Subject } from "rxjs"
+
 import type { BaseEvent } from "./types"
 
 export interface AgUICoreAdapterOptions {

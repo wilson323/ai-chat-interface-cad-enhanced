@@ -1,5 +1,6 @@
-import { BaseAgent, AgentConfig } from './base-agent';
 import { v4 as uuidv4 } from 'uuid';
+
+import { AgentConfig,BaseAgent } from './base-agent';
 
 export interface GlobalVariable {
   key: string;

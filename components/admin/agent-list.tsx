@@ -1,9 +1,14 @@
 "use client"
 
+import { AnimatePresence,motion } from "framer-motion"
+import {
+  Edit,
+  ExternalLink,
+  Plus,
+  Trash,
+} from "lucide-react"
 import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,22 +20,19 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
-import {
-  Plus,
-  Edit,
-  Trash,
-  ExternalLink,
-} from "lucide-react"
-import type { FastGPTApp } from "@/types/fastgpt"
-import { Skeleton } from "@/components/ui/skeleton"
-import { motion, AnimatePresence } from "framer-motion"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { AgentForm } from "./agent-form"
-import { AgentCard } from "./agent-card"
-import { AgentListHeader } from "./agent-list-header"
-import { useAgentManagement } from "@/hooks/use-agent-management"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useAgentFilters } from "@/hooks/use-agent-filters"
+import { useAgentManagement } from "@/hooks/use-agent-management"
 import { useModelFetcher } from "@/hooks/use-model-fetcher"
+import type { FastGPTApp } from "@/types/fastgpt"
+
+import { AgentCard } from "./agent-card"
+import { AgentForm } from "./agent-form"
+import { AgentListHeader } from "./agent-list-header"
 
 export function AgentList() {
   const {

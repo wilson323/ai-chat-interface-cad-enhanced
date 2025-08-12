@@ -3,22 +3,23 @@
  * 负责管理和协调CAD文件解析和分析流程
  */
 
-import { parseCADFile, ParserOptions, DEFAULT_PARSER_OPTIONS } from './parsers';
+import { v4 as uuidv4 } from 'uuid';
+
+import type { 
+  CADAnalysisProgress, 
+  CADAnalysisResult, 
+  CADAnalysisSession,
+  CADAnalysisType, 
+  CADFileType} from '@/lib/types/cad';
+import { CADComponentType,DomainSpecificAnalysis, IFCAnalysisOptions } from '@/lib/types/cad';
+
+import { CADAnalyzerService } from '../cad-analyzer-service';
+import { AIMultimodalAnalysisResult,CADMultimodalAIAnalyzer } from './ai-analyzer';
+import { cadMetrics } from './metrics';
+import { DEFAULT_PARSER_OPTIONS,parseCADFile, ParserOptions } from './parsers';
 import { AdvancedCADParser } from './parsers/advanced-parser';
-import { CADMultimodalAIAnalyzer, AIMultimodalAnalysisResult } from './ai-analyzer';
 import { generateCADReport } from './report-generator';
 import { validateCADDesign, type ValidationResult } from './validation';
-import { cadMetrics } from './metrics';
-import type { 
-  CADAnalysisResult, 
-  CADFileType, 
-  CADAnalysisType, 
-  CADAnalysisSession,
-  CADAnalysisProgress 
-} from '@/lib/types/cad';
-import { v4 as uuidv4 } from 'uuid';
-import { CADAnalyzerService } from '../cad-analyzer-service';
-import { DomainSpecificAnalysis, IFCAnalysisOptions, CADComponentType } from '@/lib/types/cad';
 
 // 支持的文件类型（本地定义，避免与其他模块重复导入冲突）
 export const SUPPORTED_CAD_FILE_TYPES: CADFileType[] = [

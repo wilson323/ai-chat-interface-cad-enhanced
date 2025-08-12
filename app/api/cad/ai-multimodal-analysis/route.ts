@@ -1,30 +1,30 @@
-import { NextRequest, NextResponse } from "next/server";
-import { v4 as uuidv4 } from "uuid";
-import { createQueue } from '@/lib/utils/processingQueue';
-import { ApiError, ApiErrorCode } from '@/lib/errors/error-handler';
-import { CADAnalysisResult } from '@/lib/types/cad';
-import path from "path";
 import fs from "fs/promises";
+import { NextRequest, NextResponse } from "next/server";
+import path from "path";
+import { v4 as uuidv4 } from "uuid";
+
+import { ApiError, ApiErrorCode } from '@/lib/errors/error-handler';
 import { AIMultimodalAnalysisResult } from '@/lib/services/cad-analyzer/ai-analyzer';
-import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
+import { isBIMFile } from '@/lib/services/cad-analyzer/cad-analyzer-service';
 import { 
-  validateFile, 
-  updateSessionStatus, 
-  updateSessionProgress,
-  createSession,
-  generateBasicAnalysisResult,
+  calculateCADStats,
   createAIAnalysisResult,
   createDomainAnalysis,
-  parseIFCFile,
+  createSession,
   extractComponentTypes,
-  calculateCADStats
-} from '@/lib/services/cad-analyzer/controller';
+  generateBasicAnalysisResult,
+  parseIFCFile,
+  updateSessionProgress,
+  updateSessionStatus, 
+  validateFile} from '@/lib/services/cad-analyzer/controller';
+import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
+import { CADAnalysisResult } from '@/lib/types/cad';
 import { 
-  CADFileType, 
   CADAnalysisType, 
+  CADFileType, 
   DomainSpecificAnalysis 
 } from '@/lib/types/cad';
-import { isBIMFile } from '@/lib/services/cad-analyzer/cad-analyzer-service';
+import { createQueue } from '@/lib/utils/processingQueue';
 
 // 使用处理队列限制并发
 const aiAnalysisQueue = createQueue({

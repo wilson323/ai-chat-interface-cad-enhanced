@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { CADAnalyzerService } from "@/lib/services/cad-analyzer-service"
 import { v4 as uuidv4 } from 'uuid'
+
+import { CADAnalyzerService } from "@/lib/services/cad-analyzer-service"
 
 /**
  * AG-UI CAD分析API路由 - 提供CAD文件分析功能的AG-UI协议支持

@@ -1,12 +1,15 @@
-import { initializeApp } from "@/lib/init"
+import './globals.css'
+
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import { ThemeProvider } from '@/components/ui/theme-provider'
-import { Toaster } from '@/components/ui/sonner'
-import './globals.css'
-import ClientLayout from "./client-layout"
-import { FastGPTProvider } from "@/contexts/FastGPTContext"
 import { type ReactNode } from 'react'
+
+import { Toaster } from '@/components/ui/sonner'
+import { ThemeProvider } from '@/components/ui/theme-provider'
+import { FastGPTProvider } from "@/contexts/FastGPTContext"
+import { initializeApp } from "@/lib/init"
+
+import ClientLayout from "./client-layout"
 
 const inter = Inter({ 
   subsets: ['latin'],

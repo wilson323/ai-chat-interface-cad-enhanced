@@ -1,9 +1,10 @@
-import { useState, useCallback } from 'react';
+import { useCallback,useState } from 'react';
+
 import { useFastGPT } from '@/contexts/FastGPTContext';
 import { useToast } from '@/hooks/use-toast';
-import type { FastGPTApp } from '@/types/fastgpt';
-import { generateAvatarColor } from '@/lib/utils/avatar-utils';
 import { STORAGE_KEYS } from '@/lib/utils';
+import { generateAvatarColor } from '@/lib/utils/avatar-utils';
+import type { FastGPTApp } from '@/types/fastgpt';
 
 export function useAgentManagement() {
   const { applications, fetchApplications, isLoading } = useFastGPT();

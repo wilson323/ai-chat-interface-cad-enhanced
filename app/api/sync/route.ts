@@ -1,5 +1,5 @@
-import { type NextRequest, NextResponse } from "next/server"
 import { Redis } from "@upstash/redis"
+import { type NextRequest, NextResponse } from "next/server"
 
 // 创建Redis客户端
 const redis = new Redis({

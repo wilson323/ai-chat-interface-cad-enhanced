@@ -2,16 +2,16 @@
  * 系统初始化 - 初始化所有系统组件
  * System Initialization - Initialize all system components
  */
+import { getEnhancedFastGPTClient } from "./api/fastgpt-enhanced"
+import { getFastGPTOptimizer } from "./api/fastgpt-optimizer"
+import { RequestPriority } from "./api/fastgpt-optimizer"
+import { getBatchProcessor } from "./batch/batch-processor"
 import { getCacheManager } from "./cache/cache-manager"
 import { getRedisCacheAdapter } from "./cache/redis-cache-adapter"
-import { getFastGPTOptimizer } from "./api/fastgpt-optimizer"
-import { getEnhancedFastGPTClient } from "./api/fastgpt-enhanced"
-import { getPrefetchService } from "./prefetch/prefetch-service"
-import { getBatchProcessor } from "./batch/batch-processor"
-import { getRetryManager } from "./retry/retry-manager"
-import { getPreloadManager } from "./preload/preload-manager"
 import { getFallbackManager } from "./fallback/fallback-manager"
-import { RequestPriority } from "./api/fastgpt-optimizer"
+import { getPrefetchService } from "./prefetch/prefetch-service"
+import { getPreloadManager } from "./preload/preload-manager"
+import { getRetryManager } from "./retry/retry-manager"
 
 // 系统配置
 export interface SystemConfig {

@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { readdir, stat, unlink } from 'fs/promises';
+import { NextRequest, NextResponse } from 'next/server';
 import { join } from 'path';
-import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
+
 import { CLEANUP_CONFIG } from '@/config/cad-analyzer.config';
+import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
 
 // 文件最大保留时间（使用配置文件中的值）
 const MAX_FILE_AGE_MS = CLEANUP_CONFIG.scheduledCleanup.maxFileAge;

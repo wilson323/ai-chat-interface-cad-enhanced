@@ -4,24 +4,24 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+
 import { 
-  CADAnalysisResult,
-  CADAnalysisType,
-  CADAnalysisProgress,
-  CADAnalysisSession,
-  CADFileType,
-  CADUploadResponse,
-  AIMultimodalAnalysisResult,
-  GenerateReportResponse,
-  ShareAnalysisResponse,
-  CADMeasurement,
-  DomainSpecificAnalysis,
-  CADSectionAnalysisConfig,
   AdvancedRenderingOptions,
+  AIMultimodalAnalysisResult,
+  BIMData,
+  CADAnalysisProgress,
+  CADAnalysisResult,
+  CADAnalysisSession,
+  CADAnalysisType,
+  CADFileType,
+  CADMeasurement,
   CADModelOptimizationOptions,
+  CADSectionAnalysisConfig,
+  CADUploadResponse,
+  DomainSpecificAnalysis,
+  GenerateReportResponse,
   IFCAnalysisOptions,
-  BIMData
-} from '@/lib/types/cad';
+  ShareAnalysisResponse} from '@/lib/types/cad';
 
 // Service configuration
 export const SUPPORTED_CAD_FILE_TYPES: CADFileType[] = [

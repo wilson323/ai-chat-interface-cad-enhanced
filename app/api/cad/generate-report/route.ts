@@ -1,11 +1,12 @@
+import { jsPDF } from 'jspdf';
 import { NextRequest, NextResponse } from 'next/server';
+import { Readable } from 'stream';
+
+import type { AIMultimodalAnalysisResult } from '@/lib/services/cad-analyzer/ai-analyzer';
 import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
+import type { ValidationResult } from '@/lib/services/cad-analyzer/validation';
 // types removed to avoid import error; use runtime-safe handling
 import type { CADAnalysisResult } from '@/lib/types/cad';
-import type { AIMultimodalAnalysisResult } from '@/lib/services/cad-analyzer/ai-analyzer';
-import type { ValidationResult } from '@/lib/services/cad-analyzer/validation';
-import { jsPDF } from 'jspdf';
-import { Readable } from 'stream';
 
 /**
  * CAD报告生成API端点

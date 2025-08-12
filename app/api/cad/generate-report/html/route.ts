@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAnalysisResult } from '@/lib/services/cad-analyzer/controller';
-import { CADAnalysisResult, AIMultimodalAnalysisResult, DomainSpecificAnalysis } from '@/lib/types/cad';
+
 import { CAD_FILE_TYPE_MAP } from '@/lib/services/cad-analyzer/cad-analyzer-service';
+import { getAnalysisResult } from '@/lib/services/cad-analyzer/controller';
+import { AIMultimodalAnalysisResult, CADAnalysisResult, DomainSpecificAnalysis } from '@/lib/types/cad';
 
 /**
  * 生成HTML格式的CAD分析报告

@@ -2,11 +2,11 @@
  * 图片上传API路由
  */
 
-import { NextRequest, NextResponse } from "next/server"
 import { writeFile } from "fs/promises"
+import { mkdir } from "fs/promises"
+import { NextRequest, NextResponse } from "next/server"
 import { join } from "path"
 import { v4 as uuidv4 } from "uuid"
-import { mkdir } from "fs/promises"
 
 export async function POST(req: NextRequest) {
   try {

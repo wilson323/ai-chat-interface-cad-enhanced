@@ -7,10 +7,11 @@
 // import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 // import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 // import { IFCLoader } from 'web-ifc-three/IFCLoader';
-import { DXFParser } from './dxf-parser';
 import { CADAnalysisResult, CADComponent, CADEntityMap, CADMaterial } from '@/lib/types/cad';
-import { ParserOptions } from './index';
+
 import { cadMetrics } from '../metrics';
+import { DXFParser } from './dxf-parser';
+import { ParserOptions } from './index';
 
 // 支持的格式映射到处理器
 const FORMAT_PROCESSORS = {

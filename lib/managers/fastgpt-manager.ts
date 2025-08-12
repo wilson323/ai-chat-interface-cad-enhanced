@@ -1,7 +1,8 @@
+import { BehaviorSubject } from 'rxjs';
+
+import { AgentType } from '../agents/base-agent';
 import { FastGPTAgent, FastGPTAgentConfig } from '../agents/fastgpt-agent';
 import { db } from '../database';
-import { AgentType } from '../agents/base-agent';
-import { BehaviorSubject } from 'rxjs';
 
 export class FastGPTManager {
   private agents: Map<string, FastGPTAgent> = new Map();

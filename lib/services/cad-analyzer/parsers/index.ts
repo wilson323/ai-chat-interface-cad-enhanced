@@ -1,9 +1,10 @@
 // CAD解析器集合
-import { DXFParser } from './dxf-parser';
-import { DWGParser } from './dwg-parser';
-import { STEPParser } from './step-parser';
-import { IGESParser } from './iges-parser';
 import type { CADAnalysisResult } from '@/lib/types/cad';
+
+import { DWGParser } from './dwg-parser';
+import { DXFParser } from './dxf-parser';
+import { IGESParser } from './iges-parser';
+import { STEPParser } from './step-parser';
 
 export interface ParserOptions {
   precision: 'low' | 'standard' | 'high';

@@ -1,4 +1,4 @@
-import { CAD_FILE_TYPES, PARSER_CONFIG, ANALYZER_CONFIG } from '@/config/cad-analyzer.config';
+import { ANALYZER_CONFIG,CAD_FILE_TYPES, PARSER_CONFIG } from '@/config/cad-analyzer.config';
 
 /**
  * 检查文件类型是否受支持

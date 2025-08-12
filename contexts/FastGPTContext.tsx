@@ -1,12 +1,13 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode, type FC } from "react"
-import type { FastGPTApp, ChatSession, User, ApiConfig } from "@/types/fastgpt"
-import { useToast } from "@/hooks/use-toast"
-import { STORAGE_KEYS, ERROR_MESSAGES } from "@/config/fastgpt"
-import { DEFAULT_AGENT } from "@/config/default-agent"
+import { createContext, type FC,type ReactNode, useContext, useEffect, useState } from "react"
 // FastGPTApi default client removed from direct usage in context; calls go through server routes
 import React from "react"
+
+import { DEFAULT_AGENT } from "@/config/default-agent"
+import { ERROR_MESSAGES,STORAGE_KEYS } from "@/config/fastgpt"
+import { useToast } from "@/hooks/use-toast"
+import type { ApiConfig,ChatSession, FastGPTApp, User } from "@/types/fastgpt"
 
 // FastGPTContextType interface with pagination methods
 interface FastGPTContextType {

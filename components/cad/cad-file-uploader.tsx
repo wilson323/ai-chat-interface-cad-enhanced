@@ -1,10 +1,11 @@
 "use client"
 
-import React, { useState, useRef } from "react"
-import { Upload, FileUp, X, Check, AlertCircle, Loader2 } from "lucide-react"
+import { AlertCircle, Check, FileUp, Loader2,Upload, X } from "lucide-react"
+import React, { useRef,useState } from "react"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { cn } from "@/lib/utils"
 
 // 移除 namespace 声明，遵循 ESModule 语法与严格类型

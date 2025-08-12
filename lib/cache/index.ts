@@ -115,9 +115,9 @@ export function useCache<T>(prefix: string, options: CacheOptions) {
         const keysToRemove: string[] = [];
         
         for (let i = 0; i < storageObj.length; i++) {
-          const key = storageObj.key(i);
-          if (key && key.startsWith(`${prefix}:`)) {
-            keysToRemove.push(key);
+          const k = storageObj.key(i);
+          if (typeof k === 'string' && k.startsWith(`${prefix}:`)) {
+            keysToRemove.push(k);
           }
         }
         

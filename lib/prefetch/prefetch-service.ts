@@ -10,8 +10,8 @@
  * - 详细的统计和监控
  */
 import { getEnhancedFastGPTClient } from "../api/fastgpt-enhanced"
-import { getCacheManager } from "../cache/cache-manager"
 import { RequestPriority } from "../api/fastgpt-optimizer"
+import { getCacheManager } from "../cache/cache-manager"
 
 // 预取规则类型
 export interface PrefetchRule {

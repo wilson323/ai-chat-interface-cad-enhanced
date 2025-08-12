@@ -6,8 +6,8 @@
  * 调用关系: 可被任何需要创建AG-UI适配器的代码调用
  */
 
+import { type AgUIConfig,mergeConfig } from "./config"
 import { AgUICoreAdapter } from "./core-adapter"
-import { mergeConfig, type AgUIConfig } from "./config"
 
 export type AdapterType = "core" | "fastgpt" | "openai" | "anthropic" | "custom"
 

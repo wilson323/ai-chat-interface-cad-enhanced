@@ -1,15 +1,16 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { useFastGPT } from "@/contexts/FastGPTContext"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Search, Bot } from "lucide-react"
-import { Input } from "@/components/ui/input"
 import { motion } from "framer-motion"
+import { Bot,Search } from "lucide-react"
 import type React from "react"
+import { useState } from "react"
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Skeleton } from "@/components/ui/skeleton"
+import { useFastGPT } from "@/contexts/FastGPTContext"
 
 interface AgentSelectorProps {
   onSelect?: (agentId: string) => void

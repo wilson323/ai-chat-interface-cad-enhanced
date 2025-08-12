@@ -1,34 +1,40 @@
 "use client";
 
-import React, { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { 
-  Download, 
-  Clipboard, 
-  Share2, 
-  ChevronRight, 
-  ChevronDown,
-  Info,
-  Box,
-  Ruler,
-  FileText,
-  ListFilter,
-  Search,
   BarChart,
-  LayoutGrid,
+  Box,
+  ChevronDown,
+  ChevronRight, 
+  Clipboard, 
+  Download, 
+  FileText,
+  Info,
   Layers,
+  LayoutGrid,
   List,
+  ListFilter,
+  Ruler,
+  Search,
+  Share2, 
   Zap
 } from 'lucide-react';
+import React, { useState } from 'react';
+
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle
+} from '@/components/ui/card';
 import {
   HoverCard,
   HoverCardContent,
@@ -36,6 +42,8 @@ import {
 } from "@/components/ui/hover-card";
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -44,15 +52,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
-import { CADAnalysisResult, AIMultimodalAnalysisResult, DomainSpecificAnalysis, CADMeasurement, CADComponent, LayerInfo } from '@/lib/types/cad';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { AIMultimodalAnalysisResult, CADAnalysisResult, CADComponent, CADMeasurement, DomainSpecificAnalysis, LayerInfo } from '@/lib/types/cad';
 import { formatFileSize } from '@/lib/utils';
 
 interface CADResultPanelProps {

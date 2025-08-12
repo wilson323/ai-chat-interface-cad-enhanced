@@ -8,9 +8,10 @@
  * 调用关系: 被前端组件调用，内部使用lib/ag-ui/core-adapter.ts
  */
 
-import { useState, useEffect, useRef, useCallback } from "react"
-import { AgUICoreAdapter } from "@/lib/ag-ui/core-adapter"
+import { useCallback,useEffect, useRef, useState } from "react"
 import type { Subscription } from "rxjs"
+
+import { AgUICoreAdapter } from "@/lib/ag-ui/core-adapter"
 import type { BaseEvent, Message } from "@/lib/ag-ui/types"
 
 interface UseAgUIOptions {

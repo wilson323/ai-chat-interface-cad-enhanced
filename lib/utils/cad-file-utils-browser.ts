@@ -1,4 +1,4 @@
-import { CAD_FILE_TYPES, ANALYZER_CONFIG } from '@/config/cad-analyzer.config'
+import { ANALYZER_CONFIG,CAD_FILE_TYPES } from '@/config/cad-analyzer.config'
 
 /**
  * 浏览器端安全的 CAD 文件工具集合（不依赖 Node.js 内置模块）

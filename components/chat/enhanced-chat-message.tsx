@@ -1,13 +1,15 @@
 "use client"
 
+import { Copy, MoreHorizontal, Star } from "lucide-react"
 import { useState } from "react"
-import { Card, CardContent } from "@/components/ui/card"
+
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Copy, MoreHorizontal, Star } from "lucide-react"
-import { MessageFeedback } from "./message-feedback"
-import { cn } from "@/lib/utils"
+import { Card, CardContent } from "@/components/ui/card"
 import { useIsMobile } from "@/components/ui/use-mobile"
+import { cn } from "@/lib/utils"
+
+import { MessageFeedback } from "./message-feedback"
 
 interface Message {
   id: string

@@ -1,8 +1,9 @@
-import { useState, useCallback, useRef } from "react"
+import { useCallback, useRef,useState } from "react"
+
+import { useCache } from '@/lib/cache'
 import type { CADAnalysisResult } from "@/lib/types/cad"
 import { captureException } from "@/lib/utils/error"
 import { UserFriendlyError } from "@/lib/utils/error"
-import { useCache } from '@/lib/cache'
 
 /**
  * CAD分析器服务钩子

@@ -1,4 +1,5 @@
 import { Observable } from 'rxjs';
+
 import { AgUIEvent, AgUIEventEmitter } from '../protocol/ag-ui-protocol';
 
 export type AgentType = 'fastgpt' | 'cad' | 'poster';

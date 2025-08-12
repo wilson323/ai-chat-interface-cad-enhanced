@@ -4,6 +4,7 @@
  */
 
 import { CADAnalysisResult } from '@/lib/types/cad';
+
 import { AIMultimodalAnalysisResult } from './ai-analyzer';
 import { cadMetrics } from './metrics';
 

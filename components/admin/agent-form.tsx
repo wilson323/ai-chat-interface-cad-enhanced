@@ -1,19 +1,20 @@
 "use client"
 
+import { Check, Copy, ExternalLink } from "lucide-react"
 import type React from "react"
 import { useState } from "react"
+
+import { AvatarColorPicker } from "@/components/admin/avatar-color-picker"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { AvatarColorPicker } from "@/components/admin/avatar-color-picker"
+import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { FastGPTApp, FastGPTModel, VoiceModel } from "@/types/fastgpt"
-import { Copy, Check, ExternalLink } from "lucide-react"
 
 type AgentFormProps = {
   initialData?: FastGPTApp

@@ -1,7 +1,7 @@
 import { createCanvas, loadImage, registerFont } from "canvas"
-import path from "path"
 import fs from "fs/promises"
 import os from "os"
+import path from "path"
 
 interface ChatMessage {
   role: "user" | "assistant" | "system"

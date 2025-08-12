@@ -1,24 +1,25 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Loader2 } from "lucide-react"
+import { Edit, FileSpreadsheet, Image, MessageSquare, Plus, Trash } from 'lucide-react'
 import { useRouter } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { AdminLayout } from "@/components/admin/layout"
+import { useEffect, useState } from "react"
+
 import { AgentList } from "@/components/admin/agent-list"
 import { ApiConfig } from "@/components/admin/api-config"
+import { AdminLayout } from "@/components/admin/layout"
 import { UserFeedback } from "@/components/admin/user-feedback"
-import { useToast } from "@/hooks/use-toast"
+import { Avatar } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription,CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFastGPT } from "@/contexts/FastGPTContext"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 import { AgentConfig, AgentType } from '@/lib/agents/base-agent'
 import { useAgentStore } from '@/lib/stores/agent-store'
-import { Button } from '@/components/ui/button'
-import { MessageSquare, FileSpreadsheet, Image, Plus, Edit, Trash } from 'lucide-react'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Avatar } from '@/components/ui/avatar'
 
 export default function AdminDashboard() {
   const router = useRouter()

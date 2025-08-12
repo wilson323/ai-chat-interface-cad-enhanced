@@ -2,12 +2,12 @@
  * 系统初始化 - 初始化所有系统组件
  * System Initialization - Initialize all system components
  */
+import { getEnhancedFastGPTClient } from "./api/fastgpt-enhanced"
+import { getFastGPTOptimizer } from "./api/fastgpt-optimizer"
+import { RequestPriority } from "./api/fastgpt-optimizer"
 import { getCacheManager } from "./cache/cache-manager"
 import { getRedisCacheAdapter } from "./cache/redis-cache-adapter"
-import { getFastGPTOptimizer } from "./api/fastgpt-optimizer"
-import { getEnhancedFastGPTClient } from "./api/fastgpt-enhanced"
 import { getPrefetchService } from "./prefetch/prefetch-service"
-import { RequestPriority } from "./api/fastgpt-optimizer"
 
 // 环境类型声明移除，避免与其他声明冲突
 

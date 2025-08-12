@@ -1,13 +1,13 @@
 "use client"
 
+// 在 import 部分添加新的图标
+import { Bookmark, BookmarkCheck, Check, Copy, Edit, Share2, ThumbsDown, ThumbsUp, X } from "lucide-react"
 import type React from "react"
+import { useEffect,useRef, useState } from "react"
 
-import { useState, useRef, useEffect } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-// 在 import 部分添加新的图标
-import { ThumbsUp, ThumbsDown, Copy, Share2, Bookmark, BookmarkCheck, Edit, Check, X } from "lucide-react"
 
 type Agent = {
   id: string

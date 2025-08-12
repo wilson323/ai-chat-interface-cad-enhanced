@@ -2,10 +2,10 @@
  * 智能批处理系统 - 合并相似请求以减少API调用
  * Smart Batch Processing System - Merge similar requests to reduce API calls
  */
-import { getFastGPTOptimizer, RequestPriority } from "../api/fastgpt-optimizer"
-import { getCacheManager } from "../cache/cache-manager"
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { v4 as uuidv4 } from 'uuid';
+
+// 移除未使用的导入以消除告警
 
 // 批处理任务状态
 export type BatchTaskStatus = 
@@ -17,7 +17,7 @@ export type BatchTaskStatus =
   | 'paused';   // 已暂停
 
 // 单个批处理任务
-export interface BatchTask<T = any, R = any> {
+export interface BatchTask<T = unknown, R = unknown> {
   id: string;
   type: string;
   data: T;
@@ -32,11 +32,11 @@ export interface BatchTask<T = any, R = any> {
   attempts: number;
   maxAttempts: number;
   retryDelay: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // 批处理作业
-export interface BatchJob<T = any, R = any> {
+export interface BatchJob<T = unknown, R = unknown> {
   id: string;
   name: string;
   description?: string;
@@ -47,7 +47,7 @@ export interface BatchJob<T = any, R = any> {
   startedAt?: number;
   completedAt?: number;
   concurrency: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // 批处理器配置
@@ -69,7 +69,7 @@ const DEFAULT_CONFIG: BatchProcessorConfig = {
 };
 
 // 处理器函数
-export type BatchTaskProcessor<T = any, R = any> = (
+export type BatchTaskProcessor<T = unknown, R = unknown> = (
   task: BatchTask<T, R>,
   updateProgress: (progress: number) => void
 ) => Promise<R>;
@@ -84,7 +84,7 @@ export type BatchEvent =
   | { type: 'job:paused', jobId: string }
   | { type: 'job:resumed', jobId: string }
   | { type: 'task:started', jobId: string, taskId: string }
-  | { type: 'task:completed', jobId: string, taskId: string, result: any }
+  | { type: 'task:completed', jobId: string, taskId: string, result: unknown }
   | { type: 'task:failed', jobId: string, taskId: string, error: string }
   | { type: 'task:retrying', jobId: string, taskId: string, attempt: number }
   | { type: 'task:progress', jobId: string, taskId: string, progress: number };
@@ -92,11 +92,11 @@ export type BatchEvent =
 export class BatchProcessor {
   private static instance: BatchProcessor;
   private config: BatchProcessorConfig;
-  private jobs: Record<string, BatchJob> = {};
-  private processors: Record<string, BatchTaskProcessor> = {};
+  private jobs: Record<string, BatchJob<unknown, unknown>> = {};
+  private processors: Record<string, BatchTaskProcessor<unknown, unknown>> = {};
   private runningJobs: Set<string> = new Set();
   private runningTasks: Map<string, Set<string>> = new Map();
-  private jobsSubject = new BehaviorSubject<Record<string, BatchJob>>({});
+  private jobsSubject = new BehaviorSubject<Record<string, BatchJob<unknown, unknown>>>({});
   private eventsSubject = new Subject<BatchEvent>();
   private stopped = false;
   
@@ -105,9 +105,9 @@ export class BatchProcessor {
   }
   
   public static getInstance(config?: Partial<BatchProcessorConfig>): BatchProcessor {
-    if (!BatchProcessor.instance) {
+    if (BatchProcessor.instance == null) {
       BatchProcessor.instance = new BatchProcessor(config);
-    } else if (config) {
+    } else if (config !== undefined) {
       // 更新配置
       BatchProcessor.instance.updateConfig(config);
     }
@@ -120,21 +120,21 @@ export class BatchProcessor {
   }
   
   // 注册任务处理器
-  public registerProcessor<T = any, R = any>(
+  public registerProcessor<T = unknown, R = unknown>(
     taskType: string,
     processor: BatchTaskProcessor<T, R>
   ): void {
-    this.processors[taskType] = processor as BatchTaskProcessor;
+    this.processors[taskType] = processor as unknown as BatchTaskProcessor<unknown, unknown>;
   }
   
   // 创建批处理作业
-  public createJob<T = any, R = any>(
+  public createJob<T = unknown, R = unknown>(
     name: string,
-    tasks: Array<{ type: string; data: T; priority?: number; metadata?: Record<string, any> }>,
+    tasks: Array<{ type: string; data: T; priority?: number; metadata?: Record<string, unknown> }>,
     options: {
       description?: string;
       concurrency?: number;
-      metadata?: Record<string, any>;
+      metadata?: Record<string, unknown>;
     } = {}
   ): string {
     const jobId = uuidv4();
@@ -147,7 +147,7 @@ export class BatchProcessor {
       data: task.data,
       status: 'pending',
       progress: 0,
-      priority: task.priority || this.config.defaultPriority,
+      priority: task.priority ?? this.config.defaultPriority,
       createdAt: now,
       attempts: 0,
       maxAttempts: this.config.defaultMaxAttempts,
@@ -164,12 +164,12 @@ export class BatchProcessor {
       status: 'pending',
       progress: 0,
       createdAt: now,
-      concurrency: options.concurrency || this.config.maxConcurrentTasksPerJob,
+      concurrency: options.concurrency ?? this.config.maxConcurrentTasksPerJob,
       metadata: options.metadata
     };
     
     // 保存作业
-    this.jobs[jobId] = job;
+    this.jobs[jobId] = job as unknown as BatchJob<unknown, unknown>;
     this.runningTasks.set(jobId, new Set());
     
     // 通知订阅者
@@ -182,7 +182,7 @@ export class BatchProcessor {
     });
     
     // 如果处理器未停止，自动启动作业
-    if (!this.stopped && this.runningJobs.size < this.config.maxConcurrentJobs) {
+    if (this.stopped === false && this.runningJobs.size < this.config.maxConcurrentJobs) {
       this.startJob(jobId);
     }
     
@@ -191,8 +191,8 @@ export class BatchProcessor {
   
   // 启动作业
   public startJob(jobId: string): boolean {
-    const job = this.jobs[jobId];
-    if (!job || job.status !== 'pending' && job.status !== 'paused') {
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null || (job.status !== 'pending' && job.status !== 'paused')) {
       return false;
     }
     
@@ -223,8 +223,8 @@ export class BatchProcessor {
   
   // 暂停作业
   public pauseJob(jobId: string): boolean {
-    const job = this.jobs[jobId];
-    if (!job || job.status !== 'running') {
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null || job.status !== 'running') {
       return false;
     }
     
@@ -246,8 +246,8 @@ export class BatchProcessor {
   
   // 恢复作业
   public resumeJob(jobId: string): boolean {
-    const job = this.jobs[jobId];
-    if (!job || job.status !== 'paused') {
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null || job.status !== 'paused') {
       return false;
     }
     
@@ -277,8 +277,8 @@ export class BatchProcessor {
   
   // 取消作业
   public cancelJob(jobId: string): boolean {
-    const job = this.jobs[jobId];
-    if (!job || job.status === 'completed' || job.status === 'canceled') {
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null || job.status === 'completed' || job.status === 'canceled') {
       return false;
     }
     
@@ -310,8 +310,8 @@ export class BatchProcessor {
   
   // 删除作业
   public deleteJob(jobId: string): boolean {
-    const job = this.jobs[jobId];
-    if (!job || job.status === 'running') {
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null || job.status === 'running') {
       return false;
     }
     
@@ -326,17 +326,17 @@ export class BatchProcessor {
   }
   
   // 获取作业
-  public getJob<T = any, R = any>(jobId: string): BatchJob<T, R> | null {
-    return this.jobs[jobId] as BatchJob<T, R> || null;
+  public getJob<T = unknown, R = unknown>(jobId: string): BatchJob<T, R> | null {
+    return (this.jobs[jobId] as unknown as BatchJob<T, R>) ?? null;
   }
   
   // 获取所有作业
-  public getJobs(): Record<string, BatchJob> {
+  public getJobs(): Record<string, BatchJob<unknown, unknown>> {
     return { ...this.jobs };
   }
   
   // 获取作业流
-  public getJobsStream(): Observable<Record<string, BatchJob>> {
+  public getJobsStream(): Observable<Record<string, BatchJob<unknown, unknown>>> {
     return this.jobsSubject.asObservable();
   }
   
@@ -365,8 +365,8 @@ export class BatchProcessor {
     runningTasks: number;
     progress: number;
   } {
-    const job = this.jobs[jobId];
-    if (!job) {
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null) {
       return {
         totalTasks: 0,
         completedTasks: 0,
@@ -396,13 +396,13 @@ export class BatchProcessor {
   
   // 处理任务
   private async processTasks(jobId: string): Promise<void> {
-    const job = this.jobs[jobId];
-    if (!job || job.status !== 'running') {
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null || job.status !== 'running') {
       return;
     }
     
     // 获取当前正在运行的任务集合
-    const runningTasksSet = this.runningTasks.get(jobId) || new Set<string>();
+    const runningTasksSet = this.runningTasks.get(jobId) ?? new Set<string>();
     
     // 检查是否可以启动更多任务
     const canStartMoreTasks = runningTasksSet.size < job.concurrency;
@@ -432,8 +432,8 @@ export class BatchProcessor {
   
   // 启动任务
   private async startTask(jobId: string, taskId: string): Promise<void> {
-    const job = this.jobs[jobId];
-    if (!job) return;
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null) return;
     
     const taskIndex = job.tasks.findIndex(t => t.id === taskId);
     if (taskIndex === -1) return;
@@ -443,7 +443,7 @@ export class BatchProcessor {
     
     // 获取处理器
     const processor = this.processors[task.type];
-    if (!processor) {
+    if (processor == null) {
       // 处理器不存在，标记任务失败
       task.status = 'failed';
       task.error = `No processor registered for task type: ${task.type}`;
@@ -467,7 +467,7 @@ export class BatchProcessor {
     task.attempts++;
     
     // 添加到运行中的任务集合
-    const runningTasksSet = this.runningTasks.get(jobId) || new Set<string>();
+    const runningTasksSet = this.runningTasks.get(jobId) ?? new Set<string>();
     runningTasksSet.add(taskId);
     this.runningTasks.set(jobId, runningTasksSet);
     
@@ -579,8 +579,8 @@ export class BatchProcessor {
   
   // 检查作业是否完成
   private checkJobCompletion(jobId: string): void {
-    const job = this.jobs[jobId];
-    if (!job || job.status !== 'running') return;
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null || job.status !== 'running') return;
     
     // 检查是否所有任务都已完成或失败
     const allTasksFinished = job.tasks.every(
@@ -626,8 +626,8 @@ export class BatchProcessor {
   
   // 更新作业进度
   private updateJobProgress(jobId: string): void {
-    const job = this.jobs[jobId];
-    if (!job) return;
+    const job = this.jobs[jobId] as BatchJob<unknown, unknown> | undefined;
+    if (job == null) return;
     
     // 计算作业总进度
     const totalTasks = job.tasks.length;
@@ -645,7 +645,7 @@ export class BatchProcessor {
   
   // 检查是否有等待的作业可以启动
   private checkPendingJobs(): void {
-    if (this.stopped) return;
+    if (this.stopped === true) return;
     
     // 如果未达到最大并发作业数，检查是否有待处理的作业
     if (this.runningJobs.size < this.config.maxConcurrentJobs) {
@@ -670,9 +670,9 @@ export class BatchProcessor {
 let batchProcessorInstance: BatchProcessor | null = null
 
 export function getBatchProcessor(config?: Partial<BatchProcessorConfig>): BatchProcessor {
-  if (!batchProcessorInstance) {
+  if (batchProcessorInstance == null) {
     batchProcessorInstance = BatchProcessor.getInstance(config)
-  } else if (config) {
+  } else if (config !== undefined) {
     // 传入新配置则由单例更新配置
     batchProcessorInstance = BatchProcessor.getInstance(config)
   }

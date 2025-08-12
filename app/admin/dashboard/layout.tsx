@@ -1,7 +1,8 @@
 "use client"
 
-import { FastGPTProvider } from "@/contexts/FastGPTContext"
 import React from "react"
+
+import { FastGPTProvider } from "@/contexts/FastGPTContext"
 
 export default function AdminDashboardLayout({
   children,

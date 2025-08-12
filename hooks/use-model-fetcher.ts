@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect,useState } from 'react';
+
 import { useToast } from '@/hooks/use-toast';
-import type { FastGPTModel, VoiceModel } from '@/types/fastgpt';
 import { isApiConfigured } from '@/lib/utils';
+import type { FastGPTModel, VoiceModel } from '@/types/fastgpt';
 
 export function useModelFetcher() {
   const { toast } = useToast();

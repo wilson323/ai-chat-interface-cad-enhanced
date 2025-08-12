@@ -6,7 +6,7 @@
  * 调用关系: 被app/api/ag-ui/chat/route.ts使用，优化流式响应性能
  */
 
-import type { BaseEvent, AgUIEvent } from './types'
+import type { AgUIEvent,BaseEvent } from './types'
 
 // 流式优化配置
 export interface StreamOptimizationConfig {

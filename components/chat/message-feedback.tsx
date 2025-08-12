@@ -1,8 +1,9 @@
 "use client"
 
+import { Check,ThumbsDown, ThumbsUp } from "lucide-react"
 import { useState } from "react"
+
 import { Button } from "@/components/ui/button"
-import { ThumbsUp, ThumbsDown, Check } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface MessageFeedbackProps {

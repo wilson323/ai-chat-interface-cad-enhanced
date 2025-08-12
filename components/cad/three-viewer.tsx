@@ -1,17 +1,18 @@
 "use client"
 
+import { AlertTriangle, Loader2, Move, RotateCw,ZoomIn } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
-import { cn } from '@/lib/utils'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader'
-import { STLLoader } from 'three/examples/jsm/loaders/STLLoader'
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader'
-import { is3DFileType } from '@/lib/utils/cad-file-utils'
-import { Loader2, AlertTriangle, Move, ZoomIn, RotateCw } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { STLLoader } from 'three/examples/jsm/loaders/STLLoader'
+
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
+import { is3DFileType } from '@/lib/utils/cad-file-utils'
 
 interface ThreeViewerProps {
   modelUrl: string

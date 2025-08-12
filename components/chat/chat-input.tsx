@@ -1,15 +1,15 @@
 "use client"
 
+import { ImageIcon, Mic, Paperclip, Send, Smile, Sparkles, Volume2,X } from "lucide-react"
 import type React from "react"
+import { useEffect,useRef, useState } from "react"
 
-import { useState, useRef, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
-import { Send, Mic, ImageIcon, Paperclip, Smile, Sparkles, X, Volume2 } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useIsMobile } from "@/components/ui/use-mobile"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { CADFileUploader } from "@/components/cad/cad-file-uploader"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
+import { useIsMobile } from "@/components/ui/use-mobile"
+import { cn } from "@/lib/utils"
 
 type ChatInputProps = {
   onSubmit: (message: string) => void

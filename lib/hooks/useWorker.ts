@@ -1,5 +1,5 @@
 // Web Worker Hook
-import { useState, useEffect, useRef } from 'react';
+import { useEffect, useRef,useState } from 'react';
 
 export function useWorker<T>(workerScript: string) {
   const [result, setResult] = useState<T | null>(null);

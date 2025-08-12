@@ -1,39 +1,40 @@
 "use client"
 
-import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import type React from "react"
-import { useState, useEffect, useCallback, useMemo, memo, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { useFastGPT } from "@/contexts/FastGPTContext"
+import { useVirtualizer } from "@tanstack/react-virtual"
+import { formatDistanceToNow } from "date-fns"
+import { zhCN } from "date-fns/locale"
 import {
-  Clock,
-  Pin,
-  MoreHorizontal,
-  Trash2,
-  PinOff,
-  Edit,
-  Check,
-  Loader2,
-  Star,
-  Download,
-  Share2,
   Bookmark,
+  Check,
+  Clock,
   Copy,
+  Download,
+  Edit,
+  Loader2,
+  MoreHorizontal,
+  Pin,
+  PinOff,
+  Share2,
+  Star,
+  Trash2,
 } from "lucide-react"
-import { Input } from "@/components/ui/input"
+import type React from "react"
+import { memo, useCallback, useEffect, useMemo, useRef,useState } from "react"
+import { useInView } from "react-intersection-observer"
+
+import { Button } from "@/components/ui/button"
+import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { formatDistanceToNow } from "date-fns"
-import { zhCN } from "date-fns/locale"
+import { Input } from "@/components/ui/input"
 import { useIsMobile } from "@/components/ui/use-mobile"
+import { useFastGPT } from "@/contexts/FastGPTContext"
 import { useToast } from "@/hooks/use-toast"
 import { getEnhancedFastGPTClient } from "@/lib/api/enhanced-fastgpt-client"
-import { useVirtualizer } from "@tanstack/react-virtual"
-import { useInView } from "react-intersection-observer"
 
 // 每页加载的会话数量
 const SESSIONS_PER_PAGE = 20

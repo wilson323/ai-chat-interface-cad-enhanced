@@ -1,10 +1,11 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
-import { Button } from "@/components/ui/button"
-import { ArrowRight, Sun, Moon, MessageSquare, Sparkles, Zap } from "lucide-react"
+import { AnimatePresence,motion } from "framer-motion"
+import { ArrowRight, MessageSquare, Moon, Sparkles, Sun, Zap } from "lucide-react"
 import Image from "next/image"
-import { motion, AnimatePresence } from "framer-motion"
+import { useEffect, useRef,useState } from "react"
+
+import { Button } from "@/components/ui/button"
 
 type WelcomeScreenProps = {
   onGetStarted?: () => void

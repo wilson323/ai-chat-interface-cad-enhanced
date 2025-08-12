@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateCADDesignBasic } from '@/lib/services/cad-analyzer/validation';
+
 import { cadMetrics } from '@/lib/services/cad-analyzer/metrics';
 import type { ValidationOptions, ValidationResult } from '@/lib/services/cad-analyzer/validation';
+import { validateCADDesignBasic } from '@/lib/services/cad-analyzer/validation';
 import type { CADAnalysisResult } from '@/lib/types/cad';
 
 /**
