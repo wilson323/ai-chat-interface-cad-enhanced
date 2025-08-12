@@ -12,6 +12,7 @@
  * - 详细的统计和监控
  */
 import { LRUCache } from "lru-cache"
+import { DEFAULT_CACHE_NAMESPACE } from './key'
 
 // 缓存项类型
 export interface CacheItem<T> {
@@ -309,7 +310,7 @@ export class CacheManager {
       // 从localStorage中删除
       if (typeof window !== "undefined" && this.config.persistenceEnabled) {
         try {
-          localStorage.removeItem(`cache:${cacheKey}`)
+          localStorage.removeItem(`${DEFAULT_CACHE_NAMESPACE}${cacheKey}`)
         } catch (error) {
           this.log("error", `Error removing from localStorage: ${error instanceof Error ? error.message : String(error)}`)
         }
@@ -359,7 +360,7 @@ export class CacheManager {
           const localKeysToDelete: string[] = []
           for (let i = 0; i < localStorage.length; i++) {
             const storageKey = localStorage.key(i)
-            if (typeof storageKey === 'string' && storageKey.startsWith("cache:")) {
+            if (typeof storageKey === 'string' && storageKey.startsWith(DEFAULT_CACHE_NAMESPACE)) {
               try {
                 const item = JSON.parse(localStorage.getItem(storageKey) || "")
                 if (item != null && Array.isArray(item.tags) && item.tags.includes(tag)) {
@@ -411,7 +412,7 @@ export class CacheManager {
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i)
-            if (typeof key === 'string' && key.startsWith("cache:")) {
+            if (typeof key === 'string' && key.startsWith(DEFAULT_CACHE_NAMESPACE)) {
               localStorage.removeItem(key)
             }
           }
@@ -522,7 +523,7 @@ export class CacheManager {
    */
   private getFromLocalStorage<T>(key: string): CacheItem<T> | null {
     try {
-      const data = localStorage.getItem(`cache:${key}`)
+      const data = localStorage.getItem(`${DEFAULT_CACHE_NAMESPACE}${key}`)
       if (data == null) return null
 
       // 尝试解压缩（如果启用了压缩）
@@ -550,7 +551,7 @@ export class CacheManager {
       const data = JSON.stringify(item)
 
       // 如果数据超过阈值，可以考虑压缩
-      localStorage.setItem(`cache:${key}`, data)
+      localStorage.setItem(`${DEFAULT_CACHE_NAMESPACE}${key}`, data)
     } catch (error) {
       // 可能是localStorage已满，尝试清理一些旧数据
       this.log("error", `Error writing to localStorage: ${error instanceof Error ? error.message : String(error)}`)
@@ -570,7 +571,7 @@ export class CacheManager {
       // 遍历所有localStorage项
       for (let i = 0; i < localStorage.length; i++) {
         const storageKey = localStorage.key(i)
-        if (typeof storageKey === 'string' && storageKey.startsWith("cache:")) {
+        if (typeof storageKey === 'string' && storageKey.startsWith(DEFAULT_CACHE_NAMESPACE)) {
           try {
             const raw = localStorage.getItem(storageKey)
             const item = raw ? (JSON.parse(raw) as { expiry?: number }) : null
