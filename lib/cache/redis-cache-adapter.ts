@@ -31,9 +31,9 @@ export interface RedisCacheConfig {
 
 // 默认配置
 const DEFAULT_CONFIG: RedisCacheConfig = {
-  url: process.env.UPSTASH_REDIS_REST_URL || "",
-  token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
-  prefix: (process.env.CACHE_KEY_PREFIX || 'acx:') + 'cache:',
+  url: process.env.UPSTASH_REDIS_REST_URL ?? "",
+  token: process.env.UPSTASH_REDIS_REST_TOKEN ?? "",
+  prefix: (process.env.CACHE_KEY_PREFIX ?? 'acx:') + 'cache:',
   ttl: 24 * 60 * 60, // 24小时（秒）
   compressionThreshold: 1024, // 1KB
   maxRetries: 3,

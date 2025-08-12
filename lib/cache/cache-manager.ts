@@ -12,7 +12,7 @@
  * - 详细的统计和监控
  */
 import { LRUCache } from "lru-cache"
-import { DEFAULT_CACHE_NAMESPACE } from './key'
+import { DEFAULT_CACHE_NAMESPACE } from "./key"
 
 // 缓存项类型
 export interface CacheItem<T> {
@@ -91,7 +91,7 @@ export class CacheManager {
     })
 
     // 定期清理过期的localStorage缓存
-    if (typeof window !== "undefined" && this.config.persistenceEnabled) {
+    if (typeof window !== "undefined" && this.config.persistenceEnabled === true) {
       this.cleanupLocalStorage()
       // 每小时清理一次
       this.cleanupInterval = setInterval(() => this.cleanupLocalStorage(), 60 * 60 * 1000)
@@ -162,9 +162,9 @@ export class CacheManager {
       let item = this.memoryCache.get(cacheKey) as CacheItem<T> | undefined
 
       // 2. 如果内存缓存未命中，检查localStorage
-      if (!item && typeof window !== "undefined" && this.config.persistenceEnabled) {
+      if (item == null && typeof window !== "undefined" && this.config.persistenceEnabled === true) {
         const localItem = this.getFromLocalStorage<T>(cacheKey)
-        if (localItem) {
+        if (localItem != null) {
           // 如果localStorage有效，添加到内存缓存
           if (typeof localItem.expiry === 'number' && localItem.expiry > now) {
             this.memoryCache.set(cacheKey, localItem)
@@ -214,7 +214,7 @@ export class CacheManager {
 
       if (typeof fetchFn === 'function') {
         // 检查是否已有相同的请求正在进行中（请求合并）
-        if (this.revalidationQueue.has(cacheKey)) {
+        if (this.revalidationQueue.has(cacheKey) === true) {
           this.log("debug", `Cache: reusing in-flight request for ${cacheKey}`)
           return this.revalidationQueue.get(cacheKey) as Promise<T> | null
         }
@@ -274,7 +274,7 @@ export class CacheManager {
       this.memoryCache.set(cacheKey, item as unknown as CacheItem<unknown>)
 
       // 设置localStorage缓存
-      if (typeof window !== "undefined" && this.config.persistenceEnabled) {
+      if (typeof window !== "undefined" && this.config.persistenceEnabled === true) {
         this.setToLocalStorage(cacheKey, item)
       }
 
@@ -308,7 +308,7 @@ export class CacheManager {
       this.memoryCache.delete(cacheKey)
 
       // 从localStorage中删除
-      if (typeof window !== "undefined" && this.config.persistenceEnabled) {
+      if (typeof window !== "undefined" && this.config.persistenceEnabled === true) {
         try {
           localStorage.removeItem(`${DEFAULT_CACHE_NAMESPACE}${cacheKey}`)
         } catch (error) {
@@ -344,7 +344,7 @@ export class CacheManager {
       const keysToDelete: string[] = []
       for (const key of this.memoryCache.keys()) {
         const item = this.memoryCache.get(key)
-        if (item && item.tags && item.tags.includes(tag)) {
+        if (item != null && Array.isArray(item.tags) && item.tags.includes(tag)) {
           keysToDelete.push(key)
         }
       }
@@ -355,18 +355,21 @@ export class CacheManager {
       }
 
       // 从localStorage中删除
-      if (typeof window !== "undefined" && this.config.persistenceEnabled) {
+      if (typeof window !== "undefined" && this.config.persistenceEnabled === true) {
         try {
           const localKeysToDelete: string[] = []
           for (let i = 0; i < localStorage.length; i++) {
             const storageKey = localStorage.key(i)
             if (typeof storageKey === 'string' && storageKey.startsWith(DEFAULT_CACHE_NAMESPACE)) {
               try {
-                const item = JSON.parse(localStorage.getItem(storageKey) || "")
-                if (item != null && Array.isArray(item.tags) && item.tags.includes(tag)) {
-                  localKeysToDelete.push(storageKey)
+                const raw = localStorage.getItem(storageKey)
+                if (raw !== null) {
+                  const item = JSON.parse(raw)
+                  if (item != null && Array.isArray(item.tags) && item.tags.includes(tag)) {
+                    localKeysToDelete.push(storageKey)
+                  }
                 }
-              } catch (e) {
+              } catch {
                 // 忽略解析错误
               }
             }
@@ -408,7 +411,7 @@ export class CacheManager {
       this.memoryCache.clear()
 
       // 清除localStorage缓存
-      if (typeof window !== "undefined" && this.config.persistenceEnabled) {
+      if (typeof window !== "undefined" && this.config.persistenceEnabled === true) {
         try {
           for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i)
@@ -476,7 +479,7 @@ export class CacheManager {
 
     // 获取Redis缓存统计信息
     let redisStats = undefined
-    if (this.redisAdapter && this.config.useRedisCache) {
+    if (this.redisAdapter !== null && this.config.useRedisCache === true) {
       try {
         redisStats = await this.redisAdapter.getStats()
       } catch (error) {
@@ -495,7 +498,7 @@ export class CacheManager {
    */
   public dispose(): void {
     // 清除定时器
-    if (this.cleanupInterval) {
+    if (this.cleanupInterval !== null) {
       clearInterval(this.cleanupInterval)
       this.cleanupInterval = null
     }

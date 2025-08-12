@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { KnownProviders, OpenAICompatibleAdapter } from '@/lib/api/ai-provider-adapter'
+import { createOpenAIClient, resolveProviderConfig } from '@/lib/api/openai-provider'
 
 const bodySchema = z.object({
   provider: z.enum(['dashscope', 'deepseek', 'moonshot', 'zhipu']).default('dashscope'),
@@ -12,21 +12,6 @@ const bodySchema = z.object({
   user: z.string().optional(),
 })
 
-function getAdapter(p: string, apiKey: string | undefined, baseUrl?: string): OpenAICompatibleAdapter {
-  const key = apiKey || process.env.EXTERNAL_AI_API_KEY || ''
-  switch (p) {
-    case 'dashscope':
-      return KnownProviders.dashscope(key, baseUrl)
-    case 'deepseek':
-      return KnownProviders.deepseek(key, baseUrl)
-    case 'moonshot':
-      return KnownProviders.moonshot(key, baseUrl)
-    case 'zhipu':
-      return KnownProviders.zhipu(key, baseUrl)
-    default:
-      return KnownProviders.dashscope(key, baseUrl)
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -36,12 +21,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'invalid_request', issues: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { provider, baseUrl, apiKey, ...rest } = parsed.data
-    const adapter = getAdapter(provider, apiKey, baseUrl)
-    const res = await adapter.embeddings(rest, { signal: req.signal })
-    const headers: Record<string, string> = {}
-    res.headers.forEach((v, k) => (headers[k] = v))
-    return new NextResponse(res.body, { status: res.status, headers })
+    const { provider, baseUrl, apiKey, model, input, encoding_format, user } = parsed.data
+    const resolved = resolveProviderConfig(provider, apiKey, baseUrl)
+    const client = createOpenAIClient(resolved)
+
+    const res = await client.embeddings.create({
+      model,
+      input,
+      encoding_format,
+      user,
+    })
+
+    return NextResponse.json(res)
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message || 'unknown_error' }, { status: 500 })
   }
