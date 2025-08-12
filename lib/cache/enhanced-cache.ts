@@ -2,10 +2,10 @@
  * 增强缓存系统
  * 支持多级缓存、压缩、统计和标签管理
  */
-import { LRUCache } from 'lru-cache'
 import { createHash } from 'crypto'
+import { LRUCache } from 'lru-cache'
 import { promisify } from 'util'
-import { gzip, gunzip } from 'zlib'
+import { gunzip, gzip } from 'zlib'
 
 // 压缩和解压缩函数
 const gzipAsync = promisify(gzip)
@@ -19,7 +19,7 @@ export interface CacheOptions {
   redisUrl?: string
 }
 
-export interface CacheEntry<T = any> {
+export interface CacheEntry<T = unknown> {
   value: T
   timestamp: number
   ttl?: number
@@ -38,9 +38,17 @@ export interface CacheStatistics {
   entryCount: number
 }
 
-export class EnhancedCache<T = any> {
+type RedisLike = {
+  getBuffer: (key: string) => Promise<Buffer | null>
+  setex: (key: string, seconds: number, value: string) => Promise<unknown>
+  del: (key: string) => Promise<unknown>
+  flushdb: () => Promise<unknown>
+  on: (event: 'error', handler: (err: Error) => void) => void
+};
+
+export class EnhancedCache<T = unknown> {
   private lruCache: LRUCache<string, CacheEntry<T>>
-  private redisClient: any = null
+  private redisClient: RedisLike | null = null
   private statistics: CacheStatistics
   private options: Required<CacheOptions>
   private tagMap: Map<string, Set<string>> = new Map()
@@ -99,7 +107,7 @@ export class EnhancedCache<T = any> {
     return createHash('md5').update(key).digest('hex')
   }
 
-  private async compress(data: any): Promise<Buffer> {
+  private async compress(data: unknown): Promise<Buffer> {
     if (!this.options.enableCompression) {
       return Buffer.from(JSON.stringify(data))
     }
@@ -109,7 +117,7 @@ export class EnhancedCache<T = any> {
     return await gzipAsync(buffer)
   }
 
-  private async decompress(buffer: Buffer, compressed: boolean = true): Promise<any> {
+  private async decompress(buffer: Buffer, compressed: boolean = true): Promise<unknown> {
     if (!compressed || !this.options.enableCompression) {
       return JSON.parse(buffer.toString())
     }
@@ -126,11 +134,11 @@ export class EnhancedCache<T = any> {
     const total = this.statistics.hits + this.statistics.misses
     this.statistics.hitRate = total > 0 ? this.statistics.hits / total : 0
     this.statistics.entryCount = this.lruCache.size
-    this.statistics.totalSize = this.lruCache.calculatedSize || 0
+    this.statistics.totalSize = this.lruCache.calculatedSize ?? 0
   }
 
   private updateTagMap(key: string, tags?: string[], operation: 'add' | 'delete' = 'add') {
-    if (!tags) return
+    if (tags == null || tags.length === 0) return
 
     tags.forEach(tag => {
       if (operation === 'add') {
@@ -155,18 +163,20 @@ export class EnhancedCache<T = any> {
     
     // 首先检查本地缓存
     const localEntry = this.lruCache.get(hashedKey)
-    if (localEntry && (!localEntry.ttl || Date.now() - localEntry.timestamp < localEntry.ttl)) {
+    const ttlMs = localEntry?.ttl
+    if (localEntry && (ttlMs == null || Date.now() - localEntry.timestamp < ttlMs)) {
       this.updateStatistics('hit')
       return localEntry.value
     }
 
     // 检查Redis缓存
-    if (this.redisClient) {
+    if (this.redisClient !== null) {
       try {
         const redisData = await this.redisClient.getBuffer(hashedKey)
         if (redisData) {
           const entry: CacheEntry<T> = JSON.parse(redisData.toString())
-          if (!entry.ttl || Date.now() - entry.timestamp < entry.ttl) {
+          const entryTtl = entry.ttl
+          if (entryTtl == null || Date.now() - entry.timestamp < entryTtl) {
             // 将Redis数据同步到本地缓存
             this.lruCache.set(hashedKey, entry)
             this.updateTagMap(hashedKey, entry.tags, 'add')
@@ -185,7 +195,7 @@ export class EnhancedCache<T = any> {
 
   async set(key: string, value: T, options: { ttl?: number; tags?: string[] } = {}): Promise<void> {
     const hashedKey = this.generateKey(key)
-    const ttl = options.ttl || this.options.ttl
+    const ttl = options.ttl ?? this.options.ttl
     const compressed = await this.compress(value)
     
     const entry: CacheEntry<T> = {
@@ -202,10 +212,10 @@ export class EnhancedCache<T = any> {
     this.updateTagMap(hashedKey, options.tags, 'add')
 
     // 设置Redis缓存
-    if (this.redisClient) {
+    if (this.redisClient !== null) {
       try {
         const redisEntry = { ...entry, value: compressed.toString('base64') }
-        await this.redisClient.setex(hashedKey, Math.ceil(ttl / 1000), JSON.stringify(redisEntry))
+        await this.redisClient.setex(hashedKey, Math.ceil((ttl ?? 0) / 1000), JSON.stringify(redisEntry))
       } catch (error) {
         console.warn('Redis set error:', error)
       }
@@ -224,7 +234,7 @@ export class EnhancedCache<T = any> {
     
     const localDeleted = this.lruCache.delete(hashedKey)
     
-    if (this.redisClient) {
+    if (this.redisClient !== null) {
       try {
         await this.redisClient.del(hashedKey)
       } catch (error) {
@@ -257,7 +267,7 @@ export class EnhancedCache<T = any> {
     this.lruCache.clear()
     this.tagMap.clear()
     
-    if (this.redisClient) {
+    if (this.redisClient !== null) {
       try {
         await this.redisClient.flushdb()
       } catch (error) {
