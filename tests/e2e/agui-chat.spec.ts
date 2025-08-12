@@ -27,3 +27,38 @@ test('ag-ui chat streaming basic (internal)', async ({ request }) => {
   const json = await res.json().catch(() => ({} as any))
   expect(json.error).toBeDefined()
 })
+
+// 外部厂商通路（DashScope OpenAI兼容）流式用例
+// 需配置 EXTERNAL_AI_API_KEY，否则跳过
+import { performance } from 'perf_hooks'
+
+test('ag-ui chat streaming via external provider (dashscope compatible)', async ({ request }) => {
+  test.skip(!process.env.EXTERNAL_AI_API_KEY, 'EXTERNAL_AI_API_KEY 未配置，跳过外部厂商通路流式用例')
+
+  const start = performance.now()
+  const res = await request.post('/api/ag-ui/chat', {
+    data: {
+      appId: 'qwen-plus-2025-01-12',
+      provider: 'dashscope',
+      model: 'qwen-plus-2025-01-12',
+      messages: [{ role: 'user', content: '请用一句话自我介绍' }],
+      streamConfig: { typewriterSpeed: 0 },
+    },
+  })
+
+  expect(res.status()).toBe(200)
+  const contentType = res.headers()['content-type'] || ''
+  expect(contentType.includes('text/event-stream')).toBeTruthy()
+
+  const firstChunkLatencyMs = performance.now() - start
+  // 首块SSE返回应在5s内（网络环境差可适当放宽）
+  expect(firstChunkLatencyMs).toBeLessThan(5000)
+
+  const text = await res.text()
+  // 关键事件应出现
+  expect(text.includes('TEXT_MESSAGE_START')).toBeTruthy()
+  expect(text.includes('TEXT_MESSAGE_CONTENT')).toBeTruthy()
+  expect(text.includes('TEXT_MESSAGE_END')).toBeTruthy()
+  expect(text.includes('RUN_STARTED')).toBeTruthy()
+  expect(text.includes('RUN_FINISHED')).toBeTruthy()
+})
