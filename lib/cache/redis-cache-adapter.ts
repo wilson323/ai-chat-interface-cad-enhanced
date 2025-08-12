@@ -10,7 +10,9 @@
  * - 支持标签化缓存管理
  */
 import { Redis } from "@upstash/redis"
+
 import type { CacheItem } from "./cache-manager"
+import { buildFullCacheKey } from './key'
 
 // Redis缓存配置
 export interface RedisCacheConfig {
@@ -31,7 +33,7 @@ export interface RedisCacheConfig {
 const DEFAULT_CONFIG: RedisCacheConfig = {
   url: process.env.UPSTASH_REDIS_REST_URL || "",
   token: process.env.UPSTASH_REDIS_REST_TOKEN || "",
-  prefix: "fastgpt-cache:",
+  prefix: (process.env.CACHE_KEY_PREFIX || 'acx:') + 'cache:',
   ttl: 24 * 60 * 60, // 24小时（秒）
   compressionThreshold: 1024, // 1KB
   maxRetries: 3,
@@ -498,6 +500,8 @@ export class RedisCacheAdapter {
    * @returns 完整键名
    */
   private getFullKey(key: string): string {
+    // 支持历史 prefix 兼容，若调用方传 scope:key 则不重复拼接
+    if (key.includes(':')) return `${this.config.prefix}${key}`
     return `${this.config.prefix}${key}`
   }
 

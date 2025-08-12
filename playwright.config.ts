@@ -19,9 +19,13 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && npm run start',
+    command: 'npm run build && node .next/standalone/server.js',
     port: 3000,
     reuseExistingServer: true,
     timeout: 180_000,
+    env: {
+      HOSTNAME: 'localhost',
+      PORT: '3000'
+    }
   },
 })
