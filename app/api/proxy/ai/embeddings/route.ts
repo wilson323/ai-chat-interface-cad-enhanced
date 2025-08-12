@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
     const { provider, baseUrl, apiKey, ...rest } = parsed.data
     const adapter = getAdapter(provider, apiKey, baseUrl)
-    const res = await adapter.embeddings(rest)
+    const res = await adapter.embeddings(rest, { signal: req.signal })
     const headers: Record<string, string> = {}
     res.headers.forEach((v, k) => (headers[k] = v))
     return new NextResponse(res.body, { status: res.status, headers })

@@ -1,10 +1,11 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { rateLimiterMiddleware } from '@/middleware/rate-limiter'
 import { z } from 'zod'
+
 import { createOptimizedStreamWriter, globalStreamMonitor } from '@/lib/ag-ui/stream-optimizer'
-import { KnownProviders } from '@/lib/api/ai-provider-adapter'
 import type { AgUIEvent } from '@/lib/ag-ui/types'
 import { EventType } from '@/lib/ag-ui/types'
+import { KnownProviders } from '@/lib/api/ai-provider-adapter'
+import { rateLimiterMiddleware } from '@/middleware/rate-limiter'
 
 export const runtime = 'edge'
 export const dynamic = 'force-dynamic'
@@ -122,13 +123,13 @@ export async function POST(req: NextRequest) {
               default: return KnownProviders.dashscope(extKey || externalApiKey, baseUrl || externalBaseUrl)
             }
           })()
-          return adapter.chat({
+                     return adapter.chat({
             model: resolvedModel,
             messages,
             stream: true,
             temperature: 0.7,
             max_tokens: 2048,
-          })
+          }, { signal: req.signal })
         })()
       : await (await import('@/lib/api/server-fastgpt-upstream')).createFastGptUpstream({
           origin,
