@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Message, Role } from '@/lib/protocol/ag-ui-client';
+
+import { Message } from '@/lib/protocol/ag-ui-client';
 
 export interface ConversationNode {
   id: string;
@@ -7,7 +8,7 @@ export interface ConversationNode {
   messages: Message[];
   createdAt: number;
   updatedAt: number;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   childrenIds: string[];
 }
 
@@ -19,7 +20,7 @@ export interface Conversation {
   createdAt: number;
   updatedAt: number;
   agentId: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   nodes: Record<string, ConversationNode>;
 }
 
@@ -32,7 +33,7 @@ export type ConversationSnapshot = Omit<Conversation, 'nodes'> & {
 export class ConversationTreeManager {
   private static instance: ConversationTreeManager;
   private conversations: Record<string, Conversation> = {};
-  private listeners: Array<(event: string, data: any) => void> = [];
+  private listeners: Array<(event: string, data: unknown) => void> = [];
 
   private constructor() {}
 
@@ -49,7 +50,7 @@ export class ConversationTreeManager {
     const conversationId = uuidv4();
     const now = Date.now();
     
-    const initialMessages: Message[] = initialMessage 
+    const initialMessages: Message[] = (initialMessage != null && initialMessage !== '')
       ? [{
           id: uuidv4(),
           role: 'system',
@@ -90,12 +91,12 @@ export class ConversationTreeManager {
   // 添加消息到活动节点
   public addMessage(conversationId: string, message: Omit<Message, 'id'>): string {
     const conversation = this.getConversation(conversationId);
-    if (!conversation) {
+    if (conversation == null) {
       throw new Error(`对话不存在: ${conversationId}`);
     }
 
     const activeNode = conversation.nodes[conversation.activeNodeId];
-    if (!activeNode) {
+    if (activeNode == null) {
       throw new Error(`活动节点不存在: ${conversation.activeNodeId}`);
     }
 
@@ -128,12 +129,12 @@ export class ConversationTreeManager {
   // 在指定节点创建分支
   public createBranch(conversationId: string, fromNodeId: string, fromMessageIndex: number): string {
     const conversation = this.getConversation(conversationId);
-    if (!conversation) {
+    if (conversation == null) {
       throw new Error(`对话不存在: ${conversationId}`);
     }
 
     const fromNode = conversation.nodes[fromNodeId];
-    if (!fromNode) {
+    if (fromNode == null) {
       throw new Error(`源节点不存在: ${fromNodeId}`);
     }
 
@@ -181,11 +182,11 @@ export class ConversationTreeManager {
   // 切换活动节点
   public setActiveNode(conversationId: string, nodeId: string): void {
     const conversation = this.getConversation(conversationId);
-    if (!conversation) {
+    if (conversation == null) {
       throw new Error(`对话不存在: ${conversationId}`);
     }
 
-    if (!conversation.nodes[nodeId]) {
+    if (conversation.nodes[nodeId] == null) {
       throw new Error(`节点不存在: ${nodeId}`);
     }
 
@@ -198,7 +199,7 @@ export class ConversationTreeManager {
   // 更新对话标题
   public updateTitle(conversationId: string, title: string): void {
     const conversation = this.getConversation(conversationId);
-    if (!conversation) {
+    if (conversation == null) {
       throw new Error(`对话不存在: ${conversationId}`);
     }
 
@@ -210,18 +211,18 @@ export class ConversationTreeManager {
 
   // 获取特定对话
   public getConversation(conversationId: string): Conversation | null {
-    return this.conversations[conversationId] || null;
+    return this.conversations[conversationId] ?? null;
   }
 
   // 获取特定节点的消息
   public getNodeMessages(conversationId: string, nodeId: string): Message[] {
     const conversation = this.getConversation(conversationId);
-    if (!conversation) {
+    if (conversation == null) {
       throw new Error(`对话不存在: ${conversationId}`);
     }
 
     const node = conversation.nodes[nodeId];
-    if (!node) {
+    if (node == null) {
       throw new Error(`节点不存在: ${nodeId}`);
     }
 
@@ -231,7 +232,7 @@ export class ConversationTreeManager {
   // 获取活动节点的消息
   public getActiveNodeMessages(conversationId: string): Message[] {
     const conversation = this.getConversation(conversationId);
-    if (!conversation) {
+    if (conversation == null) {
       throw new Error(`对话不存在: ${conversationId}`);
     }
 
@@ -251,11 +252,11 @@ export class ConversationTreeManager {
     // 追踪已访问的节点，防止循环依赖
     const visitedNodes = new Set<string>();
 
-    while (currentNodeId && !visitedNodes.has(currentNodeId)) {
+    while (currentNodeId !== '' && !visitedNodes.has(currentNodeId)) {
       visitedNodes.add(currentNodeId);
       
       const node = conversation.nodes[currentNodeId];
-      if (!node) break;
+      if (node == null) break;
       
       // 合并消息（根节点消息放在前面）
       if (node.parentId === null) {
@@ -264,7 +265,7 @@ export class ConversationTreeManager {
       } else {
         // 非根节点，仅添加不在父节点中的消息
         const parentNode = conversation.nodes[node.parentId];
-        const parentMessageCount = parentNode ? parentNode.messages.length : 0;
+        const parentMessageCount = parentNode != null ? parentNode.messages.length : 0;
         
         // 添加此节点独有的消息
         const uniqueMessages = node.messages.slice(parentMessageCount);
@@ -272,7 +273,7 @@ export class ConversationTreeManager {
       }
       
       // 移动到父节点
-      currentNodeId = node.parentId || '';
+      currentNodeId = node.parentId ?? '';
     }
 
     return messages;
@@ -306,7 +307,7 @@ export class ConversationTreeManager {
 
   // 删除对话
   public deleteConversation(conversationId: string): boolean {
-    if (!this.conversations[conversationId]) {
+    if (this.conversations[conversationId] == null) {
       return false;
     }
 
@@ -318,12 +319,12 @@ export class ConversationTreeManager {
   // 获取节点的所有子节点
   public getChildNodes(conversationId: string, nodeId: string): ConversationNode[] {
     const conversation = this.getConversation(conversationId);
-    if (!conversation) {
+    if (conversation == null) {
       throw new Error(`对话不存在: ${conversationId}`);
     }
 
     const node = conversation.nodes[nodeId];
-    if (!node) {
+    if (node == null) {
       throw new Error(`节点不存在: ${nodeId}`);
     }
 
@@ -355,12 +356,13 @@ export class ConversationTreeManager {
       
       return conversation.id;
     } catch (error) {
-      throw new Error(`反序列化对话失败: ${error}`);
+      const message = error instanceof Error ? error.message : String(error);
+      throw new Error(`反序列化对话失败: ${message}`);
     }
   }
 
   // 订阅事件
-  public subscribe(listener: (event: string, data: any) => void): () => void {
+  public subscribe(listener: (event: string, data: unknown) => void): () => void {
     this.listeners.push(listener);
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
@@ -368,7 +370,7 @@ export class ConversationTreeManager {
   }
 
   // 通知所有监听器
-  private notifyListeners(event: string, data: any): void {
+  private notifyListeners(event: string, data: unknown): void {
     this.listeners.forEach(listener => {
       try {
         listener(event, data);
