@@ -17,7 +17,7 @@ interface LogContext {
   userId?: string;
   sessionId?: string;
   requestId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface LogMessage {

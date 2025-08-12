@@ -1,4 +1,10 @@
 // 添加关键操作监控
+declare global {
+  interface Window {
+    gtag?: (...args: unknown[]) => void;
+  }
+}
+
 export function trackCADAnalysis(params: {
   fileType: string;
   fileSize: number;
@@ -9,12 +15,12 @@ export function trackCADAnalysis(params: {
   // 发送到分析服务
   console.info('CAD分析完成', params);
   
-  if (typeof window !== 'undefined' && window.gtag) {
-    window.gtag('event', 'cad_analysis', params);
+  if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
+    window.gtag('event', 'cad_analysis', params as unknown as Record<string, unknown>);
   }
 }
 
-export const trackEvent = (event: string, params?: Record<string, any>) => {
+export const trackEvent = (event: string, params?: Record<string, unknown>) => {
   if (process.env.NODE_ENV === 'production') {
     fetch('https://analytics.example.com/events', {
       method: 'POST',

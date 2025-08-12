@@ -37,7 +37,7 @@ export interface PermissionRule {
   role: Role;
   permissions: Permission[];
   resources?: string[]; // 资源类型，如 'conversation', 'agent', 'user'
-  conditions?: Record<string, any>; // 额外条件
+  conditions?: Record<string, unknown>; // 额外条件
   priority: number; // 优先级，用于解决冲突
 }
 
@@ -413,20 +413,20 @@ export class ApiSecurityService {
     let filtered = [...this.requestLogs];
     
     if (filter) {
-      if (filter.userId) {
+      if (typeof filter.userId === 'string') {
         filtered = filtered.filter(log => log.userId === filter.userId);
       }
       
-      if (filter.endpoint) {
-        filtered = filtered.filter(log => (log.endpoint || "").includes(filter.endpoint!));
+      if (typeof filter.endpoint === 'string' && filter.endpoint.length > 0) {
+        filtered = filtered.filter(log => (log.endpoint || "").includes(filter.endpoint));
       }
       
-      if (filter.startTime) {
-        filtered = filtered.filter(log => log.timestamp >= filter.startTime!);
+      if (typeof filter.startTime === 'number') {
+        filtered = filtered.filter(log => log.timestamp >= filter.startTime);
       }
       
-      if (filter.endTime) {
-        filtered = filtered.filter(log => log.timestamp <= filter.endTime!);
+      if (typeof filter.endTime === 'number') {
+        filtered = filtered.filter(log => log.timestamp <= filter.endTime);
       }
       
       if (filter.success !== undefined) {
@@ -455,20 +455,20 @@ export class ApiSecurityService {
     let filtered = [...this.auditLogs];
     
     if (filter) {
-      if (filter.type) {
+      if (typeof filter.type === 'string') {
         filtered = filtered.filter(log => log.type === filter.type);
       }
       
-      if (filter.userId) {
+      if (typeof filter.userId === 'string') {
         filtered = filtered.filter(log => log.userId === filter.userId);
       }
       
-      if (filter.startTime) {
-        filtered = filtered.filter(log => log.timestamp >= filter.startTime!);
+      if (typeof filter.startTime === 'number') {
+        filtered = filtered.filter(log => log.timestamp >= filter.startTime);
       }
       
-      if (filter.endTime) {
-        filtered = filtered.filter(log => log.timestamp <= filter.endTime!);
+      if (typeof filter.endTime === 'number') {
+        filtered = filtered.filter(log => log.timestamp <= filter.endTime);
       }
       
       if (filter.result) {
@@ -481,38 +481,67 @@ export class ApiSecurityService {
   
   // 添加中间件到Next.js应用
   public createMiddleware() {
-    return async (req: any, res: any, next: () => void) => {
+    return async (req: unknown, res: unknown, next: () => void | Promise<void>) => {
       const startTime = Date.now();
-      
+      const reqObj = req as {
+        headers?: Record<string, unknown>;
+        url?: string;
+        method?: string;
+        connection?: { remoteAddress?: string };
+      };
+      const resObj = res as {
+        setHeader?: (name: string, value: number | string) => void;
+        status?: (code: number) => typeof resObj;
+        json?: (body: unknown) => void;
+        statusCode?: number;
+        end?: (chunk?: unknown) => void;
+      };
+
       // 获取用户ID
-      const userId = req.headers['user-id'] || 'anonymous';
+      const headerValue = reqObj.headers?.['user-id'];
+      const userId = Array.isArray(headerValue)
+        ? (typeof headerValue[0] === 'string' ? headerValue[0] : 'anonymous')
+        : (typeof headerValue === 'string' ? headerValue : 'anonymous');
       
       // 检查速率限制
-      const rateCheckResult = this.checkRateLimit(userId, req.url, req.method);
+      const rateCheckResult = this.checkRateLimit(userId, reqObj.url ?? '', reqObj.method ?? 'GET');
       
       if (!rateCheckResult.allowed) {
         // 设置速率限制响应头
-        res.setHeader('X-RateLimit-Limit', this.findRateLimitConfig(req.url, req.method)?.limit || 0);
-        res.setHeader('X-RateLimit-Remaining', rateCheckResult.remainingTokens);
-        res.setHeader('X-RateLimit-Reset', rateCheckResult.resetTime);
+        if (typeof resObj.setHeader === 'function') {
+          resObj.setHeader('X-RateLimit-Limit', this.findRateLimitConfig(reqObj.url ?? '', reqObj.method ?? 'GET')?.limit || 0);
+          resObj.setHeader('X-RateLimit-Remaining', rateCheckResult.remainingTokens);
+          resObj.setHeader('X-RateLimit-Reset', rateCheckResult.resetTime);
+        }
         
         // 返回 429 Too Many Requests
-        res.status(429).json({
-          error: 'Too Many Requests',
-          message: 'API rate limit exceeded',
-          resetAt: new Date(rateCheckResult.resetTime).toISOString()
-        });
+        if (typeof resObj.status === 'function' && typeof resObj.json === 'function') {
+          resObj.status(429).json({
+            error: 'Too Many Requests',
+            message: 'API rate limit exceeded',
+            resetAt: new Date(rateCheckResult.resetTime).toISOString()
+          });
+        } else {
+          if (typeof resObj.end === 'function') {
+            resObj.statusCode = 429;
+            resObj.end(JSON.stringify({
+              error: 'Too Many Requests',
+              message: 'API rate limit exceeded',
+              resetAt: new Date(rateCheckResult.resetTime).toISOString()
+            }));
+          }
+        }
         
         // 记录请求
         this.logApiRequest({
           userId,
-          endpoint: req.url,
-          method: req.method,
+          endpoint: reqObj.url ?? '',
+          method: reqObj.method ?? 'GET',
           statusCode: 429,
           responseTime: Date.now() - startTime,
           timestamp: Date.now(),
-          ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-          userAgent: req.headers['user-agent'],
+          ip: (reqObj.headers?.['x-forwarded-for'] as string | undefined) || reqObj.connection?.remoteAddress,
+          userAgent: reqObj.headers?.['user-agent'] as string | undefined,
           success: false,
           error: 'Rate limit exceeded'
         });
@@ -522,41 +551,32 @@ export class ApiSecurityService {
       
       // 继续处理请求
       try {
-        // 包装响应对象，以便捕获状态码
-        const originalEnd = res.end;
-        let statusCode = 200;
-        
-        res.end = function(chunk: any, encoding: string, callback?: () => void) {
-          statusCode = res.statusCode;
-          return originalEnd.call(this, chunk, encoding, callback);
-        };
-        
         // 继续中间件链
         await next();
         
         // 记录成功请求
         this.logApiRequest({
           userId,
-          endpoint: req.url,
-          method: req.method,
-          statusCode,
+          endpoint: reqObj.url ?? '',
+          method: reqObj.method ?? 'GET',
+          statusCode: (resObj.statusCode ?? 200),
           responseTime: Date.now() - startTime,
           timestamp: Date.now(),
-          ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-          userAgent: req.headers['user-agent'],
-          success: statusCode < 400
+          ip: (reqObj.headers?.['x-forwarded-for'] as string | undefined) || reqObj.connection?.remoteAddress,
+          userAgent: reqObj.headers?.['user-agent'] as string | undefined,
+          success: (resObj.statusCode ?? 200) < 400
         });
       } catch (error) {
         // 记录失败请求
         this.logApiRequest({
           userId,
-          endpoint: req.url,
-          method: req.method,
-          statusCode: res.statusCode || 500,
+          endpoint: reqObj.url ?? '',
+          method: reqObj.method ?? 'GET',
+          statusCode: (resObj.statusCode ?? 500),
           responseTime: Date.now() - startTime,
           timestamp: Date.now(),
-          ip: req.headers['x-forwarded-for'] || req.connection.remoteAddress,
-          userAgent: req.headers['user-agent'],
+          ip: (reqObj.headers?.['x-forwarded-for'] as string | undefined) || reqObj.connection?.remoteAddress,
+          userAgent: reqObj.headers?.['user-agent'] as string | undefined,
           success: false,
           error: error instanceof Error ? error.message : String(error)
         });

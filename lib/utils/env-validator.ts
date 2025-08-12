@@ -230,14 +230,15 @@ export function initializeCADCompatibility(): void {
   try {
     // 检查Three.js和web-ifc-three兼容性
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const THREE = (() => { try { return require('three') } catch { return {} as any } })();
+    type ThreeLike = { REVISION?: number };
+    const THREE = (() => { try { return require('three') as ThreeLike } catch { return {} as ThreeLike } })();
     if (THREE.REVISION !== 149) {
       console.warn('⚠️ Three.js版本警告: 当前版本可能与CAD解析器不兼容');
     }
 
     // 检查WebIFC可用性
     // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const WebIFC = (() => { try { return require('web-ifc') } catch { return {} as any } })();
+    const WebIFC = (() => { try { return require('web-ifc') as { IfcAPI?: unknown } } catch { return {} as { IfcAPI?: unknown } } })();
     if (typeof WebIFC.IfcAPI !== 'function') {
       throw new Error('WebIFC API不可用');
     }

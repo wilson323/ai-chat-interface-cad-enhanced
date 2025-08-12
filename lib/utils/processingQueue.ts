@@ -4,7 +4,7 @@ export function createQueue(options: {
   timeout: number;
 }) {
   const { concurrency = 2, timeout = 120_000 } = options;
-  const queue: Array<() => Promise<any>> = [];
+  const queue: Array<() => Promise<unknown>> = [];
   let running = 0;
 
   const runNext = async () => {
@@ -14,7 +14,7 @@ export function createQueue(options: {
     const task = queue.shift()!;
     
     try {
-      return await Promise.race([
+      await Promise.race<unknown>([
         task(),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('处理超时')), timeout)

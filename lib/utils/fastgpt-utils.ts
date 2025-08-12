@@ -87,7 +87,18 @@ export const sendChatMessage = async (
   detail = false,
 ): Promise<Response> => {
   // Prepare request parameters
-  const params: any = {
+  interface ChatParams {
+    model: string;
+    messages: Array<{ role: string; content: string }>;
+    stream: boolean;
+    detail: boolean;
+    chatId: string;
+    responseChatItemId: string;
+    variables: { userId: string };
+    system?: string;
+  }
+
+  const params: ChatParams = {
     model: appId,
     messages,
     stream,
@@ -131,11 +142,11 @@ export default {
   getQuestionSuggestions,
 }
 
-export const getGlobalModelConfig = () => {
+export const getGlobalModelConfig = (): unknown => {
   try {
     const json = process.env.NEXT_PUBLIC_GLOBAL_MODELS || ''
     if (!json) return null
-    return JSON.parse(json)
+    return JSON.parse(json) as unknown
   } catch {
     return null
   }
