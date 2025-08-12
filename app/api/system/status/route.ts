@@ -12,6 +12,7 @@ import { getFallbackManager } from "@/lib/fallback/fallback-manager"
 import { getPrefetchService } from "@/lib/prefetch/prefetch-service"
 import { getPreloadManager } from "@/lib/preload/preload-manager"
 import { getRetryManager } from "@/lib/retry/retry-manager"
+import { getMiddlewareStats } from "@/lib/middleware/stats"
 
 export const dynamic = "force-dynamic"
 
@@ -45,6 +46,8 @@ export async function GET() {
 
     const fallbackManager = getFallbackManager()
     const fallbackStats = fallbackManager.getStats()
+
+    const middlewareStats = getMiddlewareStats()
 
     // 判断系统健康状态
     const isHealthy = optimizerStats.isHealthy && !optimizerStats.circuitBreakerOpen
@@ -99,6 +102,7 @@ export async function GET() {
           activeFallbacks: fallbackStats.activeFallbacks,
           successRate: fallbackStats.successRate,
         },
+        middleware: middlewareStats,
       },
       uptime: process.uptime(),
     }

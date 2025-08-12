@@ -19,7 +19,7 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npx next dev -p 3000',
+    command: 'npm run start:e2e',
     port: 3000,
     reuseExistingServer: true,
     timeout: 240_000,

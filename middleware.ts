@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
+import { rateLimiterMiddleware } from "@/middleware/rate-limiter"
 
 // 标准中间件函数
 export function middleware(request: NextRequest) {
   // 基础请求处理逻辑
   const response = NextResponse.next()
+  try { require('@/lib/middleware/stats').recordRequest?.() } catch {}
+
   
   // 生产环境启用统一安全策略
   if (process.env.NODE_ENV === 'production') {
@@ -32,8 +35,14 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // 统一CORS策略（生产环境可配置白名单域名）
+  // 统一限流 + CORS 策略
   if (pathname.startsWith('/api/')) {
+    // 限流（若未配置Upstash则自动跳过）
+    try {
+      const limited = await rateLimiterMiddleware(request)
+      if (limited) return limited
+    } catch {}
+    // CORS
     const allowOrigin = process.env.CORS_ALLOW_ORIGIN || '*'
     response.headers.set('Access-Control-Allow-Origin', allowOrigin)
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')

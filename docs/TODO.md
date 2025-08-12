@@ -108,8 +108,8 @@
   - [ ] 用 `pino` 替换 `lib/utils/logger.ts` 自研日志；开发态 `pino-pretty`；可选接入 Sentry/Logtail
 - [ ] 分片上传
   - [ ] 对接对象存储 Multipart（S3/OSS）或采用 `tus-js-client/uppy`，替换 `lib/utils/chunkedUpload.ts`
-- [ ] 中间件收敛
-  - [ ] 合并 `middleware.ts` 与 `middleware/high-availability.ts` 的重叠能力，保留单入口；CSP/CORS/限流统一配置
+- [x] 中间件收敛
+  - [x] 合并 `middleware.ts` 与 `middleware/high-availability.ts` 的重叠能力，保留单入口；CSP/CORS/限流统一配置（统计迁移至 `lib/middleware/stats.ts`）
 
 ## 记录与验收
 - [ ] 变更记录（Changelog）

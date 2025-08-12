@@ -39,9 +39,9 @@ export interface RequestItem {
   status: RequestStatus
   timestamp: number
   retries: number
-  payload: any
-  resolve: (value: any) => void
-  reject: (reason: any) => void
+  payload: unknown
+  resolve: (value: unknown) => void
+  reject: (reason: unknown) => void
   cacheKey?: string
   cacheTTL?: number
   cacheTags?: string[]
@@ -51,7 +51,7 @@ export interface RequestItem {
   startTime?: number
   endTime?: number
   responseTime?: number
-  error?: any
+  error?: unknown
   bypassCircuitBreaker?: boolean
 }
 
@@ -150,7 +150,7 @@ export class FastGPTOptimizer {
    */
   public async request<T>(
     endpoint: string,
-    payload: any,
+    payload: unknown,
     options: {
       priority?: RequestPriority
       cacheKey?: string
@@ -181,25 +181,25 @@ export class FastGPTOptimizer {
 
     try {
       // 检查断路器
-      if (this.config.circuitBreakerEnabled && this.circuitOpen && !bypassCircuitBreaker) {
+      if (this.config.circuitBreakerEnabled === true && this.circuitOpen === true && bypassCircuitBreaker !== true) {
         const error = new Error("Circuit breaker is open, request rejected")
         this.recordRequest(endpoint, false, 0, error.message)
         throw error
       }
 
       // 检查健康状态
-      if (!this.isHealthy && !bypassCircuitBreaker) {
+      if (this.isHealthy !== true && bypassCircuitBreaker !== true) {
         const error = new Error("Service is unhealthy, request rejected")
         this.recordRequest(endpoint, false, 0, error.message)
         throw error
       }
 
       // 检查缓存
-      const effectiveCacheKey = cacheKey || this.generateCacheKey(endpoint, payload)
-      if (this.config.cacheEnabled && !bypassCache) {
+      const effectiveCacheKey = cacheKey ?? this.generateCacheKey(endpoint, payload)
+      if (this.config.cacheEnabled === true && bypassCache !== true) {
         try {
           const cachedResult = await this.cacheManager.get<T>(effectiveCacheKey)
-          if (cachedResult) {
+          if (cachedResult != null) {
             this.log("debug", `Cache hit for ${effectiveCacheKey}`)
             this.recordRequest(endpoint, true, 0)
             return cachedResult
@@ -210,7 +210,7 @@ export class FastGPTOptimizer {
       }
 
       // 如果启用了批处理，尝试批处理请求
-      if (this.config.batchingEnabled && this.canBatch(endpoint, payload)) {
+      if (this.config.batchingEnabled === true && this.canBatch(endpoint, payload) === true) {
         return this.batchRequest<T>(endpoint, payload, {
           priority,
           cacheKey: effectiveCacheKey,
@@ -222,7 +222,7 @@ export class FastGPTOptimizer {
       }
 
       // 如果绕过队列，直接发送请求
-      if (bypassQueue) {
+      if (bypassQueue === true) {
         const result = await this.executeRequest<T>(endpoint, payload, {
           cacheKey: effectiveCacheKey,
           cacheTTL,
@@ -269,7 +269,7 @@ export class FastGPTOptimizer {
         }
 
         // 设置超时
-        if (timeout > 0) {
+        if (typeof timeout === 'number' && timeout > 0) {
           requestItem.timeoutId = setTimeout(() => {
             this.handleRequestTimeout(requestId)
           }, timeout)
@@ -514,7 +514,7 @@ export class FastGPTOptimizer {
    */
   private async executeRequest<T>(
     endpoint: string,
-    payload: any,
+    payload: unknown,
     options: {
       cacheKey?: string
       cacheTTL?: number
@@ -537,7 +537,7 @@ export class FastGPTOptimizer {
         throw new Error(`Request failed with status ${response.status}: ${response.statusText}`)
       }
 
-      const result = await response.json()
+      const result = (await response.json()) as T
 
       // 缓存结果
       if (this.config.cacheEnabled && cacheKey) {
@@ -564,7 +564,7 @@ export class FastGPTOptimizer {
    * @param result 结果
    * @param responseTime 响应时间
    */
-  private handleRequestSuccess(requestId: string, result: any, responseTime: number): void {
+  private handleRequestSuccess(requestId: string, result: unknown, responseTime: number): void {
     // 更新统计信息
     this.requestCount++
     this.successCount++
@@ -587,7 +587,7 @@ export class FastGPTOptimizer {
    * @param error 错误
    * @param responseTime 响应时间
    */
-  private handleRequestFailure(requestItem: RequestItem, error: any, responseTime: number): void {
+  private handleRequestFailure(requestItem: RequestItem, error: unknown, responseTime: number): void {
     const { id, retries, resolve, reject, payload, cacheKey, cacheTTL, cacheTags, endpoint, bypassCircuitBreaker } =
       requestItem
 
@@ -666,7 +666,7 @@ export class FastGPTOptimizer {
     this.failureRate = this.requestCount > 0 ? (this.requestCount - this.successCount) / this.requestCount : 0
 
     // 更新断路器
-    if (this.config.circuitBreakerEnabled && !requestItem.bypassCircuitBreaker) {
+    if (this.config.circuitBreakerEnabled === true && requestItem.bypassCircuitBreaker !== true) {
       this.failureCount++
 
       if (this.failureCount >= this.config.circuitBreakerThreshold) {
@@ -679,7 +679,7 @@ export class FastGPTOptimizer {
    * 打开断路器
    */
   private openCircuitBreaker(): void {
-    if (this.circuitOpen) return
+    if (this.circuitOpen === true) return
 
     this.circuitOpen = true
 
@@ -721,7 +721,7 @@ export class FastGPTOptimizer {
    */
   private batchRequest<T>(
     endpoint: string,
-    payload: any,
+    payload: unknown,
     options: {
       priority: RequestPriority
       cacheKey?: string
@@ -755,10 +755,10 @@ export class FastGPTOptimizer {
       }
 
       // 设置超时
-      if (timeout && timeout > 0) {
+      if (typeof timeout === 'number' && timeout > 0) {
         requestItem.timeoutId = setTimeout(() => {
           // 从批处理队列中移除
-          const batch = this.batchingQueue.get(batchKey) || []
+          const batch = this.batchingQueue.get(batchKey) ?? []
           const index = batch.findIndex((item) => item.id === requestItem.id)
           if (index !== -1) {
             batch.splice(index, 1)
@@ -780,7 +780,7 @@ export class FastGPTOptimizer {
       }
 
       // 添加到批处理队列
-      const batch = this.batchingQueue.get(batchKey) || []
+      const batch = this.batchingQueue.get(batchKey) ?? []
       batch.push(requestItem)
       this.batchingQueue.set(batchKey, batch)
 
@@ -800,7 +800,7 @@ export class FastGPTOptimizer {
    * @param batchKey 批处理键
    */
   private scheduleBatch(batchKey: string): void {
-    if (this.batchingTimeout) {
+    if (this.batchingTimeout !== null) {
       clearTimeout(this.batchingTimeout)
     }
 
@@ -815,7 +815,7 @@ export class FastGPTOptimizer {
    */
   private async processBatch(batchKey: string): Promise<void> {
     // 获取批处理队列
-    const batch = this.batchingQueue.get(batchKey) || []
+    const batch = this.batchingQueue.get(batchKey) ?? []
     if (batch.length === 0) return
 
     // 从队列中移除
@@ -887,7 +887,7 @@ export class FastGPTOptimizer {
     const firstItem = batch[0]
 
     // 创建一个新的负载对象
-    const mergedPayload = {
+    const mergedPayload: Record<string, unknown> = {
       ...firstItem.payload,
       batch: true,
       items: batch.map((item) => ({
@@ -905,7 +905,7 @@ export class FastGPTOptimizer {
    * @param result 结果
    * @param responseTime 响应时间
    */
-  private distributeBatchResults(batch: RequestItem[], result: any, responseTime: number): void {
+  private distributeBatchResults(batch: RequestItem[], result: unknown, responseTime: number): void {
     // 这里的实现取决于API的具体响应格式
     // 这只是一个示例，实际实现可能需要根据API调整
 
@@ -921,7 +921,7 @@ export class FastGPTOptimizer {
         }
 
         // 缓存结果
-        if (this.config.cacheEnabled && requestItem.cacheKey) {
+        if (this.config.cacheEnabled === true && typeof requestItem.cacheKey === 'string') {
           try {
             this.cacheManager.set(requestItem.cacheKey, itemResult, {
               ttl: requestItem.cacheTTL,
@@ -944,19 +944,20 @@ export class FastGPTOptimizer {
       }
     }
     // 如果结果有一个items字段，假设它包含每个请求的结果
-    else if (result.items && Array.isArray(result.items)) {
+    else if (typeof result === 'object' && result !== null && Array.isArray((result as Record<string, unknown>).items)) {
+      const items = (result as Record<string, unknown>).items as Array<unknown>
       for (const requestItem of batch) {
         // 查找对应的结果
-        const itemResult = result.items.find((item: any) => item.id === requestItem.id)
+        const itemResult = items.find((item) => typeof item === 'object' && item !== null && 'id' in (item as Record<string, unknown>) && (item as Record<string, unknown>).id === requestItem.id)
 
         // 清除超时
         if (requestItem.timeoutId) {
           clearTimeout(requestItem.timeoutId)
         }
 
-        if (itemResult) {
+        if (itemResult != null) {
           // 缓存结果
-          if (this.config.cacheEnabled && requestItem.cacheKey) {
+          if (this.config.cacheEnabled === true && typeof requestItem.cacheKey === 'string') {
             try {
               this.cacheManager.set(requestItem.cacheKey, itemResult, {
                 ttl: requestItem.cacheTTL,
@@ -997,7 +998,7 @@ export class FastGPTOptimizer {
         }
 
         // 缓存结果
-        if (this.config.cacheEnabled && requestItem.cacheKey) {
+        if (this.config.cacheEnabled === true && typeof requestItem.cacheKey === 'string') {
           try {
             this.cacheManager.set(requestItem.cacheKey, result, {
               ttl: requestItem.cacheTTL,
@@ -1027,7 +1028,7 @@ export class FastGPTOptimizer {
    * @param payload 负载
    * @returns 是否可以批处理
    */
-  private canBatch(endpoint: string, payload: any): boolean {
+  private canBatch(endpoint: string, _payload: unknown): boolean {
     // 这里的实现取决于API的具体要求
     // 这只是一个示例，实际实现可能需要根据API调整
 
@@ -1043,13 +1044,16 @@ export class FastGPTOptimizer {
    * @param payload 负载
    * @returns 批处理键
    */
-  private generateBatchKey(endpoint: string, payload: any): string {
+  private generateBatchKey(endpoint: string, payload: unknown): string {
     // 这里的实现取决于API的具体要求
     // 这只是一个示例，实际实现可能需要根据API调整
 
     // 对于聊天请求，使用模型作为批处理键
     if (endpoint.includes("/chat")) {
-      return `${endpoint}:${payload.model || "default"}`
+      const rec = (payload as Record<string, unknown>) ?? {}
+      const modelVal = rec.model
+      const model = typeof modelVal === 'string' ? modelVal : 'default'
+      return `${endpoint}:${model}`
     }
 
     // 对于其他请求，使用端点作为批处理键
@@ -1062,14 +1066,27 @@ export class FastGPTOptimizer {
    * @param payload 负载
    * @returns 缓存键
    */
-  private generateCacheKey(endpoint: string, payload: any): string {
+  private generateCacheKey(endpoint: string, payload: unknown): string {
     // 对于聊天请求，使用消息内容和模型作为缓存键
     if (endpoint.includes("/chat")) {
-      const messages = payload.messages || []
-      const messagesKey = messages
-        .map((msg: any) => `${msg.role}:${typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}`)
+      const rec = (payload as Record<string, unknown>) ?? {}
+      const messagesUnknown = rec.messages
+      const messagesArray = Array.isArray(messagesUnknown) ? (messagesUnknown as Array<unknown>) : []
+      const messagesKey = messagesArray
+        .map((m) => {
+          if (typeof m === 'object' && m !== null) {
+            const msgRec = m as Record<string, unknown>
+            const role = typeof msgRec.role === 'string' ? msgRec.role : 'user'
+            const content = msgRec.content
+            const contentStr = typeof content === 'string' ? content : JSON.stringify(content)
+            return `${role}:${contentStr}`
+          }
+          return String(m)
+        })
         .join("|")
-      const raw = `${endpoint}:${payload.model || "default"}:${messagesKey}`
+      const modelVal = rec.model
+      const model = typeof modelVal === 'string' ? modelVal : 'default'
+      const raw = `${endpoint}:${model}:${messagesKey}`
       return buildFullCacheKey('fastgpt', raw)
     }
 
@@ -1083,7 +1100,7 @@ export class FastGPTOptimizer {
    * @param payload 负载
    * @returns 哈希
    */
-  private hashPayload(payload: any): string {
+  private hashPayload(payload: unknown): string {
     // 简单的哈希实现
     const str = JSON.stringify(payload)
     let hash = 0
@@ -1243,7 +1260,7 @@ export class FastGPTOptimizer {
    * @param message 日志消息
    * @param data 附加数据
    */
-  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: any): void {
+  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: unknown): void {
     // 根据配置的日志级别过滤日志
     const levelPriority = { error: 0, warn: 1, info: 2, debug: 3 }
     if (levelPriority[level] > levelPriority[this.config.logLevel]) {

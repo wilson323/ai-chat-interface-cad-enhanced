@@ -26,7 +26,8 @@
     "hooks:validate": "npm run constraints:check && npm run type-check && npm run lint",
     "test:e2e": "playwright test --reporter=list",
     "test:e2e:headed": "playwright test --headed --project=chromium",
-    "test:e2e:install": "npx playwright install --with-deps || npx playwright install"
+    "test:e2e:install": "npx playwright install --with-deps || npx playwright install",
+    "start:e2e": "npm run build && next start -p 3000"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "1.3.1",
