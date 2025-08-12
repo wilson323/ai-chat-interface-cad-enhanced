@@ -418,15 +418,18 @@ export class ApiSecurityService {
       }
       
       if (typeof filter.endpoint === 'string' && filter.endpoint.length > 0) {
-        filtered = filtered.filter(log => (log.endpoint || "").includes(filter.endpoint));
+        const ep = filter.endpoint as string;
+        filtered = filtered.filter(log => (log.endpoint ?? "").includes(ep));
       }
       
       if (typeof filter.startTime === 'number') {
-        filtered = filtered.filter(log => log.timestamp >= filter.startTime);
+        const startTimeValue = filter.startTime;
+        filtered = filtered.filter(log => log.timestamp >= startTimeValue);
       }
       
       if (typeof filter.endTime === 'number') {
-        filtered = filtered.filter(log => log.timestamp <= filter.endTime);
+        const endTimeValue = filter.endTime;
+        filtered = filtered.filter(log => log.timestamp <= endTimeValue);
       }
       
       if (filter.success !== undefined) {
@@ -464,11 +467,13 @@ export class ApiSecurityService {
       }
       
       if (typeof filter.startTime === 'number') {
-        filtered = filtered.filter(log => log.timestamp >= filter.startTime);
+        const startTimeValue = filter.startTime;
+        filtered = filtered.filter(log => log.timestamp >= startTimeValue);
       }
       
       if (typeof filter.endTime === 'number') {
-        filtered = filtered.filter(log => log.timestamp <= filter.endTime);
+        const endTimeValue = filter.endTime;
+        filtered = filtered.filter(log => log.timestamp <= endTimeValue);
       }
       
       if (filter.result) {
@@ -515,8 +520,11 @@ export class ApiSecurityService {
         }
         
         // 返回 429 Too Many Requests
-        if (typeof resObj.status === 'function' && typeof resObj.json === 'function') {
-          resObj.status(429).json({
+        if (typeof resObj.status === 'function') {
+          resObj.status(429);
+        }
+        if (typeof resObj.json === 'function') {
+          resObj.json({
             error: 'Too Many Requests',
             message: 'API rate limit exceeded',
             resetAt: new Date(rateCheckResult.resetTime).toISOString()
