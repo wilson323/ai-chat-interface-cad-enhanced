@@ -19,10 +19,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: 'npm run build && node .next/standalone/server.js',
+    command: 'npx next dev -p 3000',
     port: 3000,
     reuseExistingServer: true,
-    timeout: 180_000,
+    timeout: 240_000,
     env: {
       HOSTNAME: 'localhost',
       PORT: '3000'

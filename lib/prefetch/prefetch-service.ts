@@ -423,19 +423,22 @@ export class PrefetchService {
    */
   private updateBatteryStatus(battery: unknown): void {
     // 如果正在充电，则始终适合预取
-    const charging = (typeof battery === 'object' && battery !== null && ('charging' in (battery as Record<string, unknown)))
-      ? (battery as Record<string, any>).charging as boolean
-      : false
+    let charging = false
+    if (typeof battery === 'object' && battery !== null && ('charging' in (battery as Record<string, unknown>))) {
+      const chargingRaw = (battery as Record<string, unknown>).charging
+      charging = typeof chargingRaw === 'boolean' ? chargingRaw : false
+    }
     if (charging === true) {
       this.isBatterySuitable = true
       return
     }
 
     // 检查电池电量
-    const levelRaw = (typeof battery === 'object' && battery !== null && ('level' in (battery as Record<string, unknown)))
-      ? (battery as Record<string, any>).level as number
-      : 1
-    const level = typeof levelRaw === 'number' ? levelRaw : 1
+    let level = 1
+    if (typeof battery === 'object' && battery !== null && ('level' in (battery as Record<string, unknown>))) {
+      const levelRaw = (battery as Record<string, unknown>).level
+      level = typeof levelRaw === 'number' ? levelRaw : 1
+    }
     const batteryLevel = level * 100
     this.isBatterySuitable = batteryLevel >= this.config.networkConditions.minBatteryLevel
 

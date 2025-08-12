@@ -78,7 +78,7 @@ export class PreloadManager {
 
     // 检查是否已加载
     if (this.loaded.has(url)) {
-      return Promise.resolve(this.resourceCache.get(url))
+      return Promise.resolve(this.resourceCache.get(url) as HTMLImageElement)
     }
 
     // 检查是否正在加载
@@ -87,7 +87,7 @@ export class PreloadManager {
         const checkInterval = setInterval(() => {
           if (this.loaded.has(url)) {
             clearInterval(checkInterval)
-            resolve(this.resourceCache.get(url))
+            resolve(this.resourceCache.get(url) as HTMLImageElement)
           } else if (this.failed.has(url)) {
             clearInterval(checkInterval)
             reject(new Error(`Failed to preload image: ${url}`))
@@ -163,7 +163,7 @@ export class PreloadManager {
       const checkInterval = setInterval(() => {
         if (this.loaded.has(url)) {
           clearInterval(checkInterval)
-          resolve(this.resourceCache.get(url))
+          resolve(this.resourceCache.get(url) as HTMLImageElement)
         } else if (this.failed.has(url)) {
           clearInterval(checkInterval)
           reject(new Error(`Failed to preload image: ${url}`))
@@ -185,7 +185,7 @@ export class PreloadManager {
 
     // 检查是否已加载
     if (this.loaded.has(url)) {
-      return Promise.resolve(this.resourceCache.get(url))
+      return Promise.resolve(this.resourceCache.get(url) as HTMLScriptElement)
     }
 
     // 检查是否正在加载
@@ -194,7 +194,7 @@ export class PreloadManager {
         const checkInterval = setInterval(() => {
           if (this.loaded.has(url)) {
             clearInterval(checkInterval)
-            resolve(this.resourceCache.get(url))
+            resolve(this.resourceCache.get(url) as HTMLScriptElement)
           } else if (this.failed.has(url)) {
             clearInterval(checkInterval)
             reject(new Error(`Failed to preload script: ${url}`))
@@ -271,7 +271,7 @@ export class PreloadManager {
       const checkInterval = setInterval(() => {
         if (this.loaded.has(url)) {
           clearInterval(checkInterval)
-          resolve(this.resourceCache.get(url))
+          resolve(this.resourceCache.get(url) as HTMLScriptElement)
         } else if (this.failed.has(url)) {
           clearInterval(checkInterval)
           reject(new Error(`Failed to preload script: ${url}`))
@@ -293,7 +293,7 @@ export class PreloadManager {
 
     // 检查是否已加载
     if (this.loaded.has(url)) {
-      return Promise.resolve(this.resourceCache.get(url))
+      return Promise.resolve(this.resourceCache.get(url) as HTMLLinkElement)
     }
 
     // 检查是否正在加载
@@ -302,7 +302,7 @@ export class PreloadManager {
         const checkInterval = setInterval(() => {
           if (this.loaded.has(url)) {
             clearInterval(checkInterval)
-            resolve(this.resourceCache.get(url))
+            resolve(this.resourceCache.get(url) as HTMLLinkElement)
           } else if (this.failed.has(url)) {
             clearInterval(checkInterval)
             reject(new Error(`Failed to preload style: ${url}`))
@@ -379,7 +379,7 @@ export class PreloadManager {
       const checkInterval = setInterval(() => {
         if (this.loaded.has(url)) {
           clearInterval(checkInterval)
-          resolve(this.resourceCache.get(url))
+          resolve(this.resourceCache.get(url) as HTMLLinkElement)
         } else if (this.failed.has(url)) {
           clearInterval(checkInterval)
           reject(new Error(`Failed to preload style: ${url}`))
@@ -402,7 +402,7 @@ export class PreloadManager {
 
     // 检查是否已加载
     if (this.loaded.has(url)) {
-      return Promise.resolve(this.resourceCache.get(url))
+      return Promise.resolve(this.resourceCache.get(url) as FontFace)
     }
 
     // 检查是否正在加载
@@ -411,7 +411,7 @@ export class PreloadManager {
         const checkInterval = setInterval(() => {
           if (this.loaded.has(url)) {
             clearInterval(checkInterval)
-            resolve(this.resourceCache.get(url))
+            resolve(this.resourceCache.get(url) as FontFace)
           } else if (this.failed.has(url)) {
             clearInterval(checkInterval)
             reject(new Error(`Failed to preload font: ${url}`))
@@ -490,7 +490,7 @@ export class PreloadManager {
       const checkInterval = setInterval(() => {
         if (this.loaded.has(url)) {
           clearInterval(checkInterval)
-          resolve(this.resourceCache.get(url))
+          resolve(this.resourceCache.get(url) as FontFace)
         } else if (this.failed.has(url)) {
           clearInterval(checkInterval)
           reject(new Error(`Failed to preload font: ${url}`))
