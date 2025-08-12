@@ -78,6 +78,9 @@ const nextConfig = {
     // 仅在开发环境禁用老的优化加载
     disableOptimizedLoading: process.env.NODE_ENV === 'development',
   },
+  // 允许开发环境跨域访问 _next 资源
+  allowedDevOrigins: ['http://26.26.26.1:3000', 'http://localhost:3000'],
+
   // 生产环境启用严格模式
   reactStrictMode: process.env.NODE_ENV === 'production',
   

@@ -1,6 +1,6 @@
 "use client"
 
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import type React from "react"
 import { useState } from "react"
 
@@ -15,6 +15,7 @@ export default function AdminLogin() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState("")
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -22,20 +23,28 @@ export default function AdminLogin() {
     setIsLoading(true)
     setError("")
 
-    // Simple validation for demo purposes
-    if (username === "admin" && password === "fastgpt") {
-      // Simulate API call
-      setTimeout(() => {
-        // Store auth token in localStorage
-        localStorage.setItem("adminToken", "demo-token-12345")
+    try {
+      // 简单演示目的（后续应接入真实鉴权服务）
+      if (username === "admin" && password === "fastgpt") {
+        const token = "demo-token-12345"
+        // 兼容中间件：设置 cookie，path=/，SameSite=Lax
+        document.cookie = `adminToken=${token}; Path=/; SameSite=Lax`
+        // 同步本地存储，兼容已有逻辑
+        localStorage.setItem("adminToken", token)
+
         toast({
           title: "登录成功",
           description: "欢迎进入管理员仪表板",
         })
-        router.push("/admin/dashboard")
-      }, 1000)
-    } else {
-      setError("用户名或密码无效")
+
+        const redirect = searchParams.get("redirect") || "/admin/dashboard"
+        router.push(redirect)
+      } else {
+        setError("用户名或密码无效")
+      }
+    } catch (err) {
+      setError("登录失败，请重试")
+    } finally {
       setIsLoading(false)
     }
   }
