@@ -1,7 +1,7 @@
 // 添加关键操作监控
 declare global {
   interface Window {
-    gtag?: (...args: unknown[]) => void;
+    gtag?: (...args: any[]) => void;
   }
 }
 

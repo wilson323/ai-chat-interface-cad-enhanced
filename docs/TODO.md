@@ -6,7 +6,7 @@
 - [x] FastGPT 客户端命名与冗余治理
   - [x] 增加 `lib/api/enhanced-fastgpt-client.ts`（对现有增强客户端做命名对齐的导出包装，提供 `getEnhancedFastGPTClient`/`createEnhancedFastGPTClient` 别名）
   - [x] 盘点全局对 `fastgpt.ts`、`fastgpt-enhanced.ts`、`fastgpt-optimizer.ts` 的引用清单（引用清单见下文“引用清单（初版）”）
-  - [ ] 新增使用处改为 `fastgpt-client.ts` 或 `enhanced-fastgpt-client.ts`（不破坏现有，分阶段迁移）
+- [x] 新增使用处改为 `enhanced-fastgpt-client.ts`（不破坏现有，分阶段迁移）
 - [x] 组件重复与命名一致性
   - [x] `components/chat/AgentSelector.tsx` 与 `agent-selector.tsx` 重复清点与统一
   - [x] 新增统一导出入口 `components/chat/index.ts`，提供别名导出，保持向后兼容
@@ -40,7 +40,8 @@
 - [x] DXF：服务端使用 `dxf-parser` 替换自研/模拟（已完成：新增 `app/api/cad/dxf-parse/route.ts`，使用 dxf-parser 并发/超时与回退已就绪）
 - [x] STEP/IGES：接入 `occt-import-js`（Node/WASM）解析；已移除模拟回退（需 `OCCT_IMPORT_ENABLED=true`）
 - [x] DWG：接入服务端转换（通过 `DWG_CONVERTER_URL` -> DXF -> dxf-parser），已移除模拟回退；未配置服务时返回明确错误提示（并发/超时已就绪）
-- [ ] 移除 `app/api/cad/*-parse/route.ts` 的模拟实现，补充错误处理与性能保护（并发/超时）（进行中：错误处理与并发/超时已就绪；STEP/IGES已去除模拟；DWG保留回退提示，待转换服务接入后统一移除）
+- [x] 移除 `app/api/cad/dxf-parse/route.ts` 的模拟回退；保留严格错误提示与并发/超时
+- [ ] 统一DWG回退提示逻辑，待转换服务接入后移除
 - [x] 文档化与校验：新增/校验 `OCCT_IMPORT_ENABLED`、`ENABLE_SIMULATED_CAD_PARSERS` 开关及其在 `config/features.ts`/环境校验中的提示
 
 ## P0 全局一致性与规范检查（补充）
@@ -70,8 +71,8 @@
 
 ## P1 近期优化
 - [ ] AG-UI 路由与适配器一致性验证
-  - [x] 将 `app/api/ag-ui/chat/route.ts` 切换为使用 `lib/api/fastgpt-ag-ui-adapter.ts` 进行上游请求与协议转换
-  - [ ] 核查 `app/api/ag-ui/*` 是否统一走 `lib/api/fastgpt-ag-ui-adapter.ts`
+  - [x] 将 `app/api/ag-ui/chat/route.ts` 切换为使用 `lib/api/server-fastgpt-upstream.ts`（Edge 安全）
+  - [ ] 核查 `app/api/ag-ui/*` 路由，统一抽象到服务层适配器
   - [ ] 对齐 OpenAI 协议字段（对话/嵌入区分）
 - [ ] 文档与规范同步
   - [ ] 在 `docs/` 更新改动点与统一使用方式
@@ -102,7 +103,7 @@
 ## 记录与验收
 - [ ] 变更记录（Changelog）
 - [x] 每阶段完成后：类型检查 + Lint + 本地启动冒烟（Windows PowerShell）
-- [ ] Git 提交（原子化小步提交，阶段验收后自动提交）
+- [x] Git 提交（原子化小步提交，阶段验收后自动提交）
 
 ---
 

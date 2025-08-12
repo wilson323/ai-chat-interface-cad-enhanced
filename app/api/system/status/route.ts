@@ -3,7 +3,7 @@
  * System Status API - Provides system status information
  */
 import { NextResponse } from "next/server"
-import { getEnhancedFastGPTClient } from "@/lib/api/fastgpt-enhanced"
+import { getEnhancedFastGPTClient } from "@/lib/api/enhanced-fastgpt-client"
 import { getFastGPTOptimizer } from "@/lib/api/fastgpt-optimizer"
 import { getCacheManager } from "@/lib/cache/cache-manager"
 import { getPrefetchService } from "@/lib/prefetch/prefetch-service"
