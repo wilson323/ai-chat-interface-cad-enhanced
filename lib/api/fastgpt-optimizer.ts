@@ -411,17 +411,17 @@ export class FastGPTOptimizer {
    */
   public dispose(): void {
     // 清除所有定时器
-    if (this.batchingTimeout) {
+    if (this.batchingTimeout != null) {
       clearTimeout(this.batchingTimeout)
       this.batchingTimeout = null
     }
 
-    if (this.circuitResetTimeout) {
+    if (this.circuitResetTimeout != null) {
       clearTimeout(this.circuitResetTimeout)
       this.circuitResetTimeout = null
     }
 
-    if (this.healthCheckInterval) {
+    if (this.healthCheckInterval != null) {
       clearInterval(this.healthCheckInterval)
       this.healthCheckInterval = null
     }
@@ -493,7 +493,7 @@ export class FastGPTOptimizer {
       this.handleRequestFailure(requestItem, error, requestItem.responseTime)
     } finally {
       // 清除超时
-      if (requestItem.timeoutId) {
+      if (requestItem.timeoutId != null) {
         clearTimeout(requestItem.timeoutId)
       }
 
@@ -574,7 +574,7 @@ export class FastGPTOptimizer {
     this.averageResponseTime = this.successCount > 0 ? this.totalResponseTime / this.successCount : 0
 
     // 重置失败计数
-    if (this.config.circuitBreakerEnabled) {
+    if (this.config.circuitBreakerEnabled === true) {
       this.failureCount = Math.max(0, this.failureCount - 1) // 逐渐减少失败计数
     }
 
@@ -687,8 +687,8 @@ export class FastGPTOptimizer {
 
     // 拒绝所有待处理的请求
     for (const requestItem of this.requestQueue) {
-      if (requestItem.status === RequestStatus.PENDING && !requestItem.bypassCircuitBreaker) {
-        if (requestItem.timeoutId) {
+      if (requestItem.status === RequestStatus.PENDING && requestItem.bypassCircuitBreaker !== true) {
+        if (requestItem.timeoutId != null) {
           clearTimeout(requestItem.timeoutId)
         }
         requestItem.status = RequestStatus.FAILED
@@ -916,7 +916,7 @@ export class FastGPTOptimizer {
         const itemResult = result[i]
 
         // 清除超时
-        if (requestItem.timeoutId) {
+        if (requestItem.timeoutId != null) {
           clearTimeout(requestItem.timeoutId)
         }
 
@@ -948,18 +948,18 @@ export class FastGPTOptimizer {
       const items = (result as Record<string, unknown>).items as Array<unknown>
       for (const requestItem of batch) {
         // 查找对应的结果
-        const itemResult = items.find((item) => typeof item === 'object' && item !== null && 'id' in (item as Record<string, unknown>) && (item as Record<string, unknown>).id === requestItem.id)
+        const item = items.find((it) => typeof it === 'object' && it !== null && 'id' in (it as Record<string, unknown>) && (it as Record<string, unknown>).id === requestItem.id)
 
         // 清除超时
-        if (requestItem.timeoutId) {
+        if (requestItem.timeoutId != null) {
           clearTimeout(requestItem.timeoutId)
         }
 
-        if (itemResult != null) {
+        if (item != null) {
           // 缓存结果
           if (this.config.cacheEnabled === true && typeof requestItem.cacheKey === 'string') {
             try {
-              this.cacheManager.set(requestItem.cacheKey, itemResult, {
+              this.cacheManager.set(requestItem.cacheKey, item, {
                 ttl: requestItem.cacheTTL,
                 tags: requestItem.cacheTags,
               })
@@ -973,10 +973,10 @@ export class FastGPTOptimizer {
           requestItem.responseTime = responseTime
 
           // 解析Promise
-          requestItem.resolve(itemResult)
+          requestItem.resolve(item)
 
           // 更新统计信息
-          this.handleRequestSuccess(requestItem.id, itemResult, responseTime)
+          this.handleRequestSuccess(requestItem.id, item, responseTime)
         } else {
           // 如果找不到对应的结果，拒绝Promise
           requestItem.status = RequestStatus.FAILED
@@ -993,7 +993,7 @@ export class FastGPTOptimizer {
     else {
       for (const requestItem of batch) {
         // 清除超时
-        if (requestItem.timeoutId) {
+        if (requestItem.timeoutId != null) {
           clearTimeout(requestItem.timeoutId)
         }
 
@@ -1226,7 +1226,7 @@ export class FastGPTOptimizer {
     })
 
     // 如果是批处理请求，更新统计信息
-    if (batchSize && batchSize > 1) {
+    if (typeof batchSize === 'number' && batchSize > 1) {
       // 更新请求计数
       this.requestCount += batchSize
 

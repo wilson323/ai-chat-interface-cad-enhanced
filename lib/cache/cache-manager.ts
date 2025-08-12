@@ -11,8 +11,8 @@
  * - 压缩大型缓存项
  * - 详细的统计和监控
  */
-import { Redis } from '@upstash/redis'
 import { LRUCache } from "lru-cache"
+import { Redis } from '@upstash/redis'
 import { DEFAULT_CACHE_NAMESPACE } from "./key"
 
 // 缓存项类型
