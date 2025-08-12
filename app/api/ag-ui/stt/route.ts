@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { KnownProviders } from '@/lib/api/ai-provider-adapter'
+
 import { createOptimizedStreamWriter } from '@/lib/ag-ui/stream-optimizer'
 import { EventType } from '@/lib/ag-ui/types'
+import { KnownProviders } from '@/lib/api/ai-provider-adapter'
 
 const bodySchema = z.object({
   model: z.string().optional(),
@@ -40,7 +41,7 @@ export async function POST(req: NextRequest) {
       }
     })()
 
-    const res = await adapter.transcribe({ model: model || 'qwen-asr-v1', fileBase64, fileUrl, mimeType })
+    const res = await adapter.transcribe({ model: model || 'qwen-asr-v1', fileBase64, fileUrl, mimeType }, { signal: req.signal })
     if (!res.ok) {
       const err = await res.text().catch(() => res.statusText)
       await optimizer.writeEventDirect({ type: EventType.RUN_ERROR, message: err, code: res.status, timestamp: Date.now() } as any)

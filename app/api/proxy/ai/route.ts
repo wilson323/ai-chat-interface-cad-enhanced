@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
+
 import { KnownProviders, OpenAICompatibleAdapter } from "@/lib/api/ai-provider-adapter"
 
 const bodySchema = z.object({
@@ -47,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     const { provider, baseUrl, apiKey, ...rest } = parsed.data
     const adapter = getAdapter(provider, apiKey, baseUrl)
-    const res = await adapter.chat(rest)
+    const res = await adapter.chat(rest, { signal: req.signal })
     const headers: Record<string, string> = {}
     res.headers.forEach((v, k) => (headers[k] = v))
     return new NextResponse(res.body, { status: res.status, headers })
