@@ -82,6 +82,33 @@ The CAD analyzer can be configured in `config/cad-analyzer.config.ts`, where you
 - Parser configurations
 - Analysis options
 
+## Environment & Adapters
+
+Set the following environment variables as needed (Windows PowerShell example):
+
+```powershell
+# OpenAI-compatible providers (single adapter base)
+$env:EXTERNAL_AI_API_KEY = "<your-key>"
+$env:EXTERNAL_AI_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1"  # 可选
+$env:EXTERNAL_AI_FORCE_DASHSCOPE = "false"                                       # 可选
+
+# Upstash Redis (rate-limit & cache)
+$env:UPSTASH_REDIS_REST_URL = "https://<id>.upstash.io"
+$env:UPSTASH_REDIS_REST_TOKEN = "<token>"
+
+# CORS (default: *)
+$env:CORS_ALLOW_ORIGIN = "*"
+
+# Cache key prefix (default: acx:cache:)
+$env:CACHE_KEY_PREFIX = "acx:cache:"
+```
+
+- All model calls go through a single OpenAI-compatible adapter base: `lib/api/openai-provider.ts`.
+- Proxy routes unified: `app/api/proxy/ai/*` and `app/api/ag-ui/chat/route.ts`.
+- Embeddings/Audio (TTS/STT) are unified to OpenAI endpoints.
+- Global middleware consolidates CSP/CORS; per-route rate limiting is enabled when Upstash is configured.
+- Cache unified to `CacheManager` with optional Upstash, fallback to memory/local.
+
 ## Maintenance
 
 Run the cleanup script periodically to remove old temporary files:

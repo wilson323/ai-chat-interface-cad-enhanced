@@ -258,7 +258,7 @@ export class FastGPTOptimizer {
           timestamp: Date.now(),
           retries: 0,
           payload,
-          resolve,
+          resolve: resolve as unknown as (value: unknown) => void,
           reject,
           cacheKey: effectiveCacheKey,
           cacheTTL,
@@ -744,7 +744,7 @@ export class FastGPTOptimizer {
         timestamp: Date.now(),
         retries: 0,
         payload,
-        resolve,
+                 resolve: resolve as unknown as (value: unknown) => void,
         reject,
         cacheKey,
         cacheTTL,
@@ -888,11 +888,11 @@ export class FastGPTOptimizer {
 
     // 创建一个新的负载对象
     const mergedPayload: Record<string, unknown> = {
-      ...firstItem.payload,
+      ...(typeof firstItem.payload === 'object' && firstItem.payload != null ? (firstItem.payload as object) : {}),
       batch: true,
       items: batch.map((item) => ({
         id: item.id,
-        ...item.payload,
+        ...(typeof item.payload === 'object' && item.payload != null ? (item.payload as object) : {}),
       })),
     }
 

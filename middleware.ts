@@ -1,54 +1,63 @@
 import { NextRequest, NextResponse } from "next/server"
 import { rateLimiterMiddleware } from "@/middleware/rate-limiter"
 
-// 标准中间件函数
+// 标准中间件函数（避免使用 async/await）
 export function middleware(request: NextRequest) {
-  // 基础请求处理逻辑
   const response = NextResponse.next()
-  try { require('@/lib/middleware/stats').recordRequest?.() } catch {}
+  try {
+    // 记录请求
+    // 动态引入以兼容 Edge 运行时打包
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    require('@/lib/middleware/stats').recordRequest?.()
+  } catch {}
 
-  
   // 生产环境启用统一安全策略
   if (process.env.NODE_ENV === 'production') {
-    const { csp, permissionsPolicy } = require('@/config/security')?.getSecurityConfig?.(true) || { csp: '', permissionsPolicy: '' }
-    if (csp) response.headers.set('Content-Security-Policy', csp)
-    if (permissionsPolicy) response.headers.set('Permissions-Policy', permissionsPolicy)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { csp, permissionsPolicy } = require('@/config/security')?.getSecurityConfig?.(true) || { csp: '', permissionsPolicy: '' }
+      if (csp) response.headers.set('Content-Security-Policy', csp)
+      if (permissionsPolicy) response.headers.set('Permissions-Policy', permissionsPolicy)
+    } catch {}
   }
+
   // 安全头
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  
-  // 处理路由隔离 - 管理员路由权限控制
+
   const { pathname } = request.nextUrl
-  
-  // 如果是管理员路由，检查认证状态
+
+  // 管理员路由鉴权（同步逻辑）
   if (pathname.startsWith('/admin') && !pathname.startsWith('/admin/login')) {
-    // 获取管理员令牌
     const adminToken = request.cookies.get('adminToken')?.value
-    
-    // 如果未认证，重定向到登录页面
     if (!adminToken) {
       const url = new URL('/admin/login', request.url)
-      // 保存原始 URL 作为重定向后的目标
       url.searchParams.set('redirect', pathname)
       return NextResponse.redirect(url)
     }
   }
-  
-  // 统一限流 + CORS 策略
+
+  // 统一限流 + CORS 策略（返回 Promise，避免 await）
   if (pathname.startsWith('/api/')) {
-    // 限流（若未配置Upstash则自动跳过）
-    try {
-      const limited = await rateLimiterMiddleware(request)
-      if (limited) return limited
-    } catch {}
-    // CORS
     const allowOrigin = process.env.CORS_ALLOW_ORIGIN || '*'
     response.headers.set('Access-Control-Allow-Origin', allowOrigin)
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+
     if (request.method === 'OPTIONS') {
       return new NextResponse(null, { status: 200, headers: response.headers })
+    }
+
+    try {
+      const maybePromise = (rateLimiterMiddleware as (req: NextRequest) => Promise<NextResponse | undefined>)(request)
+      return Promise.resolve(maybePromise)
+        .then((limited) => {
+          if (limited) return limited
+          return response
+        })
+        .catch(() => response)
+    } catch {
+      return response
     }
   }
 
@@ -58,11 +67,8 @@ export function middleware(request: NextRequest) {
 // 统一配置规则
 export const config = {
   matcher: [
-    // 排除静态资源和favicon
     "/((?!_next/static|favicon.ico|public/).*)",
-    // 包含所有API路由
     "/api/:path*",
-    // 包含管理员路由
     "/admin/:path*"
   ]
 }

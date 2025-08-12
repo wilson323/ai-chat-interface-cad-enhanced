@@ -35,7 +35,7 @@ export type ChatMessage = {
   content: string | Array<{ type: 'text'; text: string }>
 }
 
-export function normalizeMessages(messages: Array<ChatMessage>, useContentArray: boolean): Array<any> {
+export function normalizeMessages(messages: Array<ChatMessage>, useContentArray: boolean): Array<ChatMessage> {
   return messages.map((m) => ({
     role: m.role,
     content: useContentArray
