@@ -58,7 +58,7 @@ export class DWGParser {
         : new File([buffer], fileName, { type: 'application/acad' });
       
       formData.append('file', file);
-      formData.append('precision', options.precision);
+      formData.append('precision', (options as any)?.precision ?? 'standard');
       
       const response = await fetch('/api/cad/dwg-parse', {
         method: 'POST',
@@ -66,7 +66,13 @@ export class DWGParser {
       });
       
       if (response.ok !== true) {
-        throw new Error(`DWG解析服务返回错误: ${response.status}`);
+        // 优先解析服务端标准错误体
+        let message = `DWG解析服务返回错误: ${response.status}`;
+        try {
+          const data = await response.json() as any;
+          if (data?.error) message = String(data.error);
+        } catch {}
+        throw new Error(message);
       }
       
       const resultJson = (await response.json()) as unknown;
@@ -109,7 +115,8 @@ export class DWGParser {
       };
     } catch (error) {
       console.error('DWG解析失败:', error);
-      return this.createFallbackResult(fileData, buffer, id, fileName);
+      // 统一：抛出标准错误，交由上层展现，不再返回模拟回退结果
+      throw (error instanceof Error ? error : new Error(String(error)));
     }
   }
   
@@ -181,53 +188,6 @@ export class DWGParser {
     }
     
     return risks;
-  }
-  
-  private createFallbackResult(
-    fileData: File | ArrayBuffer, 
-    buffer: ArrayBuffer, 
-    id: string, 
-    fileName: string
-  ): CADAnalysisResult {
-    const entities = this.getDefaultEntities();
-    const dimensions = this.getDefaultDimensions();
-    
-    return {
-      fileId: id,
-      id,
-      fileName,
-      fileType: 'dwg',
-      fileSize: buffer.byteLength,
-      url: fileData instanceof File ? URL.createObjectURL(fileData) : '',
-      entities,
-      layers: ['默认'],
-      dimensions,
-      metadata: {
-        author: '未知',
-        createdAt: new Date().toISOString(),
-        software: 'AutoCAD',
-        version: '未知',
-      },
-      devices: [],
-      wiring: {
-        totalLength: 0,
-        details: []
-      },
-      risks: [{
-        description: '无法解析DWG文件，需要专业CAD软件支持',
-        level: 'high',
-        solution: '使用AutoCAD或其他支持DWG格式的软件打开'
-      }],
-      originalFile: fileData instanceof File ? fileData : undefined,
-      aiInsights: {
-        summary: 'DWG是AutoCAD的原生文件格式，包含完整的设计数据，但需要专业软件完全解析。',
-        recommendations: [
-          '使用AutoCAD或DWG查看器打开此文件',
-          '考虑转换为DXF格式以获得更好的兼容性',
-          '查找文件关联的其他资源（如参照文件或外部引用）'
-        ],
-      },
-    };
   }
   
   private getDefaultEntities(): CADAnalysisResult['entities'] {
