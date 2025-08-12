@@ -10,8 +10,9 @@
  * - 自动重试和错误处理
  * - 详细的统计和监控
  */
-import { getFastGPTOptimizer, RequestPriority } from "./fastgpt-optimizer"
 import { getCacheManager } from "../cache/cache-manager"
+import { getFastGPTOptimizer, RequestPriority } from "./fastgpt-optimizer"
+import { buildFullCacheKey } from "../cache/key"
 
 // 使用泛型替代any
 interface APIResponse<T = unknown> {
@@ -311,7 +312,7 @@ export class EnhancedFastGPTClient {
       // 生成缓存键
       const cacheKey =
         this.config.cacheEnabled && !bypassCache
-          ? `init-chat:${params.agent_id || ""}:${params.model || ""}`
+          ? buildFullCacheKey('fastgpt', `init-chat:${params.agent_id || ""}:${params.model || ""}`)
           : undefined
 
       // 如果离线且启用了离线支持，添加到离线队列
@@ -426,7 +427,7 @@ export class EnhancedFastGPTClient {
       // 生成缓存键
       const cacheKey =
         this.config.cacheEnabled && !bypassCache
-          ? `histories:${params.appId}:${params.offset || 0}:${params.pageSize || 20}`
+          ? buildFullCacheKey('fastgpt', `histories:${params.appId}:${params.offset || 0}:${params.pageSize || 20}`)
           : undefined
 
       // 如果离线且启用了离线支持，添加到离线队列
@@ -533,7 +534,7 @@ export class EnhancedFastGPTClient {
       // 生成缓存键
       const cacheKey =
         this.config.cacheEnabled && !bypassCache
-          ? `chat-records:${params.appId}:${params.chatId}:${params.offset || 0}:${params.pageSize || 20}`
+          ? buildFullCacheKey('fastgpt', `chat-records:${params.appId}:${params.chatId}:${params.offset || 0}:${params.pageSize || 20}`)
           : undefined
 
       // 如果离线且启用了离线支持，添加到离线队列

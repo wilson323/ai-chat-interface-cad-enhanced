@@ -10,8 +10,10 @@
  * - 请求超时和取消
  * - 详细的统计和监控
  */
-import { getCacheManager } from "../cache/cache-manager"
 import { v4 as uuidv4 } from "uuid"
+
+import { getCacheManager } from "../cache/cache-manager"
+import { buildFullCacheKey } from "../cache/key"
 
 // 请求优先级
 export enum RequestPriority {
@@ -1067,12 +1069,13 @@ export class FastGPTOptimizer {
       const messagesKey = messages
         .map((msg: any) => `${msg.role}:${typeof msg.content === "string" ? msg.content : JSON.stringify(msg.content)}`)
         .join("|")
-
-      return `${endpoint}:${payload.model || "default"}:${messagesKey}`
+      const raw = `${endpoint}:${payload.model || "default"}:${messagesKey}`
+      return buildFullCacheKey('fastgpt', raw)
     }
 
     // 对于其他请求，使用端点和负载的哈希作为缓存键
-    return `${endpoint}:${this.hashPayload(payload)}`
+    const raw = `${endpoint}:${this.hashPayload(payload)}`
+    return buildFullCacheKey('fastgpt', raw)
   }
 
   /**
