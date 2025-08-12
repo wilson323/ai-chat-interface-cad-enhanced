@@ -302,21 +302,21 @@ export default function SharedCADAnalysisPage() {
                   <Card className="p-4">
                     <h3 className="font-medium mb-2">基本信息</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="text-muted-foreground">创建日期: </span>{analysisResult.metadata?.creationDate ? new Date(analysisResult.metadata.creationDate).toLocaleString() : ''}</p>
-                      <p><span className="text-muted-foreground">修改日期: </span>{analysisResult.metadata?.modificationDate ? new Date(analysisResult.metadata.modificationDate).toLocaleString() : ''}</p>
-                      <p><span className="text-muted-foreground">作者: </span>{analysisResult.metadata?.author || "未知"}</p>
-                      <p><span className="text-muted-foreground">软件: </span>{analysisResult.metadata?.software || "未知"}</p>
-                      <p><span className="text-muted-foreground">版本: </span>{analysisResult.metadata?.version || "未知"}</p>
+                      <p><span className="text-muted-foreground">创建日期: </span>{(() => { const m = analysisResult.metadata as Record<string, unknown> | undefined; const v = m?.creationDate; return (typeof v === 'string' || typeof v === 'number' || v instanceof Date) ? new Date(v as string | number | Date).toLocaleString() : '' })()}</p>
+                      <p><span className="text-muted-foreground">修改日期: </span>{(() => { const m = analysisResult.metadata as Record<string, unknown> | undefined; const v = m?.modificationDate; return (typeof v === 'string' || typeof v === 'number' || v instanceof Date) ? new Date(v as string | number | Date).toLocaleString() : '' })()}</p>
+                      <p><span className="text-muted-foreground">作者: </span>{(() => { const v = (analysisResult.metadata as Record<string, unknown> | undefined)?.author; return typeof v === 'string' ? v : '未知' })()}</p>
+                      <p><span className="text-muted-foreground">软件: </span>{(() => { const v = (analysisResult.metadata as Record<string, unknown> | undefined)?.software; return typeof v === 'string' ? v : '未知' })()}</p>
+                      <p><span className="text-muted-foreground">版本: </span>{(() => { const v = (analysisResult.metadata as Record<string, unknown> | undefined)?.version; return typeof v === 'string' ? v : '未知' })()}</p>
                     </div>
                   </Card>
                   
                   <Card className="p-4">
                     <h3 className="font-medium mb-2">高级属性</h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="text-muted-foreground">单位: </span>{analysisResult.metadata?.units || "未指定"}</p>
-                      <p><span className="text-muted-foreground">比例: </span>{analysisResult.metadata?.scale || "未指定"}</p>
-                      <p><span className="text-muted-foreground">坐标系: </span>{analysisResult.metadata?.coordinateSystem || "未指定"}</p>
-                      <p><span className="text-muted-foreground">投影: </span>{analysisResult.metadata?.projection || "未指定"}</p>
+                      <p><span className="text-muted-foreground">单位: </span>{(() => { const v = (analysisResult.metadata as Record<string, unknown> | undefined)?.units; return typeof v === 'string' ? v : '未指定' })()}</p>
+                      <p><span className="text-muted-foreground">比例: </span>{(() => { const v = (analysisResult.metadata as Record<string, unknown> | undefined)?.scale; return typeof v === 'string' ? v : '未指定' })()}</p>
+                      <p><span className="text-muted-foreground">坐标系: </span>{(() => { const v = (analysisResult.metadata as Record<string, unknown> | undefined)?.coordinateSystem; return typeof v === 'string' ? v : '未指定' })()}</p>
+                      <p><span className="text-muted-foreground">投影: </span>{(() => { const v = (analysisResult.metadata as Record<string, unknown> | undefined)?.projection; return typeof v === 'string' ? v : '未指定' })()}</p>
                     </div>
                   </Card>
                 </div>

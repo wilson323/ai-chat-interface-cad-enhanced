@@ -230,7 +230,7 @@ function generateHTMLReport(
       ${result.metadata?.creationDate ? `
       <div class="metadata-item">
         <div class="metadata-label">创建日期</div>
-        <div class="metadata-value">${new Date(result.metadata.creationDate).toLocaleString()}</div>
+        <div class="metadata-value">${(() => { const v = (result.metadata as Record<string, unknown> | undefined)?.creationDate; return (typeof v === 'string' || typeof v === 'number' || v instanceof Date) ? new Date(v as string | number | Date).toLocaleString() : '' })()}</div>
       </div>
       ` : ''}
     </div>

@@ -37,9 +37,9 @@ export interface CADComponent {
   material?: string;
   color?: string;
   parentId?: string; // 父组件ID，用于装配体结构
-  metadata?: Record<string, any>;
-  parameters?: Record<string, any>; // 组件参数
-  dimensions?: Record<string, any>; // 尺寸信息
+  metadata?: Record<string, unknown>;
+  parameters?: Record<string, unknown>; // 组件参数
+  dimensions?: Record<string, unknown>; // 尺寸信息
 }
 
 /**
@@ -107,7 +107,7 @@ export interface CADAnalysisResult {
   layers: Array<LayerInfo | string>;
 
   // 元数据（放宽为任意记录）
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 
   // 组件/材料/测量等（供高级解析与报告使用）
   components?: CADComponent[];
@@ -116,9 +116,9 @@ export interface CADAnalysisResult {
 
   // 高级计算结果（可选）
   massProperties?: Record<string, number>;
-  features?: any;
-  topology?: any;
-  assemblyStructure?: any;
+  features?: unknown;
+  topology?: unknown;
+  assemblyStructure?: unknown;
 
   // AI分析摘要（轻量）
   aiSummary?: string;
@@ -126,9 +126,9 @@ export interface CADAnalysisResult {
   aiInsights?: { summary: string; recommendations: string[] };
 
   // 其它分析数据
-  devices?: any[];
-  wiring?: { totalLength: number; details: any[] };
-  risks?: any[];
+  devices?: Array<unknown>;
+  wiring?: { totalLength: number; details: Array<unknown> };
+  risks?: Array<unknown>;
 
   // 分析过程
   analysisTime?: string; // ISO时间戳
@@ -155,7 +155,7 @@ export interface CADAnalysisRequest {
     detailLevel?: 'low' | 'standard' | 'high';
     generateThumbnail?: boolean;
     generateReport?: boolean;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }
 
@@ -200,7 +200,7 @@ export interface CADAnalysisReport {
   reportType: 'summary' | 'detailed' | 'measurement' | 'professional';
   format: 'html' | 'pdf' | 'json';
   url?: string;
-  content?: any;
+  content?: unknown;
 }
 
 /**
@@ -344,7 +344,7 @@ export interface EntityDetail {
     y: number;
     z?: number;
   };
-  properties?: Record<string, any>;
+  properties?: Record<string, unknown>;
   color?: string;
   layerId?: string;
 }
@@ -567,7 +567,7 @@ export interface BIMData {
   ifcType?: string;
   ifcGuid?: string;
   propertySetNames?: string[];
-  propertySets?: Record<string, Record<string, any>>;
+  propertySets?: Record<string, Record<string, unknown>>;
   childRelations?: {
     type: string;
     relatedElements: string[];

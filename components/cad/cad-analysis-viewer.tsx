@@ -306,28 +306,28 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                   </CardHeader>
                   <CardContent>
                     <dl className="space-y-2">
-                      {analysisResult.metadata?.author && (
+                      {typeof (analysisResult.metadata as Record<string, unknown> | undefined)?.author === 'string' && (
                         <div className="flex">
                           <dt className="text-sm text-muted-foreground flex items-center w-20">
                             <User className="mr-2 h-4 w-4" />作者
                           </dt>
-                          <dd className="flex-1 truncate">{analysisResult.metadata.author}</dd>
+                          <dd className="flex-1 truncate">{String((analysisResult.metadata as Record<string, unknown>).author)}</dd>
                         </div>
                       )}
-                      {analysisResult.metadata?.createdAt && (
+                      {typeof (analysisResult.metadata as Record<string, unknown> | undefined)?.createdAt !== 'undefined' && (
                         <div className="flex">
                           <dt className="text-sm text-muted-foreground flex items-center w-20">
                             <Calendar className="mr-2 h-4 w-4" />创建
                           </dt>
-                          <dd>{analysisResult.metadata.createdAt}</dd>
+                          <dd>{String((analysisResult.metadata as Record<string, unknown>).createdAt)}</dd>
                         </div>
                       )}
-                      {analysisResult.metadata?.modifiedAt && (
+                      {typeof (analysisResult.metadata as Record<string, unknown> | undefined)?.modifiedAt !== 'undefined' && (
                         <div className="flex">
                           <dt className="text-sm text-muted-foreground flex items-center w-20">
                             <Clock className="mr-2 h-4 w-4" />修改
                           </dt>
-                          <dd>{analysisResult.metadata.modifiedAt}</dd>
+                          <dd>{String((analysisResult.metadata as Record<string, unknown>).modifiedAt)}</dd>
                         </div>
                       )}
                     </dl>
@@ -417,7 +417,7 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                               {Object.entries(detail.properties || {}).map(([key, value]) => (
                                 <div key={key} className="flex justify-between">
                                   <span>{key}:</span>
-                                  <span>{value}</span>
+                                  <span>{typeof value === 'string' || typeof value === 'number' ? String(value) : ''}</span>
                                 </div>
                               ))}
                             </div>
@@ -498,14 +498,14 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2">
-                    {analysisResult.metadata && Object.entries(analysisResult.metadata).map(([key, value]) => (
+                    {analysisResult.metadata && Object.entries(analysisResult.metadata as Record<string, unknown>).map(([key, value]) => (
                       <div key={key} className="flex justify-between border-b pb-2 last:border-0">
                         <span className="text-sm font-medium">{key}</span>
-                        <span className="text-sm">{value}</span>
+                        <span className="text-sm">{typeof value === 'string' || typeof value === 'number' ? String(value) : ''}</span>
                       </div>
                     ))}
                     
-                    {(!analysisResult.metadata || Object.keys(analysisResult.metadata).length === 0) && (
+                    {(!analysisResult.metadata || Object.keys(analysisResult.metadata as Record<string, unknown>).length === 0) && (
                       <p className="text-sm text-muted-foreground">没有可用的元数据</p>
                     )}
                   </div>

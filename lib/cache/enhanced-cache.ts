@@ -55,18 +55,18 @@ export class EnhancedCache<T = unknown> {
 
   constructor(options: CacheOptions = {}) {
     this.options = {
-      maxSize: options.maxSize || 50 * 1024 * 1024, // 50MB
-      ttl: options.ttl || 60 * 60 * 1000, // 1小时
+      maxSize: options.maxSize ?? 50 * 1024 * 1024, // 50MB
+      ttl: options.ttl ?? 60 * 60 * 1000, // 1小时
       enableCompression: options.enableCompression ?? true,
       enableStatistics: options.enableStatistics ?? true,
-      redisUrl: options.redisUrl || process.env.REDIS_URL || ''
+      redisUrl: options.redisUrl ?? process.env.REDIS_URL ?? ''
     }
 
     this.lruCache = new LRUCache<string, CacheEntry<T>>({
       max: 1000,
       maxSize: this.options.maxSize,
       sizeCalculation: (entry: CacheEntry<T>) => {
-        return entry.size || JSON.stringify(entry.value).length
+        return entry.size ?? JSON.stringify(entry.value).length
       },
       dispose: (value: CacheEntry<T>, key: string) => {
         this.updateTagMap(key, value.tags, 'delete')
@@ -292,7 +292,7 @@ export class EnhancedCache<T = unknown> {
     const now = Date.now()
     
     for (const [key, entry] of this.lruCache.entries()) {
-      if (entry.ttl && now - entry.timestamp > entry.ttl) {
+      if (typeof entry.ttl === 'number' && now - entry.timestamp > entry.ttl) {
         this.lruCache.delete(key)
         cleanedCount++
       }

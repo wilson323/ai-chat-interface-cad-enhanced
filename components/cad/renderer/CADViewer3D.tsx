@@ -33,20 +33,23 @@ export function CADViewer3D({ result }: CADViewer3DProps) {
   const getModelType = () => {
     // 从fileId对应的原始文件中提取类型
     // 这是一个模拟，实际项目中应该从result中获取真实类型
-    const fileType = result.metadata?.format || 'stl';
-    return fileType;
+    const m = result.metadata as Record<string, unknown> | undefined
+    const fileType = m && typeof m.format === 'string' ? m.format : 'stl'
+    return fileType
   };
   
   // 获取模型尺寸
   const getModelDimensions = () => {
-    const boundingBox = result.metadata?.boundingBox;
-    if (boundingBox) {
+    const m = result.metadata as Record<string, unknown> | undefined
+    const bbox = m?.boundingBox as { max?: Array<number>; min?: Array<number> } | undefined
+    if (bbox && Array.isArray(bbox.max) && Array.isArray(bbox.min)) {
+      const unit = typeof m?.units === 'string' ? (m?.units as string) : 'mm'
       return {
-        width: Math.abs(boundingBox.max[0] - boundingBox.min[0]),
-        height: Math.abs(boundingBox.max[1] - boundingBox.min[1]),
-        depth: Math.abs(boundingBox.max[2] - boundingBox.min[2]),
-        unit: result.metadata?.units || 'mm'
-      };
+        width: Math.abs((bbox.max[0] ?? 0) - (bbox.min[0] ?? 0)),
+        height: Math.abs((bbox.max[1] ?? 0) - (bbox.min[1] ?? 0)),
+        depth: Math.abs((bbox.max[2] ?? 0) - (bbox.min[2] ?? 0)),
+        unit,
+      }
     }
     
     // 默认尺寸
