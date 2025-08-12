@@ -28,6 +28,13 @@ export interface TranscribeRequest {
   mimeType?: string
 }
 
+export interface EmbeddingsRequest {
+  model: string
+  input: string | Array<string>
+  encoding_format?: 'float' | 'base64'
+  user?: string
+}
+
 export interface ProviderConfig {
   baseUrl: string
   apiKey: string
@@ -179,6 +186,33 @@ export class OpenAICompatibleAdapter {
       method: 'POST',
       headers: mergedHeaders,
       body: JSON.stringify(payload),
+      signal: init?.signal,
+    })
+  }
+
+  /**
+   * 词向量（OpenAI 兼容 /embeddings）
+   */
+  async embeddings(req: EmbeddingsRequest, init?: RequestInit): Promise<Response> {
+    const schema = z.object({
+      model: z.string().min(1),
+      input: z.union([z.string(), z.array(z.string()).min(1)]),
+      encoding_format: z.enum(['float', 'base64']).optional(),
+      user: z.string().optional(),
+    })
+    const parsed = schema.safeParse(req)
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: 'invalid_request', issues: parsed.error.flatten() }),
+        { status: 400, headers: { 'Content-Type': 'application/json' } },
+      )
+    }
+
+    const mergedHeaders = { ...(this.headers()), ...(init?.headers as Record<string, string> | undefined) }
+    return fetch(this.url('/embeddings'), {
+      method: 'POST',
+      headers: mergedHeaders,
+      body: JSON.stringify(parsed.data),
       signal: init?.signal,
     })
   }

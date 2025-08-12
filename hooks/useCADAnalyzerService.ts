@@ -1,19 +1,19 @@
 "use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import { 
-  CADAnalysisResult, 
-  CADAnalysisProgress, 
-  CADAnalysisType, 
-  CADAnalysisSession 
-} from '@/lib/types/cad';
+import { useCallback, useEffect,useState } from 'react';
+
+import { useToast } from '@/components/ui/use-toast';
+import { AIMultimodalAnalysisResult } from '@/lib/services/cad-analyzer/ai-analyzer';
 import { 
   analyzeCADFile, 
   getAnalysisSession, 
   SUPPORTED_CAD_FILE_TYPES
 } from '@/lib/services/cad-analyzer/controller';
-import { useToast } from '@/components/ui/use-toast';
-import { AIMultimodalAnalysisResult } from '@/lib/services/cad-analyzer/ai-analyzer';
+import { 
+  CADAnalysisProgress, 
+  CADAnalysisResult, 
+  CADAnalysisSession, 
+  CADAnalysisType} from '@/lib/types/cad';
 
 interface UseCADAnalyzerOptions {
   onComplete?: (result: CADAnalysisResult) => void;
@@ -139,13 +139,22 @@ export function useCADAnalyzerService(options: UseCADAnalyzerOptions = {}) {
       return session;
     } catch (err) {
       setIsLoading(false);
-      const error = err instanceof Error ? err : new Error(String(err));
+      const raw = err instanceof Error ? err : new Error(String(err));
+
+      // 统一DWG转换服务未配置的提示
+      const lower = raw.message.toLowerCase();
+      const isDwgConverterMissing = lower.includes('dwg转换服务未配置') || lower.includes('dwg converter url') || lower.includes('dwg_converter_url') || lower.includes('dwg转换服务不可用');
+      const friendly = isDwgConverterMissing
+        ? 'DWG 转换服务未配置或不可用。请在环境变量中设置 DWG_CONVERTER_URL 指向可用的 DWG→DXF 转换服务后重试。'
+        : raw.message;
+
+      const error = new Error(friendly);
       setError(error);
       options.onError?.(error);
       
       toast({
         title: "分析失败",
-        description: error.message,
+        description: friendly,
         variant: "destructive"
       });
       
@@ -178,13 +187,22 @@ export function useCADAnalyzerService(options: UseCADAnalyzerOptions = {}) {
       return await analyzeFile(file, analysisType, analysisOptions);
     } catch (err) {
       setIsLoading(false);
-      const error = err instanceof Error ? err : new Error(String(err));
+      const raw = err instanceof Error ? err : new Error(String(err));
+
+      // 统一DWG转换服务未配置的提示（URL场景）
+      const lower = raw.message.toLowerCase();
+      const isDwgConverterMissing = lower.includes('dwg转换服务未配置') || lower.includes('dwg converter url') || lower.includes('dwg_converter_url') || lower.includes('dwg转换服务不可用');
+      const friendly = isDwgConverterMissing
+        ? 'DWG 转换服务未配置或不可用。请在环境变量中设置 DWG_CONVERTER_URL 指向可用的 DWG→DXF 转换服务后重试。'
+        : raw.message;
+
+      const error = new Error(friendly);
       setError(error);
       options.onError?.(error);
       
       toast({
         title: "分析失败",
-        description: error.message,
+        description: friendly,
         variant: "destructive"
       });
       
