@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
   try {
     // 复用中间件限流逻辑（最小包装）
     const limited = await rateLimiterMiddleware(req)
-    if (limited && (limited as any).status === 429) return limited
+    if (limited != null && limited.status === 429) return limited
 
     const body = await req.json()
     const schema = z.object({
@@ -153,8 +153,9 @@ export async function POST(req: NextRequest) {
 
     // 解析上游 SSE
     const decoder = new TextDecoder()
-    reader = (upstream.body as any).getReader()
-    if (!reader) {
+    const bodyStream = upstream.body as ReadableStream<Uint8Array> | null
+    reader = bodyStream?.getReader() ?? null
+    if (reader == null) {
       throw new Error('ReadableStream reader unavailable')
     }
     let buffer = ''
@@ -178,24 +179,24 @@ export async function POST(req: NextRequest) {
               const dataStr = trimmed.slice(6)
               if (dataStr === '[DONE]') continue
               try {
-                if (!firstChunkTime) {
+                if (firstChunkTime === null) {
                   firstChunkTime = Date.now()
                   console.log(`First chunk latency: ${firstChunkTime - requestStartTime}ms`)
                 }
                 const data = JSON.parse(dataStr)
 
-                if (data.choices && data.choices[0]?.delta) {
+                if (Array.isArray(data.choices) && data.choices[0]?.delta) {
                   const delta = data.choices[0].delta
-                  if (delta.content) {
+                  if (typeof delta.content === 'string' && delta.content.length > 0) {
                     await optimizer.addEvent({ type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: delta.content, timestamp: Date.now() })
                   }
-                  if (delta.tool_calls && delta.tool_calls.length > 0) {
+                  if (Array.isArray(delta.tool_calls) && delta.tool_calls.length > 0) {
                     const toolCall = delta.tool_calls[0]
                     const toolCallId = `tool-${toolCall.index}-${runId}`
-                    if (toolCall.function?.name) {
+                    if (toolCall.function && typeof toolCall.function.name === 'string' && toolCall.function.name.length > 0) {
                       await optimizer.addEvent({ type: EventType.TOOL_CALL_START, toolCallId, toolCallName: toolCall.function.name, parentMessageId: messageId, timestamp: Date.now() })
                     }
-                    if (toolCall.function?.arguments) {
+                    if (toolCall.function && typeof toolCall.function.arguments === 'string') {
                       await optimizer.addEvent({ type: EventType.TOOL_CALL_ARGS, toolCallId, delta: toolCall.function.arguments, timestamp: Date.now() })
                     }
                     await optimizer.addEvent({ type: EventType.TOOL_CALL_END, toolCallId, timestamp: Date.now() })
@@ -204,22 +205,23 @@ export async function POST(req: NextRequest) {
 
                 if (data.event) {
                   if (data.event === 'flowNodeStatus') {
-                    await optimizer.addEvent({ type: 'STEP_STARTED', stepName: data.data?.name || 'unknown', timestamp: Date.now() } as any)
+                    await optimizer.addEvent({ type: EventType.CUSTOM, name: 'flow_node_status', value: { stepName: (data.data && data.data.name) ? data.data.name : 'unknown' }, timestamp: Date.now() } as unknown as AgUIEvent)
                   } else if (data.event === 'interactive') {
                     await optimizer.addEvent({ type: EventType.CUSTOM, name: 'interactive', value: data.data, timestamp: Date.now() })
                   }
                 }
 
-                await optimizer.addEvent({ type: 'RAW', event: data, source: 'fastgpt', timestamp: Date.now() } as any)
+                await optimizer.addEvent({ type: EventType.CUSTOM, name: 'raw', value: { event: data, source: 'fastgpt' }, timestamp: Date.now() } as unknown as AgUIEvent)
               } catch (e) {
                 await optimizer.addEvent({ type: EventType.RUN_ERROR, message: (e as Error).message, code: 500, timestamp: Date.now() })
               }
             }
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         // 对于中断错误不视为异常
-        const message = (typeof err?.name === 'string' && err.name === 'AbortError') ? 'aborted' : (err as Error).message || 'stream error'
+        const isAbort = typeof err === 'object' && err !== null && 'name' in err && (err as { name?: unknown }).name === 'AbortError'
+        const message = isAbort ? 'aborted' : (err instanceof Error ? err.message : 'stream error')
         if (!aborted && message !== 'aborted') {
           await optimizer.writeEventDirect({ type: EventType.RUN_ERROR, message, code: 500, timestamp: Date.now() })
         }
