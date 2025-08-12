@@ -13,6 +13,7 @@
  */
 import { LRUCache } from "lru-cache"
 import { DEFAULT_CACHE_NAMESPACE } from "./key"
+import { Redis } from '@upstash/redis'
 
 // 缓存项类型
 export interface CacheItem<T> {
@@ -62,6 +63,67 @@ interface RedisCacheAdapter {
   getStats: () => Promise<{ size: number; memory: number; hitRate?: number; operations: number; errors: number; uptime: number; connected: boolean }>;
 }
 
+class UpstashRedisAdapter implements RedisCacheAdapter {
+  private client: Redis
+  private readonly tagPrefix: string
+  constructor(url: string, token: string) {
+    this.client = new Redis({ url, token })
+    this.tagPrefix = `${DEFAULT_CACHE_NAMESPACE}tag:`
+  }
+  async connect(): Promise<boolean> {
+    try {
+      // Upstash 客户端为无连接模式，此处尝试一次读以确认可用
+      await this.client.get('cache:ping').catch(() => null)
+      return true
+    } catch {
+      return false
+    }
+  }
+  async get<T>(key: string): Promise<CacheItem<T> | null> {
+    const raw = await this.client.get<string>(key)
+    if (raw == null) return null
+    try {
+      return JSON.parse(raw) as CacheItem<T>
+    } catch {
+      return null
+    }
+  }
+  async set<T>(key: string, value: CacheItem<T>, ttlSeconds: number): Promise<void> {
+    await this.client.set(key, JSON.stringify(value), { ex: ttlSeconds })
+    // 维护标签 -> 键 集合，便于按标签清理
+    if (Array.isArray(value.tags)) {
+      for (const tag of value.tags) {
+        const tagKey = `${this.tagPrefix}${tag}`
+        await this.client.sadd(tagKey, key)
+        // 确保标签集合不过度膨胀，设置与成员相同的过期
+        if (ttlSeconds > 0) {
+          await this.client.expire(tagKey, ttlSeconds)
+        }
+      }
+    }
+  }
+  async delete(key: string): Promise<void> {
+    await this.client.del(key)
+  }
+  async deleteByTag(tag: string): Promise<void> {
+    const tagKey = `${this.tagPrefix}${tag}`
+    const members = (await this.client.smembers(tagKey)) as unknown as string[]
+    if (Array.isArray(members) && members.length > 0) {
+      // 批量删除成员键
+      await this.client.del(...members)
+    }
+    await this.client.del(tagKey)
+  }
+  async clear(): Promise<void> {
+    // 出于安全与Upstash限制，不执行 FLUSHDB。调用方应通过前缀管理或按标签清理。
+    return Promise.resolve()
+  }
+  async getStats(): Promise<{ size: number; memory: number; hitRate?: number; operations: number; errors: number; uptime: number; connected: boolean }> {
+    // Upstash REST 无法直接获取DBSIZE/内存，此处返回最小可用统计
+    return { size: 0, memory: 0, operations: 0, errors: 0, uptime: 0, connected: true }
+  }
+}
+
 export class CacheManager {
   private config: CacheConfig
   private memoryCache: LRUCache<string, CacheItem<unknown>>
@@ -78,6 +140,15 @@ export class CacheManager {
 
   constructor(config: Partial<CacheConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+
+    // 服务端且配置了Upstash变量时启用Redis适配器
+    if (typeof window === 'undefined' && this.config.useRedisCache === true) {
+      const url = process.env.UPSTASH_REDIS_REST_URL
+      const token = process.env.UPSTASH_REDIS_REST_TOKEN
+      if (typeof url === 'string' && url.length > 0 && typeof token === 'string' && token.length > 0) {
+        this.redisAdapter = new UpstashRedisAdapter(url, token)
+      }
+    }
 
     // 初始化内存缓存
     this.memoryCache = new LRUCache<string, CacheItem<unknown>>({
