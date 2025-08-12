@@ -1,40 +1,39 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  DownloadCloud,
-  FileText,
-  FilePdf,
-  Share2,
-  Maximize2,
-  BarChart3,
-  Layers,
-  Info,
-  Eye,
-  Copy,
-  ChevronRight,
   AlertTriangle,
-  Clock,
+  BarChart3,
   Calendar,
-  User,
-  Tag,
-  Loader2,
-  View3d,
+  Check,
+  ChevronRight,
+  Clock,
+  Copy,
+  DownloadCloud,
+  Eye,
+  FileDown,
+  FileText,
   Image as ImageIcon,
-  Check
-} from "lucide-react"
+  Info,
+  Layers,
+  Loader2,
+  Maximize2,
+  Share2,
+  Tag,
+  User, Scan } from "lucide-react"
+import { useEffect,useState } from "react"
+
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Separator } from "@/components/ui/separator"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { CADAnalysisResult } from "@/lib/types/cad"
-import { formatFileSize } from "@/lib/utils"
-import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils-browser"
 import { LayerInfo } from "@/lib/types/cad"
+import { formatFileSize } from "@/lib/utils"
+import { is2DFileType,is3DFileType } from "@/lib/utils/cad-file-utils-browser"
 
 interface CADAnalysisViewerProps {
   analysisResult: CADAnalysisResult
@@ -188,8 +187,8 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                       >
                         {isLoading ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <FilePdf className="mr-2 h-4 w-4" />
+                                                  ) : (
+                          <FileDown className="mr-2 h-4 w-4" />
                         )}
                         PDF报告
                       </Button>
@@ -545,7 +544,7 @@ ${analysisResult.aiSummary ? `AI分析概要: ${analysisResult.aiSummary}` : ''}
                 <Button variant="default" size="sm" asChild>
                   <a href={`/cad-analyzer/${fileId}`} target="_blank" rel="noopener noreferrer">
                     {is3D ? (
-                      <View3d className="mr-2 h-4 w-4" />
+                      <Scan className="mr-2 h-4 w-4" />
                     ) : (
                       <Eye className="mr-2 h-4 w-4" />
                     )}

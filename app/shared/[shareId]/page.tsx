@@ -1,34 +1,34 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Badge } from "@/components/ui/badge"
-import { Skeleton } from "@/components/ui/skeleton"
-import { Separator } from "@/components/ui/separator"
-import { CADAnalysisViewer } from "@/components/cad/cad-analysis-viewer"
-import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
-import { CADAnalysisResult } from "@/lib/types/cad"
-import { formatFileSize } from "@/lib/utils"
-import { LayerInfo } from "@/lib/types/cad"
-import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils-browser"
 import { 
-  Loader2, 
   AlertTriangle, 
-  View3d, 
+  Check,
+  Copy,
+  ExternalLink,
+  Home,
   Image as ImageIcon, 
   Info, 
+  Loader2, 
   Tag,
-  Copy,
-  Check,
-  Home,
-  ExternalLink
-} from "lucide-react"
-import { useToast } from "@/components/ui/use-toast"
+  Scan } from "lucide-react"
+import Link from "next/link"
+import { useParams } from "next/navigation"
+import { useEffect,useState } from "react"
+
+import { CADAnalysisViewer } from "@/components/cad/cad-analysis-viewer"
+import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
+import { CADAnalysisResult } from "@/lib/types/cad"
+import { LayerInfo } from "@/lib/types/cad"
+import { formatFileSize } from "@/lib/utils"
+import { is2DFileType,is3DFileType } from "@/lib/utils/cad-file-utils-browser"
 
 export default function SharedCADAnalysisPage() {
   const params = useParams<{ shareId: string }>()
@@ -188,7 +188,7 @@ export default function SharedCADAnalysisPage() {
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid grid-cols-3 mb-4">
               <TabsTrigger value="viewer">
-                {is3D ? <View3d className="mr-2 h-4 w-4" /> : <ImageIcon className="mr-2 h-4 w-4" />}
+                {is3D ? <Scan className="mr-2 h-4 w-4" /> : <ImageIcon className="mr-2 h-4 w-4" />}
                 {is3D ? "3D查看器" : "2D查看器"}
               </TabsTrigger>
               <TabsTrigger value="analysis">

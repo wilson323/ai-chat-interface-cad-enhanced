@@ -1,11 +1,12 @@
+import fs from "fs/promises"
+import { createQueue } from 'lib/utils/processingQueue'
 import { NextRequest, NextResponse } from "next/server"
 import path from "path"
-import fs from "fs/promises"
 import { v4 as uuidv4 } from "uuid"
-import { createQueue } from 'lib/utils/processingQueue'
-import { isCADFile } from '@/lib/utils/fileValidation'
+
 import { cadMetrics } from '@/lib/services/cad-analyzer/metrics'
-import * as validation from '@/lib/services/cad-analyzer/validation'
+// import * as validation from '@/lib/services/cad-analyzer/validation'
+import { isCADFile } from '@/lib/utils/fileValidation'
 
 /**
  * CAD文件上传和分析API端点
@@ -133,11 +134,15 @@ export async function POST(request: NextRequest) {
           'count'
         )
 
-        // 添加验证
-        const validationResult = (validation as any).validateCADAnalysisResult?.(result)
-        if (!validationResult.valid) {
-          console.warn('CAD验证警告:', validationResult.issues)
-        }
+        // 可选验证（如需要）：在存在 validation 模块时才执行
+        // try {
+        //   const validation = await import('@/lib/services/cad-analyzer/validation')
+        //   const vr = (validation as any).validateCADAnalysisResult?.(result)
+        //   if (vr && vr.valid === false) {
+        //     console.warn('CAD验证警告:', vr.issues)
+        //   }
+        // } catch {}
+        
         
         return NextResponse.json({
           success: true,

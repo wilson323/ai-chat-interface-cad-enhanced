@@ -1,8 +1,27 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { 
+  AlertCircle,
+  AlertTriangle,
+  ArrowLeft, 
+  BarChart3,
+  Download, 
+  FileDown,
+  FileText, 
+  Image as ImageIcon,
+  Info,
+  Layers,
+  Loader2,
+  RefreshCw,
+  Share2, 
+  Tag } from "lucide-react"
 import { useParams, useRouter } from "next/navigation"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useEffect, useState } from "react"
+
+import { CADAnalysisViewer } from "@/components/cad/cad-analysis-viewer"
+import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
   Card, 
@@ -14,31 +33,11 @@ import {
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { 
-  ArrowLeft, 
-  Download, 
-  Share2, 
-  FileText, 
-  FilePdf,
-  RefreshCw,
-  AlertTriangle,
-  Loader2,
-  Info,
-  BarChart3,
-  Layers,
-  Tag,
-  View3d,
-  Image as ImageIcon,
-  AlertCircle
-} from "lucide-react"
-import { CADAnalysisViewer } from "@/components/cad/cad-analysis-viewer"
-import { ThreeViewer } from "@/components/cad/renderer/ThreeViewer"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useToast } from "@/components/ui/use-toast"
 import { CADAnalysisResult } from "@/lib/types/cad"
 import { formatFileSize } from "@/lib/utils"
-import { is3DFileType, is2DFileType } from "@/lib/utils/cad-file-utils-browser"
-import { Badge } from "@/components/ui/badge"
-import { useToast } from "@/components/ui/use-toast"
+import { is2DFileType,is3DFileType } from "@/lib/utils/cad-file-utils-browser"
 
 export default function CADAnalysisDetailPage() {
   const params = useParams<{ fileId: string }>()
@@ -404,9 +403,9 @@ export default function CADAnalysisDetailPage() {
                 >
                   {isGeneratingReport ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    <FilePdf className="mr-2 h-4 w-4" />
-                  )}
+                                           ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
                   PDF报告
                 </Button>
               </CardFooter>
