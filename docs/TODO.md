@@ -2,6 +2,13 @@
 
 > 严格遵循统一规范与Windows环境要求；每完成一组任务需跑类型检查/构建/基本运行验证，再提交Git。
 
+## 未完事项（保留）
+- [ ] DWG 回退统一（待转换服务接入后移除；详见：P0 真实化 CAD 解析）
+- [ ] AI 适配收敛（统一 OpenAI 协议与流式；区分 LLM/Embedding；详见：P0 全局一致性与规范检查）
+- [ ] 文档与 .kiro（补齐 hooks 与校验脚本，纳入 CI；详见：P0 全局一致性与规范检查）
+- [ ] 测试体系（Vitest 单测、Playwright E2E、覆盖率>80%；详见：P2 测试体系搭建）
+- [ ] 缓存与性能（Redis/Upstash 收敛、失效策略、流优化复用；详见：P0 全局一致性与规范检查）
+
 ## P0 本轮必须完成
 - [x] FastGPT 客户端命名与冗余治理
   - [x] 增加 `lib/api/enhanced-fastgpt-client.ts`（对现有增强客户端做命名对齐的导出包装，提供 `getEnhancedFastGPTClient`/`createEnhancedFastGPTClient` 别名）
