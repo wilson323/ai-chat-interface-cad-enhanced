@@ -9,20 +9,20 @@ export interface ProviderResolvedConfig {
 }
 
 export function resolveProviderConfig(provider: ProviderKey | undefined, apiKey?: string, baseUrl?: string): ProviderResolvedConfig {
-  const key = apiKey || process.env.EXTERNAL_AI_API_KEY || ''
+  const key = apiKey ?? process.env.EXTERNAL_AI_API_KEY ?? ''
   const forcedDashscope = process.env.EXTERNAL_AI_FORCE_DASHSCOPE === 'true'
-  const p: ProviderKey = forcedDashscope ? 'dashscope' : (provider || 'dashscope')
+  const p: ProviderKey = forcedDashscope ? 'dashscope' : (provider ?? 'dashscope')
 
   switch (p) {
     case 'deepseek':
-      return { apiKey: key, baseURL: (baseUrl || 'https://api.deepseek.com/v1'), useContentArray: false }
+      return { apiKey: key, baseURL: (baseUrl ?? 'https://api.deepseek.com/v1'), useContentArray: false }
     case 'moonshot':
-      return { apiKey: key, baseURL: (baseUrl || 'https://api.moonshot.cn/v1'), useContentArray: false }
+      return { apiKey: key, baseURL: (baseUrl ?? 'https://api.moonshot.cn/v1'), useContentArray: false }
     case 'zhipu':
-      return { apiKey: key, baseURL: (baseUrl || 'https://open.bigmodel.cn/api/paas/v4/openai'), useContentArray: false }
+      return { apiKey: key, baseURL: (baseUrl ?? 'https://open.bigmodel.cn/api/paas/v4/openai'), useContentArray: false }
     case 'dashscope':
     default:
-      return { apiKey: key, baseURL: (baseUrl || 'https://dashscope.aliyuncs.com/compatible-mode/v1'), useContentArray: true }
+      return { apiKey: key, baseURL: (baseUrl ?? 'https://dashscope.aliyuncs.com/compatible-mode/v1'), useContentArray: true }
   }
 }
 

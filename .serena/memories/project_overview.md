@@ -1,0 +1,12 @@
+# 项目概览
+- 目的：AI 聊天 + CAD 分析（2D/3D）与报告、分享；统一 AI 适配器（OpenAI 兼容）。
+- 技术栈：Next.js 15、TypeScript、Playwright、Tailwind、Upstash（可选）、Docker。
+- 入口：`npm run dev`（开发）、`npm run build` + `npm start`（生产）、E2E 通过 Playwright。
+- 关键模块：
+  - API：`app/api/*`（chat、proxy、cad、system/status、health）
+  - 适配器：`lib/api/openai-provider`、`lib/api/ai-provider-adapter`、`app/api/proxy/ai/*`
+  - CAD：`lib/services/cad-analyzer/*`、`components/cad/*`
+  - 中间件：`middleware.ts`（CSP/CORS/限流/管理员鉴权/统计）
+  - 优化器：`lib/api/fastgpt-optimizer.ts`（批处理/熔断/重试/缓存）
+  - 预取/预加载：`lib/prefetch/*`、`lib/preload/*`
+- 质量规范：严格 TS、命名导出、Array<T>、JSDoc、无 mock；文档在 `docs/` 与根部 mdc。

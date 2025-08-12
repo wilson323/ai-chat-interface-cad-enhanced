@@ -1,0 +1,13 @@
+# 常用命令（Windows PowerShell）
+- 安装依赖：`npm ci`
+- 开发启动：`npm run dev`
+- 构建生产：`npm run build`
+- 启动生产：`npm start`
+- E2E 依赖安装：`npm run test:e2e:install`
+- 运行 E2E：`npm run test:e2e`
+- 健康检查：`npm run health:check`
+- 性能检查：`npm run performance:check`
+- 代码检查：`npm run type-check && npm run lint`
+- 依赖审计：`npm run deps:audit`
+- 清理临时：`node scripts/cleanup.js --verbose`
+- 钩子校验：`npm run hooks:validate`

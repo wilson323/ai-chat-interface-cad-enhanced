@@ -11,9 +11,9 @@
  * - 压缩大型缓存项
  * - 详细的统计和监控
  */
+import { Redis } from '@upstash/redis'
 import { LRUCache } from "lru-cache"
 import { DEFAULT_CACHE_NAMESPACE } from "./key"
-import { Redis } from '@upstash/redis'
 
 // 缓存项类型
 export interface CacheItem<T> {
@@ -604,7 +604,7 @@ export class CacheManager {
       let parsed: unknown
       try {
         parsed = JSON.parse(data)
-      } catch (e) {
+      } catch {
         return null
       }
 

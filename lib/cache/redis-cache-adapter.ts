@@ -12,7 +12,6 @@
 import { Redis } from "@upstash/redis"
 
 import type { CacheItem } from "./cache-manager"
-import { buildFullCacheKey } from './key'
 
 // Redis缓存配置
 export interface RedisCacheConfig {
@@ -45,7 +44,7 @@ const DEFAULT_CONFIG: RedisCacheConfig = {
 }
 
 export class RedisCacheAdapter {
-  private redis: Redis
+  private redis: Redis | null
   private config: RedisCacheConfig
   private isConnected = false
   private connectionPromise: Promise<boolean> | null = null
@@ -56,27 +55,35 @@ export class RedisCacheAdapter {
   private hitCount = 0
   private missCount = 0
   private startTime = Date.now()
+  private disabled = false
 
   constructor(config: Partial<RedisCacheConfig> = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config }
 
-    // 创建Redis客户端
-    this.redis = new Redis({
-      url: this.config.url,
-      token: this.config.token,
-      retry: {
-        retries: this.config.maxRetries,
-        backoff: (retryCount) =>
-          Math.min(
-            Math.pow(2, retryCount) * this.config.retryDelay,
-            30000, // 最大30秒
-          ),
-      },
-    })
+    const hasUrl = typeof this.config.url === 'string' && this.config.url.trim().length > 0
+    const hasToken = typeof this.config.token === 'string' && this.config.token.trim().length > 0
+    this.disabled = !(hasUrl && hasToken)
+
+    // 仅在配置完整时创建Redis客户端
+    this.redis = this.disabled
+      ? null
+      : new Redis({
+          url: this.config.url,
+          token: this.config.token,
+          retry: {
+            retries: this.config.maxRetries,
+            backoff: (retryCount) =>
+              Math.min(
+                Math.pow(2, retryCount) * this.config.retryDelay,
+                30000,
+              ),
+          },
+        })
 
     this.log("info", "RedisCacheAdapter initialized with config:", {
       ...this.config,
-      token: "***", // 隐藏token
+      token: "***",
+      disabled: this.disabled,
     })
   }
 
@@ -85,42 +92,34 @@ export class RedisCacheAdapter {
    * @returns 是否连接成功
    */
   public async connect(): Promise<boolean> {
+    if (this.disabled) {
+      this.log("warn", "Redis disabled due to missing url/token")
+      this.isConnected = false
+      return false
+    }
     if (this.isConnected) {
       return true
     }
-
-    // 如果已经有连接请求，等待它完成
     if (this.connectionPromise) {
       return this.connectionPromise
     }
-
     this.connectionPromise = (async () => {
       try {
-        // 设置连接超时
         const timeoutPromise = new Promise<boolean>((_, reject) => {
           setTimeout(() => {
             reject(new Error(`Connection timeout after ${this.config.connectionTimeout}ms`))
           }, this.config.connectionTimeout)
         })
-
-        // 测试连接
-        const connectPromise = this.redis.ping().then(() => true)
-
-        // 使用Promise.race实现超时
+        const connectPromise = (this.redis as Redis).ping().then(() => true)
         const connected = await Promise.race([connectPromise, timeoutPromise])
-
         this.isConnected = connected
         this.reconnectAttempts = 0
-
         this.log("info", "Connected to Redis")
-
         return true
       } catch (error) {
         this.log("error", `Failed to connect to Redis: ${error instanceof Error ? error.message : String(error)}`)
         this.isConnected = false
         this.errorCount++
-
-        // 如果需要重试连接
         if (this.shouldRetryConnection()) {
           this.log(
             "info",
@@ -128,13 +127,11 @@ export class RedisCacheAdapter {
           )
           this.scheduleReconnect()
         }
-
         return false
       } finally {
         this.connectionPromise = null
       }
     })()
-
     return this.connectionPromise
   }
 
@@ -145,49 +142,37 @@ export class RedisCacheAdapter {
    */
   public async get<T>(key: string): Promise<CacheItem<T> | null> {
     try {
-      // 确保已连接
+      if (this.disabled) {
+        return null
+      }
       if (!(await this.connect())) {
         return null
       }
-
       this.operationCount++
       const fullKey = this.getFullKey(key)
-
-      // 设置操作超时
       const timeoutPromise = new Promise<null>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`Operation timeout after ${this.config.operationTimeout}ms`))
         }, this.config.operationTimeout)
       })
-
-      // 执行Redis操作
-      const getPromise = this.redis.get(fullKey).then((data) => {
+      const getPromise = (this.redis as Redis).get(fullKey).then((data) => {
         if (!data) {
           this.missCount++
           return null
         }
-
-        // 解析数据
         const item = typeof data === "string" ? JSON.parse(data) : data
-
         this.hitCount++
         this.log("debug", `Got item for key ${key}`)
-
         return item as CacheItem<T>
       })
-
-      // 使用Promise.race实现超时
       return await Promise.race([getPromise, timeoutPromise])
     } catch (error) {
       this.log("error", `Error getting item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
-
-      // 如果连接断开，尝试重新连接
       if (this.isConnectionError(error)) {
         this.isConnected = false
         this.scheduleReconnect()
       }
-
       return null
     }
   }
@@ -201,52 +186,37 @@ export class RedisCacheAdapter {
    */
   public async set<T>(key: string, item: CacheItem<T>, ttl?: number): Promise<boolean> {
     try {
-      // 确保已连接
+      if (this.disabled) {
+        return false
+      }
       if (!(await this.connect())) {
         return false
       }
-
       this.operationCount++
       const fullKey = this.getFullKey(key)
       const effectiveTTL = ttl || this.config.ttl
-
-      // 序列化数据
       const data = JSON.stringify(item)
-
-      // 设置操作超时
       const timeoutPromise = new Promise<boolean>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`Operation timeout after ${this.config.operationTimeout}ms`))
         }, this.config.operationTimeout)
       })
-
-      // 执行Redis操作
       const setPromise = (async () => {
-        // 设置带过期时间的缓存
-        await this.redis.set(fullKey, data, { ex: effectiveTTL })
-
-        // 如果有标签，更新标签索引
+        await (this.redis as Redis).set(fullKey, data, { ex: effectiveTTL })
         if (item.tags && item.tags.length > 0) {
           await this.updateTagIndices(key, item.tags)
         }
-
         this.log("debug", `Set item for key ${key} with TTL ${effectiveTTL}s`)
-
         return true
       })()
-
-      // 使用Promise.race实现超时
       return await Promise.race([setPromise, timeoutPromise])
     } catch (error) {
       this.log("error", `Error setting item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
-
-      // 如果连接断开，尝试重新连接
       if (this.isConnectionError(error)) {
         this.isConnected = false
         this.scheduleReconnect()
       }
-
       return false
     }
   }
@@ -258,40 +228,32 @@ export class RedisCacheAdapter {
    */
   public async delete(key: string): Promise<boolean> {
     try {
-      // 确保已连接
+      if (this.disabled) {
+        return false
+      }
       if (!(await this.connect())) {
         return false
       }
-
       this.operationCount++
       const fullKey = this.getFullKey(key)
-
-      // 设置操作超时
       const timeoutPromise = new Promise<boolean>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`Operation timeout after ${this.config.operationTimeout}ms`))
         }, this.config.operationTimeout)
       })
-
-      // 执行Redis操作
       const deletePromise = (async () => {
-        await this.redis.del(fullKey)
+        await (this.redis as Redis).del(fullKey)
         this.log("debug", `Deleted item for key ${key}`)
         return true
       })()
-
-      // 使用Promise.race实现超时
       return await Promise.race([deletePromise, timeoutPromise])
     } catch (error) {
       this.log("error", `Error deleting item for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
-
-      // 如果连接断开，尝试重新连接
       if (this.isConnectionError(error)) {
         this.isConnected = false
         this.scheduleReconnect()
       }
-
       return false
     }
   }
@@ -303,58 +265,40 @@ export class RedisCacheAdapter {
    */
   public async deleteByTag(tag: string): Promise<number> {
     try {
-      // 确保已连接
+      if (this.disabled) {
+        return 0
+      }
       if (!(await this.connect())) {
         return 0
       }
-
       this.operationCount++
-
-      // 设置操作超时
       const timeoutPromise = new Promise<number>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`Operation timeout after ${this.config.operationTimeout}ms`))
         }, this.config.operationTimeout)
       })
-
-      // 执行Redis操作
       const deleteByTagPromise = (async () => {
-        // 获取标签索引
         const tagIndexKey = this.getTagIndexKey(tag)
-        const keys = await this.redis.smembers(tagIndexKey)
-
+        const keys = await (this.redis as Redis).smembers(tagIndexKey)
         if (!keys || keys.length === 0) {
           return 0
         }
-
-        // 删除所有键
         const fullKeys = keys.map((key) => this.getFullKey(key))
-
-        // 批量删除
         if (fullKeys.length > 0) {
-          await this.redis.del(...fullKeys)
+          await (this.redis as Redis).del(...fullKeys)
         }
-
-        // 清除标签索引
-        await this.redis.del(tagIndexKey)
-
+        await (this.redis as Redis).del(tagIndexKey)
         this.log("info", `Deleted ${keys.length} items with tag ${tag}`)
-
         return keys.length
       })()
-
-      // 使用Promise.race实现超时
       return await Promise.race([deleteByTagPromise, timeoutPromise])
     } catch (error) {
       this.log("error", `Error deleting items with tag ${tag}: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
-
-      // 如果连接断开，尝试重新连接
       if (this.isConnectionError(error)) {
         this.isConnected = false
         this.scheduleReconnect()
       }
-
       return 0
     }
   }
@@ -365,53 +309,39 @@ export class RedisCacheAdapter {
    */
   public async clear(): Promise<boolean> {
     try {
-      // 确保已连接
+      if (this.disabled) {
+        return true
+      }
       if (!(await this.connect())) {
         return false
       }
-
       this.operationCount++
-
-      // 设置操作超时
       const timeoutPromise = new Promise<boolean>((_, reject) => {
         setTimeout(() => {
           reject(new Error(`Operation timeout after ${this.config.operationTimeout * 2}ms`))
-        }, this.config.operationTimeout * 2) // 清除所有缓存可能需要更长时间
+        }, this.config.operationTimeout * 2)
       })
-
-      // 执行Redis操作
       const clearPromise = (async () => {
-        // 获取所有键
-        const keys = await this.redis.keys(`${this.config.prefix}*`)
-
+        const keys = await (this.redis as Redis).keys(`${this.config.prefix}*`)
         if (!keys || keys.length === 0) {
           return true
         }
-
-        // 批量删除，每次最多删除100个键
         const batchSize = 100
         for (let i = 0; i < keys.length; i += batchSize) {
           const batch = keys.slice(i, i + batchSize)
-          await this.redis.del(...batch)
+          await (this.redis as Redis).del(...batch)
         }
-
         this.log("info", `Cleared all ${keys.length} items`)
-
         return true
       })()
-
-      // 使用Promise.race实现超时
       return await Promise.race([clearPromise, timeoutPromise])
     } catch (error) {
       this.log("error", `Error clearing cache: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
-
-      // 如果连接断开，尝试重新连接
       if (this.isConnectionError(error)) {
         this.isConnected = false
         this.scheduleReconnect()
       }
-
       return false
     }
   }
@@ -430,7 +360,16 @@ export class RedisCacheAdapter {
     connected: boolean
   }> {
     try {
-      // 如果未连接，返回基本统计信息
+      if (this.disabled) {
+        return {
+          size: 0,
+          memory: 0,
+          operations: this.operationCount,
+          errors: this.errorCount,
+          uptime: Date.now() - this.startTime,
+          connected: false,
+        }
+      }
       if (!this.isConnected) {
         return {
           size: 0,
@@ -441,14 +380,9 @@ export class RedisCacheAdapter {
           connected: false,
         }
       }
-
       this.operationCount++
-
-      // 获取所有键
-      const keys = await this.redis.keys(`${this.config.prefix}*`)
+      const keys = await (this.redis as Redis).keys(`${this.config.prefix}*`)
       const size = keys ? keys.length : 0
-
-      // 获取内存使用情况
       let memory = 0
       try {
         const redisClient = this.redis as unknown as { info?: (section?: string) => Promise<string> }
@@ -458,12 +392,8 @@ export class RedisCacheAdapter {
           memory = memoryMatch ? Number.parseInt(memoryMatch[1], 10) : 0
         }
       } catch {}
-      
-
-      // 计算命中率
       const total = this.hitCount + this.missCount
       const hitRate = total > 0 ? this.hitCount / total : undefined
-
       return {
         size,
         memory,
@@ -476,13 +406,10 @@ export class RedisCacheAdapter {
     } catch (error) {
       this.log("error", `Error getting stats: ${error instanceof Error ? error.message : String(error)}`)
       this.errorCount++
-
-      // 如果连接断开，尝试重新连接
       if (this.isConnectionError(error)) {
         this.isConnected = false
         this.scheduleReconnect()
       }
-
       return {
         size: 0,
         memory: 0,
@@ -524,7 +451,7 @@ export class RedisCacheAdapter {
       // 为每个标签添加键
       for (const tag of tags) {
         const tagIndexKey = this.getTagIndexKey(tag)
-        await this.redis.sadd(tagIndexKey, key)
+        await (this.redis as Redis).sadd(tagIndexKey, key)
       }
     } catch (error) {
       this.log("error", `Error updating tag indices for key ${key}: ${error instanceof Error ? error.message : String(error)}`)
