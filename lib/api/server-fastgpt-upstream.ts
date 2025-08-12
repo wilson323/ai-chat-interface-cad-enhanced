@@ -9,9 +9,6 @@ export interface FastGptUpstreamParams {
   signal?: AbortSignal
 }
 
-/**
- * 仅服务端使用：创建到 FastGPT 的上游 SSE 请求
- */
 export async function createFastGptUpstream(params: FastGptUpstreamParams): Promise<Response> {
   const { origin, apiKey, appId, chatId, messages, variables, systemPrompt, signal } = params
   if (!origin || !apiKey) {

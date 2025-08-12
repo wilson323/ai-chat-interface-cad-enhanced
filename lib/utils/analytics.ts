@@ -1,10 +1,5 @@
 // 添加关键操作监控
-declare global {
-  interface Window {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    gtag?: (...args: any[]) => void;
-  }
-}
+// 使用 lib/types/global.d.ts 中的 Window.gtag 类型声明
 
 export function trackCADAnalysis(params: {
   fileType: string;
@@ -17,7 +12,8 @@ export function trackCADAnalysis(params: {
   console.info('CAD分析完成', params);
   
   if (typeof window !== 'undefined' && typeof window.gtag === 'function') {
-    window.gtag('event', 'cad_analysis', params as unknown as Record<string, unknown>);
+    const gtag = window.gtag as ((command: string, ...args: Array<unknown>) => void);
+    gtag('event', 'cad_analysis', params as Record<string, unknown>);
   }
 }
 

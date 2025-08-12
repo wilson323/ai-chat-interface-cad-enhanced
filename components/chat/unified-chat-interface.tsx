@@ -186,18 +186,29 @@ export function UnifiedChatInterface({
 
   // Message data processing
   const messageItems = useMemo((): MessageItem[] => {
-    return messages.map(msg => ({
-      id: msg.id,
-      role: msg.role,
-      content: msg.content,
-      timestamp: new Date(msg.timestamp).getTime(),
-      feedback: msg.feedback,
-      metadata: msg.metadata,
-    }))
+    const coerceRole = (role: string): MessageItem["role"] => {
+      if (role === "user" || role === "assistant" || role === "system" || role === "tool") {
+        return role
+      }
+      // 将未知/开发者角色规整为 system，避免下游类型不匹配
+      return "system"
+    }
+    return messages.map((msg) => {
+      const ts = (msg as { timestamp?: number | Date }).timestamp
+      const tsNumber = typeof ts === "number" ? ts : ts instanceof Date ? ts.getTime() : Date.now()
+      return {
+        id: String(msg.id),
+        role: coerceRole(String(msg.role)),
+        content: String(msg.content ?? ""),
+        timestamp: tsNumber,
+        feedback: (msg as any).feedback,
+        metadata: (msg as any).metadata,
+      }
+    })
   }, [messages])
   // 将下游组件要求的 Date 类型转换在渲染处进行
   const messageItemsForView = useMemo(() =>
-    messageItems.map(m => ({ ...m, timestampDate: new Date(m.timestamp) })), [messageItems])
+    messageItems.map((m) => ({ ...m, timestampDate: new Date(m.timestamp) })), [messageItems])
 
   // 容器高度（非虚拟滚动）
   useEffect(() => {

@@ -2,7 +2,10 @@
 declare module 'lucide-react';
 
 interface Window {
-  gtag?: (...args: any[]) => void;
+  gtag?:
+    | ((command: "js", date: Date) => void)
+    | ((command: "config", targetId: string, config?: Record<string, unknown>) => void)
+    | ((command: string, ...args: Array<unknown>) => void)
 }
 
 declare module '*.svg' {

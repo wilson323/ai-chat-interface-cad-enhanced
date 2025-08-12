@@ -11,9 +11,10 @@
 import * as React from 'react'
 import { useState, useCallback } from 'react'
 import { FastGptAgUiAdapter } from "@/lib/api/fastgpt-ag-ui-adapter"
+import type { CADAnalysisResult } from "@/lib/types/cad"
 
 export function useAgUiCad() {
-  const [result, setResult] = useState<any>(null)
+  const [result, setResult] = useState<CADAnalysisResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -36,8 +37,12 @@ export function useAgUiCad() {
       const response = await resp.json()
 
       // 从Agent状态中提取CAD分析结果
-      const analysisResult = response?.data?.analysisResult || response?.analysisResult || {}
-      setResult(analysisResult)
+      const analysisUnknown = response?.data?.analysisResult ?? response?.analysisResult ?? null
+      if (analysisUnknown && typeof analysisUnknown === 'object') {
+        setResult(analysisUnknown as CADAnalysisResult)
+      } else {
+        setResult(null)
+      }
     } catch (err) {
       console.error("CAD分析错误:", err)
       setError(err instanceof Error ? err.message : "分析CAD文件时发生未知错误")

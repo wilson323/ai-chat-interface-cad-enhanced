@@ -449,10 +449,10 @@ export class RedisCacheAdapter {
       // 获取内存使用情况
       let memory = 0
       try {
-        const redisAny = this.redis as any
-        if (typeof redisAny.info === 'function') {
-          const info: string = await redisAny.info("memory")
-          const memoryMatch = typeof info === 'string' ? info.match(/used_memory:(\d+)/) : null
+        const redisClient = this.redis as unknown as { info?: (section?: string) => Promise<string> }
+        if (typeof redisClient.info === "function") {
+          const info: string = await redisClient.info("memory")
+          const memoryMatch = typeof info === "string" ? info.match(/used_memory:(\d+)/) : null
           memory = memoryMatch ? Number.parseInt(memoryMatch[1], 10) : 0
         }
       } catch {}
@@ -585,10 +585,17 @@ export class RedisCacheAdapter {
    * @param error 错误
    * @returns 是否为连接错误
    */
-  private isConnectionError(error: any): boolean {
-    if (!error) return false
+  private isConnectionError(error: unknown): boolean {
+    if (error == null) return false
 
-    const errorMessage = error.message || ""
+    let errorMessage = ""
+    if (typeof error === "object" && "message" in (error as Record<string, unknown>)) {
+      const maybeMessage = (error as Record<string, unknown>).message
+      errorMessage = typeof maybeMessage === "string" ? maybeMessage : String(maybeMessage)
+    } else {
+      errorMessage = String(error)
+    }
+
     return (
       errorMessage.includes("connection") ||
       errorMessage.includes("network") ||
@@ -604,7 +611,7 @@ export class RedisCacheAdapter {
    * @param message 日志消息
    * @param data 附加数据
    */
-  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: any): void {
+  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: unknown): void {
     // 根据配置的日志级别过滤日志
     const levelPriority = { error: 0, warn: 1, info: 2, debug: 3 }
     if (levelPriority[level] > levelPriority[this.config.logLevel]) {

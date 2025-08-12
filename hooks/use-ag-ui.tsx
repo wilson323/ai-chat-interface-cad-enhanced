@@ -11,7 +11,7 @@
 import { useState, useEffect, useRef, useCallback } from "react"
 import { AgUICoreAdapter } from "@/lib/ag-ui/core-adapter"
 import type { Subscription } from "rxjs"
-import type { BaseEvent } from "@/lib/ag-ui/types"
+import type { BaseEvent, Message } from "@/lib/ag-ui/types"
 
 interface UseAgUIOptions {
   debug?: boolean
@@ -23,10 +23,10 @@ export function useAgUI(options: UseAgUIOptions = {}) {
   const [isInitialized, setIsInitialized] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | null>(null)
-  const [messages, setMessages] = useState<any[]>([])
+  const [messages, setMessages] = useState<Array<Message>>([])
   const [currentMessage, setCurrentMessage] = useState<string>("")
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
-  const [variables, setVariables] = useState<Record<string, any>>({})
+  const [variables, setVariables] = useState<Record<string, unknown>>({})
   const [chatId, setChatId] = useState<string>("")
   const [appId, setAppId] = useState<string>("")
   const [events, setEvents] = useState<BaseEvent[]>([])
@@ -51,15 +51,15 @@ export function useAgUI(options: UseAgUIOptions = {}) {
         // 处理不同类型的事件
         switch (event.type) {
           case "TEXT_MESSAGE_CONTENT":
-            setCurrentMessage((prev) => prev + (event as any).delta)
+            setCurrentMessage((prev) => prev + String((event as Record<string, unknown>).delta ?? ""))
             break
 
           case "TEXT_MESSAGE_END":
-            if (currentMessage) {
+            if (currentMessage.length > 0) {
               setMessages((prev) => [
                 ...prev,
                 {
-                  id: (event as any).messageId,
+                  id: String((event as Record<string, unknown>).messageId ?? `msg-${Date.now()}`),
                   role: "assistant",
                   content: currentMessage,
                   timestamp: new Date(),
@@ -70,24 +70,25 @@ export function useAgUI(options: UseAgUIOptions = {}) {
             break
 
           case "STATE_SNAPSHOT":
-            const state = (event as any).snapshot
-            if (state.variables) {
-              setVariables(state.variables)
-            }
-            if (state.chatId) {
-              setChatId(state.chatId)
-            }
-            if (state.appId) {
-              setAppId(state.appId)
-            }
-            if (state.suggestedQuestions) {
-              setSuggestedQuestions(state.suggestedQuestions)
+            {
+              const snapshotUnknown = (event as Record<string, unknown>).snapshot as Record<string, unknown> | undefined
+              if (snapshotUnknown) {
+                const nextVariables = (snapshotUnknown as Record<string, unknown>).variables as Record<string, unknown> | undefined
+                if (nextVariables) setVariables(nextVariables)
+                const nextChatId = (snapshotUnknown as Record<string, unknown>).chatId as string | undefined
+                if (typeof nextChatId === "string") setChatId(nextChatId)
+                const nextAppId = (snapshotUnknown as Record<string, unknown>).appId as string | undefined
+                if (typeof nextAppId === "string") setAppId(nextAppId)
+                const nextSuggested = (snapshotUnknown as Record<string, unknown>).suggestedQuestions as string[] | undefined
+                if (Array.isArray(nextSuggested)) setSuggestedQuestions(nextSuggested)
+              }
             }
             break
 
           case "CUSTOM":
-            if ((event as any).name === "suggested_questions") {
-              setSuggestedQuestions((event as any).value)
+            if ((event as Record<string, unknown>).name === "suggested_questions") {
+              const val = (event as Record<string, unknown>).value
+              if (Array.isArray(val)) setSuggestedQuestions(val as string[])
             }
             break
         }
@@ -161,7 +162,7 @@ export function useAgUI(options: UseAgUIOptions = {}) {
       setError(null)
 
       // 添加用户消息到列表
-      const userMessage = {
+      const userMessage: Message = {
         id: `user-${Date.now()}`,
         role: "user",
         content,
@@ -173,10 +174,7 @@ export function useAgUI(options: UseAgUIOptions = {}) {
       try {
         // 准备消息历史
         const messageHistory = [
-          ...messages.map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
+          ...messages.map((msg) => ({ role: msg.role, content: msg.content })),
           { role: "user", content },
         ]
 
@@ -186,7 +184,7 @@ export function useAgUI(options: UseAgUIOptions = {}) {
           chatId,
           messageHistory,
           systemPrompt,
-          variables,
+          variables as Record<string, any>,
         )
 
         return responseStream
@@ -216,9 +214,15 @@ export function useAgUI(options: UseAgUIOptions = {}) {
 
       if (history.messages) {
         setMessages(
-          history.messages.map((msg: any) => ({
-            ...msg,
-            timestamp: new Date(msg.timestamp || Date.now()),
+          (history.messages as Array<Message | Record<string, unknown>>).map((msg) => ({
+            id: String((msg as Message).id ?? `msg-${Date.now()}`),
+            role: (msg as Message).role,
+            content: (msg as Message).content,
+            timestamp: new Date(((msg as Message).timestamp as Date | number | undefined) ?? Date.now()),
+            name: (msg as Message).name,
+            toolCalls: (msg as Message).toolCalls,
+            metadata: (msg as Message).metadata,
+            feedback: (msg as Message).feedback,
           })),
         )
       }

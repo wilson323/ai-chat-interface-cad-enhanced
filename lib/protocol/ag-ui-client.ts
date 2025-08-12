@@ -1,6 +1,6 @@
 import { Observable, Subject, BehaviorSubject } from 'rxjs';
 import type { Subscriber } from 'rxjs';
-import { filter, map, tap } from 'rxjs/operators';
+import { tap } from 'rxjs/operators';
 
 // AG-UI 协议事件类型
 export enum EventType {
@@ -88,7 +88,7 @@ export interface ToolCallChunkEvent extends BaseEvent {
 // 状态事件接口
 export interface StateSnapshotEvent extends BaseEvent {
   type: EventType.STATE_SNAPSHOT;
-  snapshot: Record<string, any>;
+  snapshot: Record<string, unknown>;
 }
 
 export interface StateDeltaEvent extends BaseEvent {
@@ -96,7 +96,7 @@ export interface StateDeltaEvent extends BaseEvent {
   delta: Array<{
     op: 'add' | 'remove' | 'replace' | 'move' | 'copy' | 'test';
     path: string;
-    value?: any;
+    value?: unknown;
     from?: string;
   }>;
 }
@@ -140,12 +140,12 @@ export interface StepFinishedEvent extends BaseEvent {
 export interface CustomEvent extends BaseEvent {
   type: EventType.CUSTOM;
   name: string;
-  value: any;
+  value: unknown;
 }
 
 export interface RawEvent extends BaseEvent {
   type: EventType.RAW;
-  event: any;
+  event: unknown;
   source: string;
 }
 
@@ -163,7 +163,7 @@ export interface Message {
 export interface Tool {
   name: string;
   description: string;
-  parameters: Record<string, any>;
+  parameters: Record<string, unknown>;
 }
 
 export interface ToolCall {
@@ -178,18 +178,18 @@ export interface ToolCall {
 // 上下文信息
 export interface ContextItem {
   description: string;
-  value: any;
+  value: unknown;
 }
 
 // Agent 执行输入
 export interface RunAgentInput {
   threadId: string;
   runId: string;
-  state: Record<string, any>;
+  state: Record<string, unknown>;
   messages: Array<Message>;
   tools: Array<Tool>;
   context?: Array<ContextItem>;
-  forwardedProps?: Record<string, any>;
+  forwardedProps?: Record<string, unknown>;
 }
 
 // 通用 Agent 配置
@@ -198,7 +198,7 @@ export interface AgentConfig {
   description?: string;
   threadId?: string;
   initialMessages?: Array<Message>;
-  initialState?: Record<string, any>;
+  initialState?: Record<string, unknown>;
   debug?: boolean;
 }
 

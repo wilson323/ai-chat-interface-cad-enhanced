@@ -9,12 +9,12 @@ type CacheItem<T> = {
   expires: number;
 };
 
-const memoryCache = new Map<string, any>();
+const memoryCache = new Map<string, CacheItem<unknown>>();
 
 export function useCache<T>(prefix: string, options: CacheOptions) {
   const { ttl, storage = 'local' } = options;
   
-  const getStorageType = () => {
+  const getStorageType = (): Storage | null => {
     if (storage === 'local' && typeof window !== 'undefined') {
       return window.localStorage;
     } else if (storage === 'session' && typeof window !== 'undefined') {
@@ -30,23 +30,24 @@ export function useCache<T>(prefix: string, options: CacheOptions) {
     try {
       // 内存缓存
       if (storage === 'memory') {
-        const cached = memoryCache.get(cacheKey) as CacheItem<T> | undefined;
-        if (cached && cached.expires > Date.now()) {
-          return cached.value;
+        const cachedUnknown = memoryCache.get(cacheKey);
+        if (cachedUnknown && (cachedUnknown as CacheItem<unknown>).expires > Date.now()) {
+          return (cachedUnknown as CacheItem<T>).value;
         }
         return null;
       }
       
       // 浏览器存储
       const storageObj = getStorageType();
-      if (!storageObj) return null;
+      if (storageObj === null) return null;
       
       const cachedItem = storageObj.getItem(cacheKey);
-      if (!cachedItem) return null;
+      if (cachedItem === null) return null;
       
-      const cached = JSON.parse(cachedItem) as CacheItem<T>;
-      if (cached.expires > Date.now()) {
-        return cached.value;
+      const parsedUnknown: unknown = JSON.parse(cachedItem);
+      const cached = parsedUnknown as CacheItem<T>;
+      if (typeof cached === 'object' && cached !== null && (cached as CacheItem<T>).expires > Date.now()) {
+        return (cached as CacheItem<T>).value;
       }
       
       // 清除过期缓存
@@ -68,12 +69,12 @@ export function useCache<T>(prefix: string, options: CacheOptions) {
     
     try {
       if (storage === 'memory') {
-        memoryCache.set(cacheKey, item);
+        memoryCache.set(cacheKey, item as unknown as CacheItem<unknown>);
         return;
       }
       
       const storageObj = getStorageType();
-      if (!storageObj) return;
+      if (storageObj === null) return;
       
       storageObj.setItem(cacheKey, JSON.stringify(item));
     } catch (error) {
@@ -94,22 +95,22 @@ export function useCache<T>(prefix: string, options: CacheOptions) {
         }
         
         const storageObj = getStorageType();
-        if (!storageObj) return;
+        if (storageObj === null) return;
         
         storageObj.removeItem(cacheKey);
       } else {
         // 清除前缀下所有缓存
         if (storage === 'memory') {
-          for (const key of memoryCache.keys()) {
-            if (key.startsWith(`${prefix}:`)) {
-              memoryCache.delete(key);
+          for (const mk of memoryCache.keys()) {
+            if (mk.startsWith(`${prefix}:`)) {
+              memoryCache.delete(mk);
             }
           }
           return;
         }
         
         const storageObj = getStorageType();
-        if (!storageObj) return;
+        if (storageObj === null) return;
         
         const keysToRemove: string[] = [];
         
@@ -120,7 +121,7 @@ export function useCache<T>(prefix: string, options: CacheOptions) {
           }
         }
         
-        keysToRemove.forEach(key => storageObj.removeItem(key));
+        keysToRemove.forEach(k => storageObj.removeItem(k));
       }
     } catch (error) {
       console.error("清除缓存失败:", error);

@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
             max_tokens: 2048,
           })
         })()
-      : await (await import('@/lib/api/fastgpt-ag-ui-adapter')).createFastGptUpstream({
+      : await (await import('@/lib/api/server-fastgpt-upstream')).createFastGptUpstream({
           origin,
           apiKey: apiKey!,
           appId,
