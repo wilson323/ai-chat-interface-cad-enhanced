@@ -55,8 +55,9 @@ export function useAgUI(options: UseAgUIOptions = {}) {
             break
 
           case "TEXT_MESSAGE_END":
-            if (currentMessage.length > 0) {
-              setMessages((prev) => [
+            setMessages((prev) => {
+              if (currentMessage.length === 0) return prev
+              const next = [
                 ...prev,
                 {
                   id: String((event as Record<string, unknown>).messageId ?? `msg-${Date.now()}`),
@@ -64,9 +65,10 @@ export function useAgUI(options: UseAgUIOptions = {}) {
                   content: currentMessage,
                   timestamp: new Date(),
                 },
-              ])
-              setCurrentMessage("")
-            }
+              ] as Array<Message>
+              return next
+            })
+            if (currentMessage.length > 0) setCurrentMessage("")
             break
 
           case "STATE_SNAPSHOT":
@@ -107,7 +109,7 @@ export function useAgUI(options: UseAgUIOptions = {}) {
         subscriptionRef.current.unsubscribe()
       }
     }
-  }, [options.debug, options.initialThreadId, options.proxyUrl])
+  }, [options.debug, options.initialThreadId, options.proxyUrl, currentMessage])
 
   // 初始化会话
   const initializeSession = useCallback(async (agentAppId: string, initialChatId?: string) => {
@@ -184,7 +186,7 @@ export function useAgUI(options: UseAgUIOptions = {}) {
           chatId,
           messageHistory,
           systemPrompt,
-          variables as Record<string, any>,
+          variables as Record<string, unknown>,
         )
 
         return responseStream

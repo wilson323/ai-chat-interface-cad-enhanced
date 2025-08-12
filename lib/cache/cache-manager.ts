@@ -12,7 +12,6 @@
  * - 详细的统计和监控
  */
 import { LRUCache } from "lru-cache"
-import { getRedisCacheAdapter } from "./redis-cache-adapter"
 
 // 缓存项类型
 export interface CacheItem<T> {
@@ -20,7 +19,7 @@ export interface CacheItem<T> {
   timestamp: number
   expiry: number
   tags?: string[]
-  metadata?: Record<string, any>
+  metadata?: Record<string, unknown>
 }
 
 // 缓存配置
@@ -59,13 +58,13 @@ interface RedisCacheAdapter {
   delete: (key: string) => Promise<void>;
   deleteByTag: (tag: string) => Promise<void>;
   clear: () => Promise<void>;
-  getStats: () => Promise<any>;
+  getStats: () => Promise<{ size: number; memory: number; hitRate?: number; operations: number; errors: number; uptime: number; connected: boolean }>;
 }
 
 export class CacheManager {
   private config: CacheConfig
-  private memoryCache: LRUCache<string, CacheItem<any>>
-  private revalidationQueue: Map<string, Promise<any>> = new Map()
+  private memoryCache: LRUCache<string, CacheItem<unknown>>
+  private revalidationQueue: Map<string, Promise<unknown>> = new Map()
   private prefetchQueue: Set<string> = new Set()
   private redisAdapter: RedisCacheAdapter | null = null
   private hitCount = 0
@@ -80,7 +79,7 @@ export class CacheManager {
     this.config = { ...DEFAULT_CONFIG, ...config }
 
     // 初始化内存缓存
-    this.memoryCache = new LRUCache<string, CacheItem<any>>({
+    this.memoryCache = new LRUCache<string, CacheItem<unknown>>({
       max: this.config.memorySize,
       ttl: this.config.memoryTTL,
       updateAgeOnGet: true,
@@ -138,20 +137,19 @@ export class CacheManager {
       tags?: string[]
       bypassCache?: boolean
       forceRefresh?: boolean
-      metadata?: Record<string, any>
+      metadata?: Record<string, unknown>
       priority?: "high" | "normal" | "low"
     } = {},
   ): Promise<T | null> {
     try {
       const cacheKey = this.normalizeKey(key)
       const now = Date.now()
-      const ttl = options.ttl || this.config.memoryTTL
-      const bypassCache = options.bypassCache || false
-      const forceRefresh = options.forceRefresh || false
-      const priority = options.priority || "normal"
+      const ttl = options.ttl ?? this.config.memoryTTL
+      const bypassCache = options.bypassCache ?? false
+      const forceRefresh = options.forceRefresh ?? false
 
       // 如果强制刷新或绕过缓存，直接获取新数据
-      if (bypassCache || forceRefresh) {
+      if (bypassCache === true || forceRefresh === true) {
         if (fetchFn) {
           const value = await this.fetchAndCache(cacheKey, fetchFn, ttl, options.tags, options.metadata)
           return value
@@ -160,14 +158,14 @@ export class CacheManager {
       }
 
       // 1. 检查内存缓存
-      let item = this.memoryCache.get(cacheKey)
+      let item = this.memoryCache.get(cacheKey) as CacheItem<T> | undefined
 
       // 2. 如果内存缓存未命中，检查localStorage
       if (!item && typeof window !== "undefined" && this.config.persistenceEnabled) {
         const localItem = this.getFromLocalStorage<T>(cacheKey)
         if (localItem) {
           // 如果localStorage有效，添加到内存缓存
-          if (localItem.expiry > now) {
+          if (typeof localItem.expiry === 'number' && localItem.expiry > now) {
             this.memoryCache.set(cacheKey, localItem)
             item = localItem
             this.log("debug", `Cache: localStorage hit for ${cacheKey}`)
@@ -181,7 +179,7 @@ export class CacheManager {
       if (!item && this.redisAdapter && this.config.useRedisCache) {
         try {
           const redisItem = await this.redisAdapter.get<T>(cacheKey)
-          if (redisItem && redisItem.expiry > now) {
+          if (redisItem && typeof redisItem.expiry === 'number' && redisItem.expiry > now) {
             // 如果Redis缓存有效，添加到内存缓存
             this.memoryCache.set(cacheKey, redisItem)
             item = redisItem
@@ -198,11 +196,11 @@ export class CacheManager {
         this.hitCount++
 
         // 检查是否需要在后台刷新（stale-while-revalidate）
-        if (this.config.staleWhileRevalidate && fetchFn && item.expiry < now) {
+        if (this.config.staleWhileRevalidate === true && fetchFn && item.expiry < now) {
           this.revalidateInBackground(cacheKey, fetchFn, ttl, options.tags, options.metadata)
         }
         // 检查是否需要预取
-        else if (fetchFn && this.shouldPrefetch(item)) {
+        else if (fetchFn && this.shouldPrefetch(item as CacheItem<unknown>)) {
           this.prefetchInBackground(cacheKey, fetchFn, ttl, options.tags, options.metadata)
         }
 
@@ -217,7 +215,7 @@ export class CacheManager {
         // 检查是否已有相同的请求正在进行中（请求合并）
         if (this.revalidationQueue.has(cacheKey)) {
           this.log("debug", `Cache: reusing in-flight request for ${cacheKey}`)
-          return this.revalidationQueue.get(cacheKey)
+          return this.revalidationQueue.get(cacheKey) as Promise<T> | null
         }
 
         return this.fetchAndCache(cacheKey, fetchFn, ttl, options.tags, options.metadata)
@@ -254,13 +252,13 @@ export class CacheManager {
     options: {
       ttl?: number
       tags?: string[]
-      metadata?: Record<string, any>
+      metadata?: Record<string, unknown>
     } = {},
   ): Promise<void> {
     try {
       const cacheKey = this.normalizeKey(key)
       const now = Date.now()
-      const ttl = options.ttl || this.config.memoryTTL
+      const ttl = options.ttl ?? this.config.memoryTTL
       const expiry = now + ttl
 
       const item: CacheItem<T> = {
@@ -272,7 +270,7 @@ export class CacheManager {
       }
 
       // 设置内存缓存
-      this.memoryCache.set(cacheKey, item)
+      this.memoryCache.set(cacheKey, item as unknown as CacheItem<unknown>)
 
       // 设置localStorage缓存
       if (typeof window !== "undefined" && this.config.persistenceEnabled) {
@@ -528,7 +526,7 @@ export class CacheManager {
       if (!data) return null
 
       // 尝试解压缩（如果启用了压缩）
-      let parsed
+      let parsed: unknown
       try {
         parsed = JSON.parse(data)
       } catch (e) {
@@ -574,13 +572,14 @@ export class CacheManager {
         const storageKey = localStorage.key(i)
         if (storageKey && storageKey.startsWith("cache:")) {
           try {
-            const item = JSON.parse(localStorage.getItem(storageKey) || "")
+            const raw = localStorage.getItem(storageKey)
+            const item = raw ? (JSON.parse(raw) as { expiry?: number }) : null
 
             // 如果项目已过期或进行激进清理，则标记为删除
-            if (aggressive || (item && item.expiry && item.expiry < now)) {
+            if (aggressive === true || (item && typeof item.expiry === 'number' && item.expiry < now)) {
               keysToRemove.push(storageKey)
             }
-          } catch (e) {
+          } catch {
             // 如果解析失败，也标记为删除
             keysToRemove.push(storageKey)
           }
@@ -616,7 +615,7 @@ export class CacheManager {
     fetchFn: () => Promise<T>,
     ttl: number,
     tags?: string[],
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): Promise<T> {
     // 创建一个Promise并将其添加到队列中
     const fetchPromise = (async () => {
@@ -658,7 +657,7 @@ export class CacheManager {
     fetchFn: () => Promise<T>,
     ttl: number,
     tags?: string[],
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): void {
     // 如果已经在重新验证，则跳过
     if (this.revalidationQueue.has(key)) return
@@ -692,8 +691,8 @@ export class CacheManager {
    * @param item 缓存项
    * @returns 是否应该预取
    */
-  private shouldPrefetch(item: CacheItem<any>): boolean {
-    if (!this.config.staleWhileRevalidate) return false
+  private shouldPrefetch(item: CacheItem<unknown>): boolean {
+    if (this.config.staleWhileRevalidate !== true) return false
 
     const now = Date.now()
     const age = now - item.timestamp
@@ -716,7 +715,7 @@ export class CacheManager {
     fetchFn: () => Promise<T>,
     ttl: number,
     tags?: string[],
-    metadata?: Record<string, any>,
+    metadata?: Record<string, unknown>,
   ): void {
     // 如果已经在预取队列中，则跳过
     if (this.prefetchQueue.has(key) || this.revalidationQueue.has(key)) return

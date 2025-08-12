@@ -8,7 +8,6 @@
  * 调用关系: 被CAD分析相关组件调用，内部调用/api/ag-ui/cad-analysis
  */
 
-import * as React from 'react'
 import { useState, useCallback } from 'react'
 import { FastGptAgUiAdapter } from "@/lib/api/fastgpt-ag-ui-adapter"
 import type { CADAnalysisResult } from "@/lib/types/cad"

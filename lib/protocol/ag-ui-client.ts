@@ -357,7 +357,7 @@ export abstract class AbstractAgent {
   }
   
   // 设置嵌套属性值
-  private setNestedValue(obj: any, path: string[], value: any): void {
+  private setNestedValue(obj: Record<string, unknown>, path: string[], value: unknown): void {
     if (path.length === 0) return;
     
     if (path.length === 1) {
@@ -366,15 +366,15 @@ export abstract class AbstractAgent {
     }
     
     const key = path[0];
-    if (!(key in obj) || typeof obj[key] !== 'object') {
-      obj[key] = {};
+    if (!(key in obj) || typeof obj[key] !== 'object' || obj[key] === null) {
+      obj[key] = {} as Record<string, unknown>;
     }
     
-    this.setNestedValue(obj[key], path.slice(1), value);
+    this.setNestedValue(obj[key] as Record<string, unknown>, path.slice(1), value);
   }
   
   // 删除嵌套属性
-  private removeNestedValue(obj: any, path: string[]): void {
+  private removeNestedValue(obj: Record<string, unknown>, path: string[]): void {
     if (path.length === 0) return;
     
     if (path.length === 1) {
@@ -383,18 +383,18 @@ export abstract class AbstractAgent {
     }
     
     const key = path[0];
-    if (!(key in obj) || typeof obj[key] !== 'object') {
+    if (!(key in obj) || typeof obj[key] !== 'object' || obj[key] === null) {
       return;
     }
     
-    this.removeNestedValue(obj[key], path.slice(1));
+    this.removeNestedValue(obj[key] as Record<string, unknown>, path.slice(1));
   }
   
   // 中断当前执行
   public abstract abortRun(): void;
   
   // 启动执行
-  public abstract runAgent(parameters?: any): Promise<void>;
+  public abstract runAgent(parameters?: Record<string, unknown>): Promise<void>;
 }
 
 // HTTP Agent 实现
@@ -410,7 +410,7 @@ export class HttpAgent extends AbstractAgent {
   }
   
   // 执行 Agent
-  public async runAgent(parameters: any = {}): Promise<void> {
+  public async runAgent(parameters: Record<string, unknown> = {}): Promise<void> {
     // 如果已经在运行，则中断之前的执行
     if (this.runningSubject.getValue()) {
       this.abortRun();
@@ -449,11 +449,11 @@ export class HttpAgent extends AbstractAgent {
           this.controller = null;
         }
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // 发送错误事件
       this.eventSubject.next({
         type: EventType.RUN_ERROR,
-        message: error.message,
+        message: error instanceof Error ? error.message : String(error),
         code: 'execution_error',
         timestamp: Date.now()
       });
@@ -537,8 +537,8 @@ export class HttpAgent extends AbstractAgent {
           
           // 完成订阅
           subscriber.complete();
-        } catch (error: any) {
-          if (error.name === 'AbortError') {
+        } catch (error: unknown) {
+          if (error instanceof Error && error.name === 'AbortError') {
             // 请求被中断，不触发错误
             subscriber.complete();
           } else {
@@ -638,8 +638,8 @@ export class HttpAgent extends AbstractAgent {
           timestamp: Date.now()
         });
       }
-    } catch (error) {
-      throw new Error(`解析 JSON 响应失败: ${error}`);
+    } catch (error: unknown) {
+      throw new Error(`解析 JSON 响应失败: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 }
