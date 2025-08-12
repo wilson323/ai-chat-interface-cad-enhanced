@@ -28,7 +28,7 @@ interface PreloadItem {
   type: "image" | "script" | "style" | "font" | "data"
   priority: number
   status: "pending" | "loading" | "loaded" | "error"
-  load: () => Promise<any>
+  load: () => Promise<unknown>
 }
 
 // 默认配置
@@ -53,7 +53,7 @@ export class PreloadManager {
   private loading: Set<string> = new Set()
   private loaded: Set<string> = new Set()
   private failed: Set<string> = new Set()
-  private resourceCache: Map<string, any> = new Map()
+  private resourceCache: Map<string, unknown> = new Map()
   private loadStartTime: Map<string, number> = new Map()
   private totalPreloaded = 0
   private totalFailed = 0
@@ -72,7 +72,7 @@ export class PreloadManager {
    * @returns 图片元素Promise
    */
   public preloadImage(url: string, priority = 0): Promise<HTMLImageElement> {
-    if (!this.config.enabled || !this.config.resourceTypes.images) {
+    if (this.config.enabled !== true || this.config.resourceTypes.images !== true) {
       return Promise.resolve(new Image())
     }
 
@@ -179,7 +179,7 @@ export class PreloadManager {
    * @returns 脚本元素Promise
    */
   public preloadScript(url: string, priority = 0): Promise<HTMLScriptElement> {
-    if (!this.config.enabled || !this.config.resourceTypes.scripts) {
+    if (this.config.enabled !== true || this.config.resourceTypes.scripts !== true) {
       return Promise.resolve(document.createElement("script"))
     }
 
@@ -287,7 +287,7 @@ export class PreloadManager {
    * @returns 样式元素Promise
    */
   public preloadStyle(url: string, priority = 0): Promise<HTMLLinkElement> {
-    if (!this.config.enabled || !this.config.resourceTypes.styles) {
+    if (this.config.enabled !== true || this.config.resourceTypes.styles !== true) {
       return Promise.resolve(document.createElement("link"))
     }
 
@@ -396,7 +396,7 @@ export class PreloadManager {
    * @returns 字体Promise
    */
   public preloadFont(url: string, fontFamily: string, priority = 0): Promise<FontFace> {
-    if (!this.config.enabled || !this.config.resourceTypes.fonts) {
+    if (this.config.enabled !== true || this.config.resourceTypes.fonts !== true) {
       return Promise.resolve(new FontFace(fontFamily, `url(${url})`))
     }
 
@@ -505,8 +505,8 @@ export class PreloadManager {
    * @param priority 优先级
    * @returns 数据Promise
    */
-  public preloadData(url: string, priority = 0): Promise<any> {
-    if (!this.config.enabled || !this.config.resourceTypes.data) {
+  public preloadData(url: string, priority = 0): Promise<unknown> {
+    if (this.config.enabled !== true || this.config.resourceTypes.data !== true) {
       return Promise.resolve(null)
     }
 
@@ -538,7 +538,7 @@ export class PreloadManager {
       priority,
       status: "pending",
       load: () => {
-        return new Promise<any>((resolve, reject) => {
+        return new Promise<unknown>((resolve, reject) => {
           // 记录开始时间
           this.loadStartTime.set(url, Date.now())
           this.loading.add(url)
@@ -620,12 +620,12 @@ export class PreloadManager {
       fontFamily?: string
     }>,
   ): Promise<boolean> {
-    if (!this.config.enabled) {
+    if (this.config.enabled !== true) {
       return true
     }
 
     const promises = resources.map((resource) => {
-      const priority = resource.priority || 0
+      const priority = resource.priority ?? 0
 
       switch (resource.type) {
         case "image":
@@ -641,7 +641,7 @@ export class PreloadManager {
             .then(() => true)
             .catch(() => false)
         case "font":
-          return this.preloadFont(resource.url, resource.fontFamily || "preloaded-font", priority)
+          return this.preloadFont(resource.url, resource.fontFamily ?? "preloaded-font", priority)
             .then(() => true)
             .catch(() => false)
         case "data":
@@ -662,7 +662,7 @@ export class PreloadManager {
    * @param url 资源URL
    * @returns 资源
    */
-  public getResource(url: string): any {
+  public getResource(url: string): unknown {
     return this.resourceCache.get(url)
   }
 
@@ -705,7 +705,7 @@ export class PreloadManager {
    * @param url 资源URL（如果不提供，清除所有缓存）
    */
   public clearCache(url?: string): void {
-    if (url) {
+    if (typeof url === 'string' && url.length > 0) {
       this.resourceCache.delete(url)
       this.loaded.delete(url)
       this.failed.delete(url)
@@ -731,7 +731,7 @@ export class PreloadManager {
 
     // 获取下一个待处理项
     const nextItem = this.queue.find((item) => item.status === "pending")
-    if (!nextItem) {
+    if (nextItem == null) {
       return
     }
 
@@ -753,7 +753,7 @@ export class PreloadManager {
    * 触发进度回调
    */
   private triggerProgressCallback(): void {
-    if (this.config.onProgress) {
+    if (typeof this.config.onProgress === 'function') {
       const total = this.loaded.size + this.failed.size + this.loading.size + this.queue.length
       const loaded = this.loaded.size + this.failed.size
       this.config.onProgress(loaded, total)
@@ -766,7 +766,7 @@ export class PreloadManager {
    * @param message 日志消息
    * @param data 附加数据
    */
-  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: any): void {
+  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: unknown): void {
     // 根据配置的日志级别过滤日志
     const levelPriority = { error: 0, warn: 1, info: 2, debug: 3 }
     if (levelPriority[level] > levelPriority[this.config.logLevel]) {

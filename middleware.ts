@@ -5,19 +5,15 @@ export function middleware(request: NextRequest) {
   // 基础请求处理逻辑
   const response = NextResponse.next()
   
-  // 生产环境启用CSP
+  // 生产环境启用统一安全策略
   if (process.env.NODE_ENV === 'production') {
-    // 增强CSP策略，支持CAD文件处理和数据可视化
-    response.headers.set(
-      "Content-Security-Policy", 
-      "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' wss: https:; worker-src 'self' blob:; child-src 'self' blob:; object-src 'self' blob:; frame-src 'self'"
-    )
+    const { csp, permissionsPolicy } = require('@/config/security')?.getSecurityConfig?.(true) || { csp: '', permissionsPolicy: '' }
+    if (csp) response.headers.set('Content-Security-Policy', csp)
+    if (permissionsPolicy) response.headers.set('Permissions-Policy', permissionsPolicy)
   }
-  
-  // 添加安全相关的HTTP头
-  response.headers.set("X-Content-Type-Options", "nosniff")
-  response.headers.set("X-Frame-Options", "DENY")
-  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
+  // 安全头
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   
   // 处理路由隔离 - 管理员路由权限控制
   const { pathname } = request.nextUrl
@@ -36,19 +32,14 @@ export function middleware(request: NextRequest) {
     }
   }
   
-  // 添加跨域资源共享(CORS)头，用于API路由
+  // 统一CORS策略（生产环境可配置白名单域名）
   if (pathname.startsWith('/api/')) {
-    // 允许所有来源访问API - 实际生产环境中应该限制为特定域名
-    response.headers.set('Access-Control-Allow-Origin', '*')
+    const allowOrigin = process.env.CORS_ALLOW_ORIGIN || '*'
+    response.headers.set('Access-Control-Allow-Origin', allowOrigin)
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    
-    // 处理预检请求
     if (request.method === 'OPTIONS') {
-      return new NextResponse(null, { 
-        status: 200,
-        headers: response.headers
-      })
+      return new NextResponse(null, { status: 200, headers: response.headers })
     }
   }
 

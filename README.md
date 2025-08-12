@@ -96,6 +96,14 @@ Options:
 - `--dir=<path>`: Clean only a specific directory
 - `--verbose`: Show detailed logs
 
+## Rules & Docs
+
+- 注释规范与流程：[docs/注释开发规范与流程文档.md](docs/注释开发规范与流程文档.md)
+- 架构一致性指引：[docs/架构一致性指引.md](docs/架构一致性指引.md)
+- Cursor 规则：
+  - [13-commenting-standards.mdc](.cursor/rules/13-commenting-standards.mdc)
+  - [14-architecture-consistency.mdc](.cursor/rules/14-architecture-consistency.mdc)
+
 ## License
 
 [MIT](LICENSE) 

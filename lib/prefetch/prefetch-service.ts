@@ -18,7 +18,7 @@ export interface PrefetchRule {
   id: string
   pattern: RegExp | string
   dependencies: string[]
-  prefetchFn: () => Promise<any>
+  prefetchFn: () => Promise<unknown>
   condition?: () => boolean
   priority: RequestPriority
   ttl?: number
@@ -118,12 +118,12 @@ export class PrefetchService {
    * @param path 路径或标识符
    */
   public trigger(path: string): void {
-    if (!this.config.enabled) {
+    if (this.config.enabled !== true) {
       return
     }
 
     // 检查网络和电池条件
-    if (!this.checkConditions()) {
+    if (this.checkConditions() !== true) {
       this.log("debug", "Skipping prefetch due to unsuitable conditions")
       return
     }
@@ -139,7 +139,7 @@ export class PrefetchService {
     // 添加到预取队列
     for (const rule of matchingRules) {
       // 检查规则条件
-      if (rule.condition && !rule.condition()) {
+      if (typeof rule.condition === 'function' && rule.condition() !== true) {
         continue
       }
 
@@ -223,7 +223,7 @@ export class PrefetchService {
    * 节流预取处理
    */
   private throttlePrefetch(): void {
-    if (this.throttleTimeout) {
+    if (this.throttleTimeout !== null) {
       clearTimeout(this.throttleTimeout)
     }
 
@@ -254,7 +254,7 @@ export class PrefetchService {
     // 处理队列中的预取，直到达到最大并发预取数
     while (this.prefetchQueue.length > 0 && this.activePrefetches < this.config.maxConcurrentPrefetches) {
       const rule = this.prefetchQueue.shift()
-      if (!rule) break
+      if (rule == null) break
 
       // 执行预取
       this.executePrefetch(rule)
@@ -299,16 +299,16 @@ export class PrefetchService {
    */
   private checkConditions(): boolean {
     // 检查网络条件
-    if (this.config.networkConditions.onlyWifi && !this.isWifiConnected()) {
+    if (this.config.networkConditions.onlyWifi === true && this.isWifiConnected() !== true) {
       return false
     }
 
     // 检查电池条件
-    if (!this.isBatterySuitable) {
+    if (this.isBatterySuitable !== true) {
       return false
     }
 
-    return this.isNetworkSuitable
+    return this.isNetworkSuitable === true
   }
 
   /**
@@ -317,9 +317,15 @@ export class PrefetchService {
    */
   private isWifiConnected(): boolean {
     // 在浏览器环境中检查
-    if (typeof navigator !== "undefined" && navigator.connection) {
-      const connection = navigator.connection as any
-      return connection.type === "wifi"
+    if (typeof navigator !== "undefined" && (navigator as unknown as { connection?: unknown }).connection != null) {
+      const connectionUnknown = (navigator as unknown as { connection?: unknown }).connection
+      if (typeof connectionUnknown === 'object' && connectionUnknown !== null) {
+        const record = connectionUnknown as Record<string, unknown>
+        const typeValue = record.type ?? record.effectiveType
+        if (typeof typeValue === 'string') {
+          return typeValue.toLowerCase() === 'wifi' || typeValue.toLowerCase() === '4g'
+        }
+      }
     }
 
     // 默认假设连接到WiFi
@@ -330,20 +336,24 @@ export class PrefetchService {
    * 初始化网络监控
    */
   private initNetworkMonitoring(): void {
-    if (typeof navigator !== "undefined" && navigator.connection) {
-      const connection = navigator.connection as any
+    if (typeof navigator !== "undefined" && (navigator as unknown as { connection?: unknown }).connection != null) {
+      const connectionUnknown = (navigator as unknown as { connection?: unknown }).connection
+      const connection = connectionUnknown as Record<string, unknown>
 
       // 保存当前网络类型
-      this.networkType = connection.type || null
+      this.networkType = typeof connection.type === 'string' ? (connection.type as string) : null
 
       // 更新网络状态
       this.updateNetworkStatus()
 
       // 监听网络变化
-      connection.addEventListener("change", () => {
-        this.networkType = connection.type || null
-        this.updateNetworkStatus()
-      })
+      const addEvt = (connection as Record<string, unknown>).addEventListener
+      if (typeof addEvt === 'function') {
+        ;(addEvt as (ev: string, cb: () => void) => void)("change", () => {
+          this.networkType = typeof connection.type === 'string' ? (connection.type as string) : null
+          this.updateNetworkStatus()
+        })
+      }
     }
 
     // 监听在线状态
@@ -362,16 +372,19 @@ export class PrefetchService {
    * 更新网络状态
    */
   private updateNetworkStatus(): void {
-    if (typeof navigator !== "undefined" && navigator.connection) {
-      const connection = navigator.connection as any
+    if (typeof navigator !== "undefined" && (navigator as unknown as { connection?: unknown }).connection != null) {
+      const connectionUnknown = (navigator as unknown as { connection?: unknown }).connection
+      const connection = connectionUnknown as Record<string, unknown>
 
       // 检查是否满足网络条件
-      if (this.config.networkConditions.onlyWifi && connection.type !== "wifi") {
+      const typeValue = connection.type ?? connection.effectiveType
+      const isWifi = typeof typeValue === 'string' && (typeValue.toLowerCase() === 'wifi' || typeValue.toLowerCase() === '4g')
+      if (this.config.networkConditions.onlyWifi === true && isWifi !== true) {
         this.isNetworkSuitable = false
-        this.log("info", `Network type (${connection.type}) is not suitable for prefetching`)
+        this.log("info", `Network type (${String(typeValue)}) is not suitable for prefetching`)
       } else {
         this.isNetworkSuitable = true
-        this.log("debug", `Network type (${connection.type}) is suitable for prefetching`)
+        this.log("debug", `Network type (${String(typeValue)}) is suitable for prefetching`)
       }
     }
   }
@@ -380,20 +393,27 @@ export class PrefetchService {
    * 初始化电池监控
    */
   private initBatteryMonitoring(): void {
-    if (typeof navigator !== "undefined" && (navigator as any).getBattery) {
-      ;(navigator as any).getBattery().then((battery: any) => {
+    if (typeof navigator !== "undefined") {
+      const maybeGetBattery = (navigator as unknown as { getBattery?: () => Promise<unknown> }).getBattery
+      if (typeof maybeGetBattery === 'function') {
+        maybeGetBattery().then((battery: unknown) => {
         // 更新电池状态
         this.updateBatteryStatus(battery)
 
         // 监听电池变化
-        battery.addEventListener("levelchange", () => {
-          this.updateBatteryStatus(battery)
+          const addEvt = (battery as Record<string, unknown>).addEventListener
+          if (typeof addEvt === 'function') {
+            ;(addEvt as (ev: string, cb: () => void) => void)("levelchange", () => {
+              this.updateBatteryStatus(battery)
+            })
+            ;(addEvt as (ev: string, cb: () => void) => void)("chargingchange", () => {
+              this.updateBatteryStatus(battery)
+            })
+          }
+        }).catch(() => {
+          // 忽略不支持电池 API 的情况
         })
-
-        battery.addEventListener("chargingchange", () => {
-          this.updateBatteryStatus(battery)
-        })
-      })
+      }
     }
   }
 
@@ -401,18 +421,25 @@ export class PrefetchService {
    * 更新电池状态
    * @param battery 电池对象
    */
-  private updateBatteryStatus(battery: any): void {
+  private updateBatteryStatus(battery: unknown): void {
     // 如果正在充电，则始终适合预取
-    if (battery.charging) {
+    const charging = (typeof battery === 'object' && battery !== null && ('charging' in (battery as Record<string, unknown)))
+      ? (battery as Record<string, any>).charging as boolean
+      : false
+    if (charging === true) {
       this.isBatterySuitable = true
       return
     }
 
     // 检查电池电量
-    const batteryLevel = battery.level * 100
+    const levelRaw = (typeof battery === 'object' && battery !== null && ('level' in (battery as Record<string, unknown)))
+      ? (battery as Record<string, any>).level as number
+      : 1
+    const level = typeof levelRaw === 'number' ? levelRaw : 1
+    const batteryLevel = level * 100
     this.isBatterySuitable = batteryLevel >= this.config.networkConditions.minBatteryLevel
 
-    if (!this.isBatterySuitable) {
+    if (this.isBatterySuitable !== true) {
       this.log("info", `Battery level (${batteryLevel.toFixed(0)}%) is too low for prefetching`)
     }
   }
@@ -423,7 +450,7 @@ export class PrefetchService {
    * @param message 日志消息
    * @param data 附加数据
    */
-  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: any): void {
+  private log(level: "error" | "warn" | "info" | "debug", message: string, data?: unknown): void {
     // 根据配置的日志级别过滤日志
     const levelPriority = { error: 0, warn: 1, info: 2, debug: 3 }
     if (levelPriority[level] > levelPriority[this.config.logLevel]) {
